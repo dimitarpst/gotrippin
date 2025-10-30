@@ -8,5 +8,11 @@
   "scripts": {
     "dev:web": "npm --workspace apps/web run dev",
     "dev:backend": "npm --workspace apps/backend run start:dev"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.16",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.16"
   }
 }
