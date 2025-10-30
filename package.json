@@ -1,0 +1,12 @@
+{
+  "name": "gotrippin",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:backend": "npm --workspace apps/backend run start:dev"
+  }
+}
