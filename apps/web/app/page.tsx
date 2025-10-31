@@ -1,12 +1,18 @@
-import { Button } from "@/components/ui/button"
+"use client"
 
-export default function Home() {
+import AuroraBackground from "@/components/effects/aurora-background"
+import FloatingHeader from "@/components/layout/FloatingHeader"
+import DockBar from "@/components/layout/DockBar"
+
+export default function HomePage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-zinc-900 text-white">
-      <h1 className="text-5xl font-bold mb-8 text-blue-400">shadcn/ui Works 🎉</h1>
-<Button >
-  Let’s Go
-</Button>
+    <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
+      <AuroraBackground />
+      <FloatingHeader />
+      <div className="flex-1 flex items-center justify-center">
+        <h1 className="z-10 text-6xl font-bold tracking-tight">Go Trippin’</h1>
+      </div>
+      <DockBar />
     </main>
   )
 }

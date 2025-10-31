@@ -44,3 +44,6 @@ Thumbs.db
 # TypeScript
 *.tsbuildin*
 package-lock.json
+
+# VSCode Settings
+.vscode/
