@@ -1,6 +1,51 @@
 @import "tailwindcss";
 
-/* optional reset / variables */
+/* Aurora × Coral Dark Theme */
+@theme {
+  --color-background: oklch(0.145 0 0);          /* #0e0b10 */
+  --color-foreground: oklch(0.985 0 0);          /* white text */
+  --color-card: oklch(0.145 0 0);
+  --color-card-foreground: oklch(0.985 0 0);
+  --color-popover: oklch(0.145 0 0);
+  --color-popover-foreground: oklch(0.985 0 0);
+  --color-primary: oklch(0.67 0.23 25);          /* coral accent (#ff6b6b-ish) */
+  --color-primary-foreground: oklch(0.985 0 0);
+  --color-secondary: oklch(0.23 0.01 270);       /* violet/indigo tint for contrast */
+  --color-secondary-foreground: oklch(0.985 0 0);
+  --color-accent: oklch(0.73 0.17 25);           /* lighter coral hover */
+  --color-accent-foreground: oklch(0.985 0 0);
+  --color-muted: oklch(0.28 0.02 270);
+  --color-muted-foreground: oklch(0.70 0.03 270);
+  --color-destructive: oklch(0.46 0.22 25);
+  --color-destructive-foreground: oklch(0.985 0 0);
+  --color-border: oklch(0.15 0 0 / 0.08);        /* glassy translucent border */
+  --color-ring: oklch(0.67 0.23 25);
+}
+
+/* Bridge for shadcn/ui classic variable names */
+@layer base {
+  :root {
+    --background: var(--color-background);
+    --foreground: var(--color-foreground);
+    --card: var(--color-card);
+    --card-foreground: var(--color-card-foreground);
+    --popover: var(--color-popover);
+    --popover-foreground: var(--color-popover-foreground);
+    --primary: var(--color-primary);
+    --primary-foreground: var(--color-primary-foreground);
+    --secondary: var(--color-secondary);
+    --secondary-foreground: var(--color-secondary-foreground);
+    --accent: var(--color-accent);
+    --accent-foreground: var(--color-accent-foreground);
+    --muted: var(--color-muted);
+    --muted-foreground: var(--color-muted-foreground);
+    --destructive: var(--color-destructive);
+    --destructive-foreground: var(--color-destructive-foreground);
+    --border: var(--color-border);
+    --ring: var(--color-ring);
+  }
+}
+
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 }
