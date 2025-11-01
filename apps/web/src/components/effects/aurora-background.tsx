@@ -1,6 +1,10 @@
-"use client";
+"use client"
 
-export default function AuroraBackground() {
+interface AuroraBackgroundProps {
+  className?: string
+}
+
+export default function AuroraBackground({ className }: AuroraBackgroundProps) {
   const layers = [
     {
       s: {
@@ -38,13 +42,13 @@ export default function AuroraBackground() {
           color-mix(in oklab, var(--color-accent) 25%, black 75%) 100%)`,
       },
     },
-  ];
+  ]
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none z-0 ${className || ""}`}>
       {layers.map((l, i) => (
         <div key={i} className={`absolute inset-0 ${l.c || ""}`} style={l.s} />
       ))}
     </div>
-  );
+  )
 }

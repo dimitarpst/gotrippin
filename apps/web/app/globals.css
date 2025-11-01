@@ -48,4 +48,8 @@
 
 :root {
   color-scheme: dark;
+  --surface: var(--color-card);
+  --accent: var(--color-accent);
+  --accent-hover: var(--color-primary);
+  --muted: var(--color-muted-foreground);
 }
