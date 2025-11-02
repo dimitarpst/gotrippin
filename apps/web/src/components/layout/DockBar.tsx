@@ -3,32 +3,35 @@
 import { motion } from "framer-motion";
 import Dock from "@/components/ui/dock";
 import { Home, Compass, Plus, Settings, User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const baseClass =
   "bg-transparent hover:bg-white/10 text-white/80 hover:text-white transition-all duration-300";
 const accentClass =
   "bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:bg-[var(--color-accent)]/80 shadow-[0_0_20px_rgba(255,107,107,0.5)] transition-all duration-300";
 
-const icons = {
-  Home,
-  Explore: Compass,
-  AddTrip: Plus,
-  Settings,
-  Profile: User,
-};
-
 export default function DockBar() {
-  const items = Object.entries(icons).map(([label, Icon]) => ({
+  const { t } = useTranslation();
+
+  const icons = [
+    { key: "home", icon: Home },
+    { key: "explore", icon: Compass },
+    { key: "add_trip", icon: Plus },
+    { key: "settings", icon: Settings },
+    { key: "profile", icon: User }
+  ];
+
+  const items = icons.map(({ key, icon: Icon }) => ({
     icon: (
       <Icon
         className={`w-6 h-6 ${
-          label === "AddTrip" ? "text-[var(--color-accent-foreground)]" : ""
+          key === "add_trip" ? "text-[var(--color-accent-foreground)]" : ""
         }`}
       />
     ),
-    label: label === "AddTrip" ? "Add Trip" : label,
+    label: t(`dock.${key}`),
     onClick: () => {},
-    className: label === "AddTrip" ? accentClass : baseClass,
+    className: key === "add_trip" ? accentClass : baseClass
   }));
 
   return (
@@ -39,7 +42,7 @@ export default function DockBar() {
         opacity: 1,
         y: 0,
         scale: 1,
-        transition: { type: "spring", stiffness: 260, damping: 24 },
+        transition: { type: "spring", stiffness: 260, damping: 24 }
       }}
     >
       <Dock

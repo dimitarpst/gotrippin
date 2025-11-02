@@ -1,0 +1,33 @@
+{
+  "app": {
+    "title": "Go Trippin'",
+    "tagline": "Твоите пътешествия — организирани и оживени.",
+    "get_started": "Започни",
+    "welcome_back": "Добре дошъл отново!",
+    "start_journey": "Започни своето пътешествие"
+  },
+  "header": {
+    "my_trips": "Моите пътувания",
+    "shared_trips": "Общи пътувания"
+  },
+  "auth": {
+    "email": "Имейл",
+    "password": "Парола",
+    "name": "Пълно име",
+    "sign_in": "Вход",
+    "create_account": "Създай акаунт",
+    "forgot_password": "Забравена парола?",
+    "or_continue_with": "Или продължи с",
+    "continue_with_google": "Продължи с Google",
+    "no_account": "Нямаш акаунт?",
+    "have_account": "Вече имаш акаунт?",
+    "sign_up": "Регистрация"
+  },
+  "dock": {
+    "home": "Начало",
+    "explore": "Открий",
+    "add_trip": "Добави пътуване",
+    "settings": "Настройки",
+    "profile": "Профил"
+  }
+}
