@@ -63,7 +63,7 @@ export default function DockBar() {
       </div>
     ),
     label: t("dock.profile"),
-    onClick: () => router.push("/login"),
+    onClick: () => (user ? router.push("/user") : router.push("/login")),
     className: baseClass,
   });
 
