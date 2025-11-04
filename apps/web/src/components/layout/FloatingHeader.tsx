@@ -13,6 +13,10 @@ export default function FloatingHeader() {
     useState<"my_trips" | "shared_trips">("my_trips");
   const ref = useRef<HTMLDivElement>(null);
 
+  // ✅ Always call all hooks unconditionally
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node))
@@ -26,6 +30,13 @@ export default function FloatingHeader() {
     { key: "my_trips", label: t("header.my_trips"), icon: MapPin },
     { key: "shared_trips", label: t("header.shared_trips"), icon: User },
   ];
+
+  // ✅ Only conditionally render output, not hooks
+  if (!mounted) {
+    return (
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] z-50 opacity-0" />
+    );
+  }
 
   return (
     <div
@@ -96,7 +107,7 @@ export default function FloatingHeader() {
         {/* Right side — Language switcher */}
         <div className="relative flex items-center">
           <LanguageSwitcher
-            defaultLanguage={i18n.language as "en" | "bg"}
+            defaultLanguage={(i18n.language?.split("-")[0] as "en" | "bg") || "en"}
             isOpen={openMenu === "language"}
             onToggle={() =>
               setOpenMenu(openMenu === "language" ? null : "language")

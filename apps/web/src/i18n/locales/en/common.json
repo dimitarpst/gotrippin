@@ -27,6 +27,24 @@
     "email_resent_success": "Confirmation email resent successfully!",
     "email_resent_failed": "Failed to resend email"
   },
+  "profile": {
+    "title": "Profile",
+    "logout": "Log out",
+    "edit": "Edit",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "display_name": "Display name",
+    "phone": "Phone number",
+    "no_phone": "No phone",
+    "joined": "Joined",
+    "last_signin": "Last sign in",
+    "traveler": "Traveler",
+    "trips_completed": "Trips Completed",
+    "countries_visited": "Countries Visited",
+    "days_traveling": "Days Traveling",
+    "dismiss": "Dismiss"
+  },
   "dock": {
     "home": "Home",
     "explore": "Explore",

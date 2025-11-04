@@ -64,7 +64,7 @@ export function LanguageSwitcher({
     if (onToggle) onToggle(); // close menu after selection
   };
 
-  const CurrentFlag = languages[language].flag;
+  const CurrentFlag = languages[language as keyof typeof languages]?.flag || UKFlag;
 
   return (
     <div ref={containerRef} className="relative">

@@ -27,6 +27,24 @@
     "email_resent_success": "Имейлът за потвърждение беше изпратен отново успешно!",
     "email_resent_failed": "Неуспешно изпращане на имейла"
   },
+  "profile": {
+    "title": "Профил",
+    "logout": "Изход",
+    "edit": "Редактирай",
+    "save": "Запази",
+    "saving": "Запазване…",
+    "cancel": "Отказ",
+    "display_name": "Име за показване",
+    "phone": "Телефонен номер",
+    "no_phone": "Няма телефон",
+    "joined": "Присъединил се",
+    "last_signin": "Последен вход",
+    "traveler": "Пътешественик",
+    "trips_completed": "Завършени пътувания",
+    "countries_visited": "Посетени държави",
+    "days_traveling": "Дни в пътуване",
+    "dismiss": "Затвори"
+  },
   "dock": {
     "home": "Начало",
     "explore": "Открий",
