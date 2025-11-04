@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Dock from "@/components/ui/dock";
+import { Dock } from "@/components/ui/dock";
+
 import { Home, Compass, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
