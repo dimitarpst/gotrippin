@@ -21,7 +21,11 @@
     "continue_with_google": "Continue with Google",
     "no_account": "Don't have an account?",
     "have_account": "Already have an account?",
-    "sign_up": "Sign up"
+    "sign_up": "Sign up",
+    "email_confirm_text": "Please check your inbox to confirm your email before logging in.",
+    "resend_email": "Resend Confirmation Email",
+    "email_resent_success": "Confirmation email resent successfully!",
+    "email_resent_failed": "Failed to resend email"
   },
   "dock": {
     "home": "Home",

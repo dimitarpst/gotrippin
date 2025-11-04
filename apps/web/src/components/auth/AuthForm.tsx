@@ -10,22 +10,58 @@ import { AuthHeader } from "./AuthHeader";
 import { AuthTabs } from "./AuthTabs";
 import { AuthFields } from "./AuthFields";
 import { AuthDivider } from "./AuthDivider";
+import { EmailConfirm } from "./EmailConfirm";
 
-export default function AuthForm() {
-  const { t } = useTranslation();
-  const [mounted, setMounted] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useRouter } from "next/navigation";
 
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return null;
+  export default function AuthForm() {
+    const { t } = useTranslation();
+    const [mounted, setMounted] = useState(false);
+    const [isLogin, setIsLogin] = useState(true);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [name, setName] = useState("");
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    // 🧩 Supabase Auth hook + router
+    const { signIn, signUp,  loading } = useSupabaseAuth();
+    const [pendingConfirmation, setPendingConfirmation] = useState(false);
+    const [lastEmail, setLastEmail] = useState("");
+
+    const router = useRouter();
+
+    useEffect(() => setMounted(true), []);
+    if (!mounted) return null;
+
+    // 🧩 Updated only this handler
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log(isLogin ? "Login" : "Register", { email, password, name });
+
+    try {
+      if (isLogin) {
+        await signIn(email, password);
+        console.log(" Logged in successfully");
+        router.push("/");
+      } else {
+        await signUp(email, password, name);
+        console.log("Registered successfully — waiting for email confirmation");
+        setPendingConfirmation(true);
+        setLastEmail(email);
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.toLowerCase().includes("email not confirmed")) {
+        setPendingConfirmation(true);
+        setLastEmail(email);
+      } else {
+        console.error("Auth error:", msg);
+        alert(msg);
+      }
+    }
+
   };
+
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
@@ -57,6 +93,8 @@ export default function AuthForm() {
           <AuthTabs isLogin={isLogin} setIsLogin={setIsLogin} />
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <EmailConfirm visible={pendingConfirmation} lastEmail={lastEmail} />
+
             <AuthFields
               isLogin={isLogin}
               name={name}
@@ -80,6 +118,7 @@ export default function AuthForm() {
 
             <Button
               type="submit"
+              disabled={loading}
               className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium py-6 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-[var(--accent)]/20 group"
             >
               <span>
@@ -91,11 +130,15 @@ export default function AuthForm() {
 
           <AuthDivider />
 
+
           <div className="space-y-3">
             <Button
               type="button"
               variant="outline"
               className="w-full bg-black/30 border-white/10 text-white hover:bg-black/50 hover:border-white/20 py-6 rounded-xl transition-all duration-200"
+              onClick={() =>
+                console.log("Google login coming soon")
+              }
             >
               <Chrome className="mr-2 w-5 h-5" />
               {t("auth.continue_with_google")}

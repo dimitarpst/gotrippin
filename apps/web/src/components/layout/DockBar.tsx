@@ -2,8 +2,10 @@
 
 import { motion } from "framer-motion";
 import Dock from "@/components/ui/dock";
-import { Home, Compass, Plus, Settings, User } from "lucide-react";
+import { Home, Compass, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useRouter } from "next/navigation";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 
 const baseClass =
   "bg-transparent hover:bg-white/10 text-white/80 hover:text-white transition-all duration-300";
@@ -12,15 +14,18 @@ const accentClass =
 
 export default function DockBar() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { user } = useSupabaseAuth();
 
+  // Main dock icons
   const icons = [
     { key: "home", icon: Home },
     { key: "explore", icon: Compass },
     { key: "add_trip", icon: Plus },
     { key: "settings", icon: Settings },
-    { key: "profile", icon: User }
   ];
 
+  // Map standard icons
   const items = icons.map(({ key, icon: Icon }) => ({
     icon: (
       <Icon
@@ -30,9 +35,36 @@ export default function DockBar() {
       />
     ),
     label: t(`dock.${key}`),
-    onClick: () => {},
-    className: key === "add_trip" ? accentClass : baseClass
+    onClick: () => {
+      if (key === "settings") router.push("/settings");
+    },
+    className: key === "add_trip" ? accentClass : baseClass,
   }));
+
+  // Avatar
+  const avatarLetter =
+    user?.user_metadata?.full_name?.[0]?.toUpperCase() ||
+    user?.email?.[0]?.toUpperCase() ||
+    "U";
+
+  const avatarColor = user?.avatar_color || "var(--color-accent)";
+
+  items.push({
+    icon: (
+      <div
+        className="text-sm font-bold text-white select-none w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105"
+        style={{
+          backgroundColor: avatarColor,
+          boxShadow: `0 0 10px ${avatarColor}66`,
+        }}
+      >
+        {avatarLetter}
+      </div>
+    ),
+    label: t("dock.profile"),
+    onClick: () => router.push("/login"),
+    className: baseClass,
+  });
 
   return (
     <motion.div
@@ -42,7 +74,7 @@ export default function DockBar() {
         opacity: 1,
         y: 0,
         scale: 1,
-        transition: { type: "spring", stiffness: 260, damping: 24 }
+        transition: { type: 'spring', stiffness: 260, damping: 24 },
       }}
     >
       <Dock

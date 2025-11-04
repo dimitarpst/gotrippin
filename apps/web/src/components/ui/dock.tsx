@@ -24,6 +24,7 @@ export type DockItemData = {
   label: React.ReactNode;
   onClick: () => void;
   className?: string;
+  style?: React.CSSProperties;
 };
 
 export type DockProps = {
@@ -49,6 +50,7 @@ type DockItemProps = {
   distance: number;
   baseItemSize: number;
   magnification: number;
+  style?: React.CSSProperties;
 };
 
 function DockItem({
@@ -60,6 +62,7 @@ function DockItem({
   distance,
   magnification,
   baseItemSize,
+  style,
 }: DockItemProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isHovered = useMotionValue(0);
@@ -92,7 +95,7 @@ function DockItem({
   return (
     <motion.div
       ref={ref}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, ...style  }}
       onHoverStart={activate}
       onHoverEnd={deactivate}
       onFocus={activate}
@@ -247,21 +250,23 @@ export default function Dock({
           className
         )}
       >
-        {items.map((item, i) => (
-          <DockItem
-            key={i}
-            onClick={item.onClick}
-            className={item.className}
-            mouseX={mouseX}
-            spring={spring}
-            distance={distance}
-            magnification={magnification}
-            baseItemSize={baseItemSize}
-          >
-            <DockIcon>{item.icon}</DockIcon>
-            <DockLabel>{item.label}</DockLabel>
-          </DockItem>
-        ))}
+      {items.map((item, i) => (
+        <DockItem
+          key={i}
+          onClick={item.onClick}
+          className={item.className}
+          mouseX={mouseX}
+          spring={spring}
+          distance={distance}
+          magnification={magnification}
+          baseItemSize={baseItemSize}
+          style={item.style} 
+        >
+          <DockIcon>{item.icon}</DockIcon>
+          <DockLabel>{item.label}</DockLabel>
+        </DockItem>
+      ))}
+
       </motion.div>
     </motion.div>
   );
