@@ -1,0 +1,245 @@
+# =========================================================
+# Project: Go Trippin`
+# Type: Full-stack web application (Next.js 16 + Supabase + NestJS)
+# Purpose: Modern collaborative travel planner
+# =========================================================
+
+
+## ⚠️ EXECUTION PERMISSIONS & COMMANDS
+- Agents and assistants must **never run shell or npm commands automatically.**
+- All command-line actions (npm install, git, build, lint, start, turbo, etc.) should be **suggested only**, not executed.
+- The developer (me) will manually run commands when necessary.
+- If a task requires a new dependency, the agent must:
+  1. Propose the command and explain why it's needed.
+  2. Wait for explicit approval before proceeding.
+- Do not invoke terminal, database migrations, or project scripts autonomously.
+
+
+## 🧭 GENERAL OVERVIEW
+- Go Trippin` is a full-stack app built in a monorepo structure.
+- Frontend: apps/web  → Next.js 16 (React 19, App Router, TypeScript strict)
+- Backend:  apps/backend → NestJS (modular API, Supabase integration, AI layer)
+- Shared logic: packages/core → Zod schemas, interfaces, utility functions
+- Database & Auth: Supabase (PostgreSQL + RLS + Storage)
+- Goal: provide visual, collaborative trip planning with live data sync.
+
+---
+
+## 🧩 STACK & LIBRARIES
+### FRONTEND
+- Next.js 16 + React 19 (App Router)
+- Tailwind CSS v4 (with CSS Variables & OKLCH colors)
+- shadcn/ui (New York style, Radix primitives)
+- Framer Motion 12 (animations)
+- Lucide-React (icons)
+- i18next + react-i18next + LanguageDetector (EN/BG)
+- Supabase JS SDK (SSR & Browser client)
+- class-variance-authority + tailwind-merge (UI variants)
+- TypeScript strict mode ON
+
+### BACKEND
+- NestJS 10 + TypeScript
+- Supabase Admin Client (for secure server-side ops)
+- Zod + class-validator for schema validation
+- Optional: OpenAI SDK (for future AI itinerary generation)
+- Swagger + ConfigModule + LoggerModule
+- PostgreSQL via Supabase connection
+- Deployment target: Vercel (web) + Render/Supabase Functions (backend)
+
+---
+
+## 📁 MONOREPO STRUCTURE
+gotrippin/
+├─ apps/
+│ ├─ web/ → Next.js frontend
+│ └─ backend/ → NestJS backend
+├─ packages/
+│ └─ core/ → shared types/schemas
+└─ ...
+
+markdown
+Copy code
+
+---
+
+## 🎨 DESIGN & THEME
+- Global theme file: `/apps/web/app/globals.css`
+- Base style: **Aurora × Coral Dark Theme**
+- Primary accent: `#ff6b6b` (coral red)
+- Secondary accent: indigo/violet tint
+- Typography: sans-serif, bold headings, light body
+- Use OKLCH color model with CSS variables `--color-*`
+- Always reference theme vars (never hardcode hex)
+- Color-scheme: dark (color-scheme: dark)
+- Components follow glassmorphism + subtle glow
+- Motion: small spring transitions (stiffness > 300)
+
+---
+
+## 🧱 FRONTEND FILE EXPECTATIONS
+- `/app/` → Next.js pages & layouts
+  - `layout.tsx` wraps with `<I18nProvider>`
+  - `(auth)/login` route handles auth views
+  - `/user` → profile page
+- `/src/lib/` → supabaseClient.ts, utils.ts
+- `/src/hooks/` → reusable hooks (`useSupabaseAuth`)
+- `/src/components/` → modular components:
+  - `auth/`  (login/register UI)
+  - `user/`  (profile)
+  - `layout/` (DockBar, FloatingHeader)
+  - `effects/` (aurora backgrounds)
+  - `ui/` (buttons, inputs, dock system)
+- `/src/i18n/` → localization resources (EN/BG)
+
+---
+
+## ⚙️ SUPABASE INTEGRATION
+- Use environment vars:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`
+- Never hardcode keys.
+- Auth:
+  - Email/password + OAuth (Google planned)
+  - Custom hook: `useSupabaseAuth` manages session
+- Tables:
+  - `profiles`: id (UUID), avatar_color, display_name, phone
+  - `trips`: id, user_id, title, destination, dates, image, created_at
+- Enable RLS; each user only reads/writes their own rows.
+- Use Supabase SDK for browser; Admin Client for NestJS server ops.
+
+---
+
+## 🧰 BACKEND (NestJS)
+- Root folder: `/apps/backend`
+- Entry file: `main.ts`
+- Modules: `auth`, `trips`, `profiles`, `ai` (future)
+- Use `@nestjs/config` for envs (`SUPABASE_SERVICE_KEY`, `SUPABASE_URL`)
+- Integrate Supabase Admin Client for elevated privileges
+- Define REST endpoints:
+  - `POST /api/trips` createTrip
+  - `GET /api/trips/:userId`
+  - `PUT /api/trips/:id`
+  - `DELETE /api/trips/:id`
+- Use Zod schemas from `packages/core` for request validation.
+- Middleware: JWT Guard verifying Supabase tokens.
+- Future AI module: generates suggested trips (OpenAI / embeddings).
+
+---
+
+## 🧠 CODING CONVENTIONS
+- Language: TypeScript strict everywhere.
+- Prefer functional components & hooks.
+- Avoid `any` unless type is unknown from SDK.
+- Use `cn()` from `/src/lib/utils` for class merging.
+- Use shadcn/ui variant patterns (`cva()`).
+- Keep components < 200 lines; split logic into hooks when reusable.
+- Keep CSS in Tailwind only; no SCSS, no inline style objects.
+- Prefix env vars with `NEXT_PUBLIC_` if needed in browser.
+- Always handle loading/error states for async operations.
+- Localization: all visible strings from i18n keys.
+
+---
+
+## 🎞️ ANIMATION RULES
+- Use `framer-motion` exclusively for motion.
+- Default spring config:
+type: "spring"
+stiffness: 600
+damping: 25
+
+yaml
+Copy code
+- Avoid unnecessary opacity flickers or bounce effects.
+- Wrap motion groups in `<AnimatePresence>` for entry/exit transitions.
+
+---
+
+## 🌐 INTERNATIONALIZATION (i18n)
+- Languages: English (en) + Bulgarian (bg)
+- Files: `/src/i18n/locales/{en,bg}/common.json`
+- Namespace: `translation`
+- Detect language via `LanguageDetector`
+- Default: `en`
+- Fallback: `en`
+- UI must always display translated strings through `t()`.
+
+---
+
+## 🔒 SECURITY & PRIVACY
+- Never expose service keys in frontend.
+- Handle secrets only via environment variables.
+- Enforce Supabase RLS and verify JWT on backend endpoints.
+- Validate all incoming NestJS requests using Zod / class-validator.
+- Sanitize user input (e.g., trip titles, notes).
+- No inline HTML injection.
+- Avoid storing raw passwords (Supabase manages hashing).
+
+---
+
+## 🧑‍💻 DEVELOPMENT WORKFLOW
+- Monorepo managed with npm workspaces.
+- Commands:
+- `npm run dev:web` → start frontend
+- `npm run dev:backend` → start NestJS server
+- Use Plan Mode in Cursor for multi-file changes:
+- Always ask agent to PLAN before modify.
+- Keep PRs small (< 5 files).
+- Commit convention: `feat:`, `fix:`, `refactor:`, `chore:`.
+- Typecheck & lint before push.
+
+---
+
+## 🚫 DO / DON’T
+✅ DO:
+- Use theme vars.
+- Keep components typed & documented.
+- Plan before big edits.
+- Test Supabase auth after changes.
+- Keep i18n keys consistent.
+
+❌ DON’T:
+- Change theme tokens without instruction.
+- Add large dependencies (> 1 MB) without approval.
+- Rename routes/components arbitrarily.
+- Commit `.env` or secrets.
+- Mix UI and data logic in the same file.
+
+---
+
+## 🧩 AI / NESTJS LAYER (placeholder)
+- Located in `apps/backend/src/ai`
+- Intended for travel recommendation generation.
+- Use OpenAI API with streaming if needed.
+- All AI features must be server-side only.
+
+---
+
+## 🧱 DEPLOYMENT TARGETS
+- Frontend → Vercel (auto builds with Next.js)
+- Backend → Render/Supabase Functions
+- DB → Supabase (PostgreSQL)
+- Env configuration managed via project settings (.env not committed)
+
+---
+
+## 🧩 AGENT BEHAVIOR RULES (Cursor)
+- Always read `.cursorrules` before major tasks.
+- Before large edits, **PLAN** first.
+- Don’t touch theme or i18n unless task explicitly requires.
+- Group related file changes logically (auth, trips, profile).
+- Explain non-trivial refactors inline via comments.
+- Ensure all TS types remain valid after changes.
+- Don’t rename folders or global imports without confirmation.
+- Respect RLS and security patterns.
+
+---
+
+## 🧾 DOCUMENTATION & DIPLOMA LINKS
+- Bulgarian documentation follows official MoE structure.
+- Practical part: this codebase.
+- Theoretical part: description of architecture, technologies, results.
+- Reference documents: “Указания от МОН за ДР.pdf”, “Дипломен проект – структура.docx”.
+
+---
+
+# END OF RULESET
