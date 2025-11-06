@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface EmailConfirmProps {
   visible: boolean;
@@ -12,7 +12,7 @@ interface EmailConfirmProps {
 
 export function EmailConfirm({ visible, lastEmail }: EmailConfirmProps) {
   const { t } = useTranslation();
-  const { resendConfirmation } = useSupabaseAuth();
+  const { resendConfirmation } = useAuth();
 
   const handleResend = async () => {
     if (!lastEmail) return;

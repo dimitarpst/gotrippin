@@ -6,7 +6,7 @@ import { Dock } from "@/components/ui/dock";
 import { Home, Compass, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 const baseClass =
   "bg-transparent hover:bg-white/10 text-white/80 hover:text-white transition-all duration-300";
@@ -16,7 +16,7 @@ const accentClass =
 export default function DockBar() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { user } = useSupabaseAuth();
+  const { user } = useAuth();
 
   // Main dock icons
   const icons = [
@@ -42,13 +42,14 @@ export default function DockBar() {
     className: key === "add_trip" ? accentClass : baseClass,
   }));
 
-  // Avatar
-  const avatarLetter =
-    user?.user_metadata?.full_name?.[0]?.toUpperCase() ||
-    user?.email?.[0]?.toUpperCase() ||
-    "U";
+  // Avatar - always show, but style changes based on login
+  const avatarLetter = user
+    ? user?.user_metadata?.full_name?.[0]?.toUpperCase() ||
+      user?.email?.[0]?.toUpperCase() ||
+      "U"
+    : "U";
 
-  const avatarColor = user?.avatar_color || "var(--color-accent)";
+  const avatarColor = user?.avatar_color || "var(--color-muted)";
 
   items.push({
     icon: (
@@ -56,14 +57,15 @@ export default function DockBar() {
         className="text-sm font-bold text-white select-none w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105"
         style={{
           backgroundColor: avatarColor,
-          boxShadow: `0 0 10px ${avatarColor}66`,
+          boxShadow: user ? `0 0 10px ${avatarColor}66` : "none",
+          opacity: user ? 1 : 0.5,
         }}
       >
         {avatarLetter}
       </div>
     ),
     label: t("dock.profile"),
-    onClick: () => (user ? router.push("/user") : router.push("/login")),
+    onClick: () => router.push("/user"),
     className: baseClass,
   });
 

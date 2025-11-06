@@ -1,10 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useMemo, useEffect } from "react";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useState, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
 import ProfileHeader from "./ProfileHeader";
 import ProfileHero from "./ProfileHero";
 import ProfileStats from "./ProfileStats";
@@ -37,7 +36,7 @@ export default function UserProfile({
   clearError?: () => void;
 }) {
   const { t } = useTranslation();
-  const { signOut } = useSupabaseAuth();
+  const { signOut } = useAuth();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -46,14 +45,6 @@ export default function UserProfile({
     phone: data.phone || "",
     avatarColor: data.avatarColor || "var(--color-accent)",
   });
-
-  useEffect(() => {
-    setLocal({
-      displayName: data.displayName || "",
-      phone: data.phone || "",
-      avatarColor: data.avatarColor || "var(--color-accent)",
-    });
-  }, [data.displayName, data.phone, data.avatarColor]);
 
   const avatarLetter = useMemo(() => {
     const base = local.displayName || data.email || "U";
@@ -66,7 +57,25 @@ export default function UserProfile({
       phone: local.phone.trim(),
       avatarColor: local.avatarColor || null,
     });
-    if (!error) setIsEditing(false);
+    if (!error) {
+      setIsEditing(false);
+      // Sync local state with the updated data after successful save
+      setLocal({
+        displayName: data.displayName || "",
+        phone: data.phone || "",
+        avatarColor: data.avatarColor || "var(--color-accent)",
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    // Reset local state to current data when canceling
+    setLocal({
+      displayName: data.displayName || "",
+      phone: data.phone || "",
+      avatarColor: data.avatarColor || "var(--color-accent)",
+    });
   };
 
   return (
@@ -75,13 +84,13 @@ export default function UserProfile({
         title={t("profile.title")}
         onBack={onBack}
         isEditing={isEditing}
-        setIsEditing={setIsEditing}
+        setIsEditing={handleCancelEdit}
         onSave={handleSave}
         saving={saving}
         clearError={clearError}
         signOut={async () => {
           await signOut();
-          router.push("/login");
+          router.push("/auth");
         }}
       />
 

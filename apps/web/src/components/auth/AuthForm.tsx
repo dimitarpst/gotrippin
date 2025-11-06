@@ -12,7 +12,7 @@ import { AuthFields } from "./AuthFields";
 import { AuthDivider } from "./AuthDivider";
 import { EmailConfirm } from "./EmailConfirm";
 
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
   export default function AuthForm() {
@@ -23,8 +23,8 @@ import { useRouter } from "next/navigation";
     const [password, setPassword] = useState("");
     const [name, setName] = useState("");
 
-    // 🧩 Supabase Auth hook + router
-    const { signIn, signUp,  loading } = useSupabaseAuth();
+    // 🧩 Auth hook + router
+    const { signIn, signUp, loading } = useAuth();
     const [pendingConfirmation, setPendingConfirmation] = useState(false);
     const [lastEmail, setLastEmail] = useState("");
 
@@ -40,11 +40,9 @@ import { useRouter } from "next/navigation";
     try {
       if (isLogin) {
         await signIn(email, password);
-        console.log(" Logged in successfully");
         router.push("/");
       } else {
         await signUp(email, password, name);
-        console.log("Registered successfully — waiting for email confirmation");
         setPendingConfirmation(true);
         setLastEmail(email);
       }
@@ -54,11 +52,9 @@ import { useRouter } from "next/navigation";
         setPendingConfirmation(true);
         setLastEmail(email);
       } else {
-        console.error("Auth error:", msg);
         alert(msg);
       }
     }
-
   };
 
 
@@ -136,9 +132,7 @@ import { useRouter } from "next/navigation";
               type="button"
               variant="outline"
               className="w-full bg-black/30 border-white/10 text-white hover:bg-black/50 hover:border-white/20 py-6 rounded-xl transition-all duration-200"
-              onClick={() =>
-                console.log("Google login coming soon")
-              }
+              disabled
             >
               <Chrome className="mr-2 w-5 h-5" />
               {t("auth.continue_with_google")}

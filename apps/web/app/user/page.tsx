@@ -1,38 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import UserProfile from "@/components/user/UserProfile";
 
-type ProfileRow = { id: string; avatar_color: string | null };
-
 export default function UserPage() {
-  const { user, loading } = useSupabaseAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
-  const [avatarColor, setAvatarColor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [localAvatarColor, setLocalAvatarColor] = useState<string | null>(null);
 
-  // redirect if not logged in
-  useEffect(() => {
-    if (!loading && !user) router.push("/login");
-  }, [loading, user, router]);
-
-  // load avatar_color from profiles
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, avatar_color")
-        .eq("id", user.id)
-        .maybeSingle<ProfileRow>();
-      if (!error && data) setAvatarColor(data.avatar_color);
-    })();
-  }, [user]);
+  // Don't redirect - show login button instead
 
   const profileData = useMemo(() => {
     if (!user) return null;
@@ -46,9 +28,10 @@ export default function UserPage() {
         "",
       createdAt: user.created_at ? new Date(user.created_at) : null,
       lastSignInAt: (user.last_sign_in_at ? new Date(user.last_sign_in_at) : null) as Date | null,
-      avatarColor: avatarColor ?? null,
+      // Use local color if updated, otherwise use from auth hook
+      avatarColor: localAvatarColor ?? user.avatar_color ?? null,
     };
-  }, [user, avatarColor]);
+  }, [user, localAvatarColor]);
 
 const handleSave = async (updates: {
   displayName: string;
@@ -58,16 +41,13 @@ const handleSave = async (updates: {
   if (!user) return;
 
   try {
-    console.log("▶️ handleSave start", updates);
     setSaving(true);
     setError(null);
 
-    // ✅ Do not await this; let Supabase refresh session in background
     supabase.auth.updateUser({
       data: { display_name: updates.displayName },
-    }).catch((e) => console.warn("Auth update warning:", e));
+    }).catch(() => {});
 
-    console.log("🟡 about to update profiles");
     const colorToSave =
       updates.avatarColor?.startsWith("#") && updates.avatarColor.length === 7
         ? updates.avatarColor
@@ -79,25 +59,49 @@ const handleSave = async (updates: {
       .eq("id", user.id)
       .select();
 
-    console.log("🟢 profile update result", { data, profErr });
-
     if (profErr) throw profErr;
     if (!data?.length) throw new Error("No matching profile row found.");
 
-    setAvatarColor(colorToSave);
-  } catch (e: any) {
-    console.error("❌ Save error:", e);
-    setError(e.message);
+    setLocalAvatarColor(colorToSave);
+  } catch (e: unknown) {
+    if (e instanceof Error) {
+      setError(e.message);
+    } else {
+      setError("An unknown error occurred");
+    }
   } finally {
-    console.log("🏁 handleSave finally");
     setSaving(false);
   }
 };
 
 
 
-  if (loading || !profileData) {
+  if (loading) {
     return <div className="pt-20 text-center text-white/60">Loading…</div>;
+  }
+
+  // Show login prompt if not logged in
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
+        <div className="text-center px-4 max-w-md">
+          <h1 className="text-3xl font-bold mb-4 text-[var(--color-foreground)]">Please Sign In</h1>
+          <p className="text-white/60 mb-8">
+            You need to be signed in to view your profile.
+          </p>
+          <button
+            onClick={() => router.push("/auth")}
+            className="px-6 py-3 bg-[var(--color-accent)] text-[var(--color-accent-foreground)] rounded-lg font-semibold hover:opacity-90 transition-opacity"
+          >
+            Go to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profileData) {
+    return <div className="pt-20 text-center text-white/60">Loading profile…</div>;
   }
 
   return (
