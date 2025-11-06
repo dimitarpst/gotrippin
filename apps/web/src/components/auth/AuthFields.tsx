@@ -46,6 +46,7 @@ export function AuthFields({
           <Input
             id="name"
             type="text"
+            autoComplete="name"
             placeholder={t("auth.name")}
             value={name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -66,6 +67,7 @@ export function AuthFields({
           <Input
             id="email"
             type="email"
+            autoComplete="email"
             placeholder={t("auth.email")}
             value={email}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -86,6 +88,7 @@ export function AuthFields({
           <Input
             id="password"
             type="password"
+            autoComplete={isLogin ? "current-password" : "new-password"}
             placeholder={t("auth.password")}
             value={password}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>

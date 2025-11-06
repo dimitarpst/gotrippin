@@ -43,7 +43,13 @@
     "trips_completed": "Trips Completed",
     "countries_visited": "Countries Visited",
     "days_traveling": "Days Traveling",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "change_color": "Change Color",
+    "loading": "Loading…",
+    "loading_profile": "Loading profile…",
+    "please_sign_in": "Please Sign In",
+    "sign_in_required": "You need to be signed in to view your profile.",
+    "go_to_sign_in": "Go to Sign In"
   },
   "dock": {
     "home": "Home",

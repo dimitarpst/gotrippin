@@ -105,7 +105,7 @@ import { useRouter } from "next/navigation";
               <div className="flex justify-end">
                 <button
                   type="button"
-                  className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
+                  className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors cursor-pointer"
                 >
                   {t("auth.forgot_password")}
                 </button>
@@ -144,7 +144,7 @@ import { useRouter } from "next/navigation";
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
-              className="text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors ms-1"
+              className="text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors ms-1 cursor-pointer"
             >
               {isLogin ? t("auth.sign_up") : t("auth.sign_in")}
             </button>

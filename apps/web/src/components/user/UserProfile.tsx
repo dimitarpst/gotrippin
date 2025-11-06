@@ -1,9 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
 import ProfileHeader from "./ProfileHeader";
 import ProfileHero from "./ProfileHero";
 import ProfileStats from "./ProfileStats";
@@ -13,7 +12,6 @@ import { useTranslation } from "react-i18next";
 export type UserProfileData = {
   uid: string;
   email: string;
-  phone: string;
   displayName: string;
   createdAt: Date | null;
   lastSignInAt: Date | null;
@@ -30,52 +28,60 @@ export default function UserProfile({
 }: {
   data: UserProfileData;
   onBack: () => void;
-  onSave: (updates: { displayName: string; phone: string; avatarColor: string | null }) => Promise<void> | void;
+  onSave: (updates: { displayName: string; avatarColor: string }) => Promise<boolean | void>;
   saving?: boolean;
   error?: string | null;
   clearError?: () => void;
 }) {
   const { t } = useTranslation();
   const { signOut } = useAuth();
-  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-
-  const [local, setLocal] = useState({
-    displayName: data.displayName || "",
-    phone: data.phone || "",
-    avatarColor: data.avatarColor || "var(--color-accent)",
+  
+  // Track pending changes during edit session
+  const [pendingChanges, setPendingChanges] = useState<{
+    displayName: string;
+    avatarColor: string;
+  }>({
+    displayName: data.displayName,
+    avatarColor: data.avatarColor || "#ff6b6b",
   });
 
+  const displayData = isEditing ? pendingChanges : {
+    displayName: data.displayName,
+    avatarColor: data.avatarColor || "#ff6b6b",
+  };
+
   const avatarLetter = useMemo(() => {
-    const base = local.displayName || data.email || "U";
+    const base = displayData.displayName || data.email || "U";
     return base[0]?.toUpperCase() ?? "U";
-  }, [local.displayName, data.email]);
+  }, [displayData.displayName, data.email]);
+
+  const handleEdit = () => {
+    // Reset pending changes to current data when entering edit mode
+    setPendingChanges({
+      displayName: data.displayName,
+      avatarColor: data.avatarColor || "#ff6b6b",
+    });
+    setIsEditing(true);
+  };
 
   const handleSave = async () => {
-    await onSave({
-      displayName: local.displayName.trim(),
-      phone: local.phone.trim(),
-      avatarColor: local.avatarColor || null,
-    });
-    if (!error) {
+    const success = await onSave(pendingChanges);
+    if (success) {
       setIsEditing(false);
-      // Sync local state with the updated data after successful save
-      setLocal({
-        displayName: data.displayName || "",
-        phone: data.phone || "",
-        avatarColor: data.avatarColor || "var(--color-accent)",
-      });
     }
   };
 
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    // Reset local state to current data when canceling
-    setLocal({
-      displayName: data.displayName || "",
-      phone: data.phone || "",
-      avatarColor: data.avatarColor || "var(--color-accent)",
+  const handleCancel = () => {
+    setPendingChanges({
+      displayName: data.displayName,
+      avatarColor: data.avatarColor || "#ff6b6b",
     });
+    setIsEditing(false);
+  };
+
+  const handleChange = (field: "displayName" | "avatarColor", value: string) => {
+    setPendingChanges(prev => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -84,13 +90,17 @@ export default function UserProfile({
         title={t("profile.title")}
         onBack={onBack}
         isEditing={isEditing}
-        setIsEditing={handleCancelEdit}
+        onEdit={handleEdit}
         onSave={handleSave}
+        onCancel={handleCancel}
         saving={saving}
-        clearError={clearError}
         signOut={async () => {
-          await signOut();
-          router.push("/auth");
+          try {
+            await signOut();
+            window.location.href = "/auth";
+          } catch {
+            // Error already handled by signOut
+          }
         }}
       />
 
@@ -102,11 +112,10 @@ export default function UserProfile({
       >
         <ProfileHero
           data={data}
-          local={local}
-          setLocal={setLocal}
+          displayData={displayData}
           isEditing={isEditing}
+          onChange={handleChange}
           avatarLetter={avatarLetter}
-          onSave={handleSave}
         />
 
         <ProfileStats />

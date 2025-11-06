@@ -4,80 +4,96 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import UserProfile from "@/components/user/UserProfile";
 
 export default function UserPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [localAvatarColor, setLocalAvatarColor] = useState<string | null>(null);
-
-  // Don't redirect - show login button instead
+  
+  // Store last saved values to show immediately (optimistic update)
+  const [lastSaved, setLastSaved] = useState<{ displayName?: string; avatarColor?: string }>({});
 
   const profileData = useMemo(() => {
     if (!user) return null;
     return {
       uid: user.id,
       email: user.email ?? "",
-      phone: user.phone ?? "",
+      // Show last saved value if available, otherwise from user metadata
       displayName:
+        lastSaved.displayName ||
         (user.user_metadata?.display_name as string | undefined) ||
         (user.user_metadata?.full_name as string | undefined) ||
         "",
       createdAt: user.created_at ? new Date(user.created_at) : null,
       lastSignInAt: (user.last_sign_in_at ? new Date(user.last_sign_in_at) : null) as Date | null,
-      // Use local color if updated, otherwise use from auth hook
-      avatarColor: localAvatarColor ?? user.avatar_color ?? null,
+      // Show last saved color if available, otherwise from profile
+      avatarColor: lastSaved.avatarColor || user.avatar_color || null,
     };
-  }, [user, localAvatarColor]);
+  }, [user, lastSaved]);
 
-const handleSave = async (updates: {
-  displayName: string;
-  phone: string;
-  avatarColor: string | null;
-}) => {
-  if (!user) return;
+  const handleSave = async (updates: { displayName: string; avatarColor: string }) => {
+    if (!user) {
+      setSaving(false);
+      return false;
+    }
 
-  try {
     setSaving(true);
     setError(null);
 
-    supabase.auth.updateUser({
-      data: { display_name: updates.displayName },
-    }).catch(() => {});
+    try {
+      const colorToSave =
+        updates.avatarColor?.startsWith("#") && updates.avatarColor.length === 7
+          ? updates.avatarColor
+          : "#ff6b6b";
 
-    const colorToSave =
-      updates.avatarColor?.startsWith("#") && updates.avatarColor.length === 7
-        ? updates.avatarColor
-        : "#ff6b6b";
+      // Update avatar color in profiles table
+      const { error: profErr } = await supabase
+        .from("profiles")
+        .update({ avatar_color: colorToSave })
+        .eq("id", user.id);
 
-    const { data, error: profErr } = await supabase
-      .from("profiles")
-      .update({ avatar_color: colorToSave })
-      .eq("id", user.id)
-      .select();
+      if (profErr) throw profErr;
 
-    if (profErr) throw profErr;
-    if (!data?.length) throw new Error("No matching profile row found.");
+      // Update display name in user metadata (fire and forget - it hangs but saves data)
+      supabase.auth.updateUser({
+        data: { display_name: updates.displayName.trim() },
+      }).catch((err) => console.error("Auth update error (ignored):", err));
 
-    setLocalAvatarColor(colorToSave);
-  } catch (e: unknown) {
-    if (e instanceof Error) {
-      setError(e.message);
-    } else {
-      setError("An unknown error occurred");
+      // Optimistically update local state to show changes immediately
+      setLastSaved({
+        displayName: updates.displayName.trim(),
+        avatarColor: colorToSave,
+      });
+      
+      // Small delay for smooth UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setSaving(false);
+      return true;
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(e.message);
+      } else {
+        setError("An unknown error occurred");
+      }
+      setSaving(false);
+      return false;
     }
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
 
 
   if (loading) {
-    return <div className="pt-20 text-center text-white/60">Loading…</div>;
+    return (
+      <div className="pt-20 text-center text-white/60">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+      </div>
+    );
   }
 
   // Show login prompt if not logged in
@@ -85,15 +101,17 @@ const handleSave = async (updates: {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
         <div className="text-center px-4 max-w-md">
-          <h1 className="text-3xl font-bold mb-4 text-[var(--color-foreground)]">Please Sign In</h1>
+          <h1 className="text-3xl font-bold mb-4 text-[var(--color-foreground)]">
+            {t("profile.please_sign_in")}
+          </h1>
           <p className="text-white/60 mb-8">
-            You need to be signed in to view your profile.
+            {t("profile.sign_in_required")}
           </p>
           <button
             onClick={() => router.push("/auth")}
             className="px-6 py-3 bg-[var(--color-accent)] text-[var(--color-accent-foreground)] rounded-lg font-semibold hover:opacity-90 transition-opacity"
           >
-            Go to Sign In
+            {t("profile.go_to_sign_in")}
           </button>
         </div>
       </div>
@@ -101,7 +119,11 @@ const handleSave = async (updates: {
   }
 
   if (!profileData) {
-    return <div className="pt-20 text-center text-white/60">Loading profile…</div>;
+    return (
+      <div className="pt-20 text-center text-white/60">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+      </div>
+    );
   }
 
   return (

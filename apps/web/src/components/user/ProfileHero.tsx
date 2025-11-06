@@ -1,25 +1,23 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Mail, Calendar, Globe, Star } from "lucide-react";
+import { Mail, Calendar, Star, Palette } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { UserProfileData } from "./UserProfile";
 import { useTranslation } from "react-i18next";
 
 export default function ProfileHero({
   data,
-  local,
-  setLocal,
+  displayData,
   isEditing,
+  onChange,
   avatarLetter,
-  onSave,
 }: {
   data: UserProfileData;
-  local: { displayName: string; phone: string; avatarColor: string };
-  setLocal: React.Dispatch<React.SetStateAction<typeof local>>;
+  displayData: { displayName: string; avatarColor: string };
   isEditing: boolean;
+  onChange: (field: "displayName" | "avatarColor", value: string) => void;
   avatarLetter: string;
-  onSave: () => Promise<void>;
 }) {
   const { t } = useTranslation();
 
@@ -45,41 +43,51 @@ export default function ProfileHero({
       </div>
 
       <div className="relative px-6 pb-6">
-        <div className="relative -mt-16 mb-4">
+        <div className="relative -mt-16 mb-4 flex items-end gap-4">
           <motion.div
             className="w-32 h-32 rounded-2xl flex items-center justify-center overflow-hidden border-4 border-[#17131a] shadow-xl"
-            style={{ background: local.avatarColor || "var(--color-accent)" }}
-            whileHover={{ scale: 1.05 }}
+            style={{ background: displayData.avatarColor }}
+            whileHover={{ scale: isEditing ? 1.05 : 1.02 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
             <span className="text-white text-5xl font-bold">{avatarLetter}</span>
           </motion.div>
+          
           {isEditing && (
-            <motion.input
-              type="color"
-              value={local.avatarColor || "#ff6b6b"}
-              onChange={(e) =>
-                setLocal((s) => ({ ...s, avatarColor: e.target.value }))
-              }
-              className="absolute bottom-2 right-2 w-10 h-10 rounded-xl cursor-pointer border border-white/20 bg-black/20"
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-            />
+            <motion.div
+              className="relative"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              <label
+                htmlFor="avatar-color"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 cursor-pointer transition text-sm text-white/80"
+              >
+                <Palette className="w-4 h-4" />
+                {t("profile.change_color")}
+              </label>
+              <input
+                id="avatar-color"
+                type="color"
+                value={displayData.avatarColor}
+                onChange={(e) => onChange("avatarColor", e.target.value)}
+                className="absolute opacity-0 w-0 h-0"
+              />
+            </motion.div>
           )}
         </div>
 
         <div className="space-y-3">
           {isEditing ? (
             <Input
-              value={local.displayName}
-              onChange={(e) =>
-                setLocal((s) => ({ ...s, displayName: e.target.value }))
-              }
+              value={displayData.displayName}
+              onChange={(e) => onChange("displayName", e.target.value)}
               className="text-2xl font-bold bg-white/[0.05] border-white/[0.08] text-white"
               placeholder={t("profile.display_name")}
             />
           ) : (
             <h2 className="text-2xl font-bold text-white">
-              {data.displayName || t("profile.traveler")}
+              {displayData.displayName || t("profile.traveler")}
             </h2>
           )}
 
@@ -96,24 +104,6 @@ export default function ProfileHero({
               <Star className="w-4 h-4" />
               <span>{t("profile.last_signin")} {formatMonthYear(data.lastSignInAt)}</span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4" />
-            {isEditing ? (
-              <Input
-                value={local.phone}
-                onChange={(e) =>
-                  setLocal((s) => ({ ...s, phone: e.target.value }))
-                }
-                className="h-9 bg-white/[0.05] border-white/[0.08] text-white text-sm"
-                placeholder={t("profile.phone")}
-              />
-            ) : (
-              <span className="text-white/80">
-                {data.phone || t("profile.no_phone")}
-              </span>
-            )}
           </div>
         </div>
       </div>

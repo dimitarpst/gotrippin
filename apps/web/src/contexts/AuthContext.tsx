@@ -10,9 +10,10 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import type { User } from "@supabase/supabase-js";
 
-// Extend the user with avatar_color
+// Extend the user with profile data
 interface ExtendedUser extends User {
   avatar_color?: string | null;
+  preferred_lng?: string | null;
 }
 
 interface AuthContextType {
@@ -22,6 +23,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resendConfirmation: (email: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -126,6 +128,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
+  const refreshProfile = async () => {
+    // Force refresh the session to get latest user metadata
+    const { data: { user: freshUser } } = await supabase.auth.getUser();
+    if (freshUser) {
+      await loadUserWithProfile(freshUser);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -133,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     resendConfirmation,
+    refreshProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

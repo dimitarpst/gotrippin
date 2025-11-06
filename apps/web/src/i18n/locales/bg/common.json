@@ -43,7 +43,13 @@
     "trips_completed": "Завършени пътувания",
     "countries_visited": "Посетени държави",
     "days_traveling": "Дни в пътуване",
-    "dismiss": "Затвори"
+    "dismiss": "Затвори",
+    "change_color": "Смени цвета",
+    "loading": "Зареждане…",
+    "loading_profile": "Зареждане на профила…",
+    "please_sign_in": "Моля, влезте",
+    "sign_in_required": "Трябва да влезете, за да видите профила си.",
+    "go_to_sign_in": "Към вход"
   },
   "dock": {
     "home": "Начало",
