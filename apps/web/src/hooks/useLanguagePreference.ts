@@ -28,7 +28,7 @@ export function useLanguagePreference() {
     const initLanguage = async () => {
       // 1. Try to get from cookie first (fastest)
       const cookieLang = getCookie(LANGUAGE_COOKIE);
-      
+
       if (cookieLang && (cookieLang === "en" || cookieLang === "bg")) {
         i18n.changeLanguage(cookieLang);
       }
@@ -36,7 +36,7 @@ export function useLanguagePreference() {
       // 2. If user is logged in, sync with database
       if (user?.preferred_lng) {
         const dbLang = user.preferred_lng;
-        
+
         // If DB language differs from cookie, update cookie
         if (dbLang !== cookieLang) {
           setCookie(LANGUAGE_COOKIE, dbLang);
@@ -49,23 +49,35 @@ export function useLanguagePreference() {
   }, [user, i18n]);
 
   // Change language function
-  const changeLanguage = async (lang: "en" | "bg") => {
+  const changeLanguage = (lang: "en" | "bg") => {
+    console.log("🌍 Changing language to:", lang);
+
     // 1. Update i18n
     i18n.changeLanguage(lang);
 
     // 2. Update cookie
     setCookie(LANGUAGE_COOKIE, lang);
+    console.log("🍪 Cookie updated");
 
-    // 3. Update database if user is logged in
+    // 3. Update database if user is logged in (truly fire and forget)
     if (user) {
-      try {
-        await supabase
+      console.log("👤 User is logged in, updating database...");
+      // Use setTimeout to ensure this runs asynchronously without blocking
+      setTimeout(() => {
+        supabase
           .from("profiles")
           .update({ preferred_lng: lang })
-          .eq("id", user.id);
-      } catch (error) {
-        console.error("Failed to update language preference:", error);
-      }
+          .eq("id", user.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error("❌ Database update error:", error);
+            } else {
+              console.log("✅ Database updated successfully");
+            }
+          });
+      }, 0);
+    } else {
+      console.log("⚠️ No user logged in, skipping database update");
     }
   };
 
@@ -74,4 +86,3 @@ export function useLanguagePreference() {
     changeLanguage,
   };
 }
-

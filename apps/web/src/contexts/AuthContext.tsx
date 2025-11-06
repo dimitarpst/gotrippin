@@ -35,10 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Helper function to load user with profile
   const loadUserWithProfile = async (currentUser: User | null) => {
     if (currentUser) {
-      // fetch the avatar color from profiles
+      // fetch profile data from profiles table
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("avatar_color")
+        .select("avatar_color, preferred_lng")
         .eq("id", currentUser.id)
         .single();
 
@@ -52,16 +52,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         await supabase
           .from("profiles")
-          .insert({ id: currentUser.id, avatar_color: randomColor });
+          .insert({ id: currentUser.id, avatar_color: randomColor, preferred_lng: "en" });
 
         setUser({
           ...currentUser,
           avatar_color: randomColor,
+          preferred_lng: "en",
         });
       } else {
         setUser({
           ...currentUser,
           avatar_color: profileData?.avatar_color || null,
+          preferred_lng: profileData?.preferred_lng || "en",
         });
       }
     } else {

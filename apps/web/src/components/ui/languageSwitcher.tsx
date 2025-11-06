@@ -1,9 +1,9 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useRef, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useLanguagePreference } from "@/hooks/useLanguagePreference";
 
 type Language = "en" | "bg";
 
@@ -38,14 +38,10 @@ const languages = {
 };
 
 export function LanguageSwitcher({
-  defaultLanguage = "en",
   isOpen = false,
   onToggle,
 }: LanguageSwitcherProps) {
-  const { i18n } = useTranslation();
-  const [language, setLanguage] = useState<Language>(
-    (i18n.language as Language) || defaultLanguage
-  );
+  const { currentLanguage, changeLanguage } = useLanguagePreference();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,12 +55,11 @@ export function LanguageSwitcher({
   }, [isOpen, onToggle]);
 
   const handleSelect = (lang: Language) => {
-    setLanguage(lang);
-    i18n.changeLanguage(lang);
+    changeLanguage(lang);
     if (onToggle) onToggle(); // close menu after selection
   };
 
-  const CurrentFlag = languages[language as keyof typeof languages]?.flag || UKFlag;
+  const CurrentFlag = languages[currentLanguage as keyof typeof languages]?.flag || UKFlag;
 
   return (
     <div ref={containerRef} className="relative">
@@ -77,7 +72,7 @@ export function LanguageSwitcher({
           "bg-gradient-to-br from-white/10 via-white/5 to-transparent",
           "backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.3)]",
           "hover:border-[var(--color-accent)]/60 hover:shadow-[0_0_20px_rgba(255,107,107,0.3)]",
-          "transition-all duration-300"
+          "transition-all duration-300 cursor-pointer"
         )}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -106,8 +101,8 @@ export function LanguageSwitcher({
                 key={code}
                 onClick={() => handleSelect(code as Language)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors",
-                  language === code
+                  "w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors cursor-pointer",
+                  currentLanguage === code
                     ? "bg-white/10 text-[#ff6b6b]"
                     : "text-white/80 hover:text-white hover:bg-white/10"
                 )}
