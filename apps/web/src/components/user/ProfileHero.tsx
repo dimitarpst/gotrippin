@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Mail, Calendar, Star, Palette } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { AvatarUpload } from "@/components/auth/AvatarUpload";
 import type { UserProfileData } from "./UserProfile";
 import { useTranslation } from "react-i18next";
 
@@ -12,12 +13,16 @@ export default function ProfileHero({
   isEditing,
   onChange,
   avatarLetter,
+  onAvatarUpload,
+  googleAvatarUrl,
 }: {
   data: UserProfileData;
   displayData: { displayName: string; avatarColor: string };
   isEditing: boolean;
   onChange: (field: "displayName" | "avatarColor", value: string) => void;
   avatarLetter: string;
+  onAvatarUpload?: (url: string) => void;
+  googleAvatarUrl?: string | null;
 }) {
   const { t } = useTranslation();
 
@@ -26,7 +31,7 @@ export default function ProfileHero({
 
   return (
     <motion.div
-      className="relative rounded-3xl overflow-hidden mb-6 border border-white/[0.08]"
+      className="relative rounded-3xl overflow-hidden mb-6 border border-white/8"
       style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -36,8 +41,7 @@ export default function ProfileHero({
         <div
           className="absolute inset-0"
           style={{
-            background:
-              "linear-gradient(135deg, #ff6b6b 0%, #ff8585 50%, #ffa07a 100%)",
+            background: `linear-gradient(135deg, ${displayData.avatarColor} 0%, ${displayData.avatarColor}cc 50%, ${displayData.avatarColor}99 100%)`,
           }}
         />
       </div>
@@ -45,17 +49,25 @@ export default function ProfileHero({
       <div className="relative px-6 pb-6">
         <div className="relative -mt-16 mb-4 flex items-end gap-4">
           <motion.div
-            className="w-32 h-32 rounded-2xl flex items-center justify-center overflow-hidden border-4 border-[#17131a] shadow-xl"
+            className="w-32 h-32 rounded-2xl flex items-center justify-center overflow-hidden border-4 border-[#17131a] shadow-xl relative"
             style={{ background: displayData.avatarColor }}
             whileHover={{ scale: isEditing ? 1.05 : 1.02 }}
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
-            <span className="text-white text-5xl font-bold">{avatarLetter}</span>
+            {data.avatarUrl ? (
+              <img 
+                src={data.avatarUrl} 
+                alt={displayData.displayName}
+                className="w-full h-full object-cover absolute inset-0"
+              />
+            ) : (
+              <span className="text-white text-5xl font-bold">{avatarLetter}</span>
+            )}
           </motion.div>
           
           {isEditing && (
             <motion.div
-              className="relative"
+              className="flex gap-2"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
             >
@@ -82,13 +94,23 @@ export default function ProfileHero({
             <Input
               value={displayData.displayName}
               onChange={(e) => onChange("displayName", e.target.value)}
-              className="text-2xl font-bold bg-white/[0.05] border-white/[0.08] text-white"
+              className="text-2xl font-bold bg-white/5 border-white/8 text-white"
               placeholder={t("profile.display_name")}
             />
           ) : (
             <h2 className="text-2xl font-bold text-white">
               {displayData.displayName || t("profile.traveler")}
             </h2>
+          )}
+
+          {isEditing && (
+            <AvatarUpload
+              userId={data.uid}
+              currentAvatarUrl={data.avatarUrl}
+              googleAvatarUrl={googleAvatarUrl}
+              onUploadSuccess={onAvatarUpload || (() => {})}
+              isEditing={isEditing}
+            />
           )}
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-white/60">

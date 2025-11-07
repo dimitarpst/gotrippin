@@ -14,6 +14,7 @@ import type { User } from "@supabase/supabase-js";
 interface ExtendedUser extends User {
   avatar_color?: string | null;
   preferred_lng?: string | null;
+  avatar_url?: string | null;
 }
 
 interface AuthContextType {
@@ -21,6 +22,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   resendConfirmation: (email: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -38,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // fetch profile data from profiles table
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("avatar_color, preferred_lng")
+        .select("avatar_color, preferred_lng, avatar_url")
         .eq("id", currentUser.id)
         .single();
 
@@ -50,20 +52,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .padStart(2, "0")
         ).join("")}`;
 
+        // Extract display name from user metadata (from Google OAuth or signup)
+        const displayName = currentUser.user_metadata?.full_name || 
+                           currentUser.user_metadata?.display_name || 
+                           currentUser.email?.split('@')[0] || 
+                           'User';
+
+        // Extract avatar URL from Google OAuth if available
+        const avatarUrl = currentUser.user_metadata?.avatar_url || null;
+
         await supabase
           .from("profiles")
-          .insert({ id: currentUser.id, avatar_color: randomColor, preferred_lng: "en" });
+          .insert({ 
+            id: currentUser.id, 
+            avatar_color: randomColor, 
+            preferred_lng: "en",
+            display_name: displayName,
+            avatar_url: avatarUrl,
+          });
 
         setUser({
           ...currentUser,
           avatar_color: randomColor,
           preferred_lng: "en",
+          avatar_url: avatarUrl,
         });
       } else {
         setUser({
           ...currentUser,
           avatar_color: profileData?.avatar_color || null,
           preferred_lng: profileData?.preferred_lng || "en",
+          avatar_url: profileData?.avatar_url || null,
         });
       }
     } else {
@@ -117,9 +136,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
+  const signInWithGoogle = async () => {
+    const redirectUrl = typeof window !== "undefined"
+      ? `${window.location.origin}/auth/callback`
+      : `${process.env.NEXT_PUBLIC_SITE_URL || ""}/auth/callback`;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
     if (error) throw error;
+  };
+
+  const signOut = async () => {
+    // Clear user state immediately
+    setUser(null);
+    
+    // Sign out from Supabase
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Sign out error:", error);
+      throw error;
+    }
+    
+    // Clear any cached data
+    if (typeof window !== "undefined") {
+      // Clear session storage
+      sessionStorage.clear();
+      // Clear specific localStorage keys if needed
+      localStorage.removeItem('supabase.auth.token');
+    }
   };
 
   const resendConfirmation = async (email: string) => {
@@ -143,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     signIn,
     signUp,
+    signInWithGoogle,
     signOut,
     resendConfirmation,
     refreshProfile,

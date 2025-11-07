@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import UserProfile from "@/components/user/UserProfile";
 
 export default function UserPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshProfile } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -16,7 +16,7 @@ export default function UserPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Store last saved values to show immediately (optimistic update)
-  const [lastSaved, setLastSaved] = useState<{ displayName?: string; avatarColor?: string }>({});
+  const [lastSaved, setLastSaved] = useState<{ displayName?: string; avatarColor?: string; avatarUrl?: string }>({});
 
   const profileData = useMemo(() => {
     if (!user) return null;
@@ -33,10 +33,12 @@ export default function UserPage() {
       lastSignInAt: (user.last_sign_in_at ? new Date(user.last_sign_in_at) : null) as Date | null,
       // Show last saved color if available, otherwise from profile
       avatarColor: lastSaved.avatarColor || user.avatar_color || null,
+      // Show last saved avatar URL or from user metadata (Google OAuth)
+      avatarUrl: lastSaved.avatarUrl || user.avatar_url || (user.user_metadata?.avatar_url as string | undefined) || null,
     };
   }, [user, lastSaved]);
 
-  const handleSave = async (updates: { displayName: string; avatarColor: string }) => {
+  const handleSave = async (updates: { displayName: string; avatarColor: string; avatarUrl?: string }) => {
     if (!user) {
       setSaving(false);
       return false;
@@ -51,10 +53,13 @@ export default function UserPage() {
           ? updates.avatarColor
           : "#ff6b6b";
 
-      // Update avatar color in profiles table
+      // Update avatar color and URL in profiles table
       const { error: profErr } = await supabase
         .from("profiles")
-        .update({ avatar_color: colorToSave })
+        .update({ 
+          avatar_color: colorToSave,
+          ...(updates.avatarUrl && { avatar_url: updates.avatarUrl }),
+        })
         .eq("id", user.id);
 
       if (profErr) throw profErr;
@@ -68,10 +73,22 @@ export default function UserPage() {
       setLastSaved({
         displayName: updates.displayName.trim(),
         avatarColor: colorToSave,
+        avatarUrl: updates.avatarUrl,
       });
       
+      // Refresh profile to get updated data from database (with timeout)
+      try {
+        await Promise.race([
+          refreshProfile(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Refresh timeout")), 3000))
+        ]);
+      } catch (refreshError) {
+        console.warn("Profile refresh failed or timed out:", refreshError);
+        // Continue anyway - we have optimistic updates
+      }
+      
       // Small delay for smooth UX
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       setSaving(false);
       return true;
@@ -134,6 +151,7 @@ export default function UserPage() {
       saving={saving}
       error={error}
       clearError={() => setError(null)}
+      googleAvatarUrl={(user?.user_metadata?.avatar_url as string | undefined) || null}
     />
   );
 }

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Chrome } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { AuthHeader } from "./AuthHeader";
@@ -11,6 +11,7 @@ import { AuthTabs } from "./AuthTabs";
 import { AuthFields } from "./AuthFields";
 import { AuthDivider } from "./AuthDivider";
 import { EmailConfirm } from "./EmailConfirm";
+import { GoogleSignInButton } from "./GoogleSignInButton";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -24,9 +25,10 @@ import { useRouter } from "next/navigation";
     const [name, setName] = useState("");
 
     // 🧩 Auth hook + router
-    const { signIn, signUp, loading } = useAuth();
+    const { signIn, signUp, signInWithGoogle, loading } = useAuth();
     const [pendingConfirmation, setPendingConfirmation] = useState(false);
     const [lastEmail, setLastEmail] = useState("");
+    const [googleLoading, setGoogleLoading] = useState(false);
 
     const router = useRouter();
 
@@ -54,6 +56,18 @@ import { useRouter } from "next/navigation";
       } else {
         alert(msg);
       }
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setGoogleLoading(true);
+      await signInWithGoogle();
+      // OAuth redirect will happen automatically
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      alert(msg);
+      setGoogleLoading(false);
     }
   };
 
@@ -126,17 +140,11 @@ import { useRouter } from "next/navigation";
 
           <AuthDivider />
 
-
           <div className="space-y-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full bg-black/30 border-white/10 text-white hover:bg-black/50 hover:border-white/20 py-6 rounded-xl transition-all duration-200"
-              disabled
-            >
-              <Chrome className="mr-2 w-5 h-5" />
-              {t("auth.continue_with_google")}
-            </Button>
+            <GoogleSignInButton 
+              onClick={handleGoogleSignIn}
+              disabled={loading || googleLoading}
+            />
           </div>
 
           <p className="text-center text-sm text-[var(--muted)] mt-6">

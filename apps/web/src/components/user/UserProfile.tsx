@@ -16,6 +16,7 @@ export type UserProfileData = {
   createdAt: Date | null;
   lastSignInAt: Date | null;
   avatarColor: string | null;
+  avatarUrl?: string | null;
 };
 
 export default function UserProfile({
@@ -25,13 +26,15 @@ export default function UserProfile({
   saving,
   error,
   clearError,
+  googleAvatarUrl,
 }: {
   data: UserProfileData;
   onBack: () => void;
-  onSave: (updates: { displayName: string; avatarColor: string }) => Promise<boolean | void>;
+  onSave: (updates: { displayName: string; avatarColor: string; avatarUrl?: string }) => Promise<boolean | void>;
   saving?: boolean;
   error?: string | null;
   clearError?: () => void;
+  googleAvatarUrl?: string | null;
 }) {
   const { t } = useTranslation();
   const { signOut } = useAuth();
@@ -41,9 +44,11 @@ export default function UserProfile({
   const [pendingChanges, setPendingChanges] = useState<{
     displayName: string;
     avatarColor: string;
+    avatarUrl?: string;
   }>({
     displayName: data.displayName,
     avatarColor: data.avatarColor || "#ff6b6b",
+    avatarUrl: data.avatarUrl || undefined,
   });
 
   const displayData = isEditing ? pendingChanges : {
@@ -61,6 +66,7 @@ export default function UserProfile({
     setPendingChanges({
       displayName: data.displayName,
       avatarColor: data.avatarColor || "#ff6b6b",
+      avatarUrl: data.avatarUrl || undefined,
     });
     setIsEditing(true);
   };
@@ -76,12 +82,17 @@ export default function UserProfile({
     setPendingChanges({
       displayName: data.displayName,
       avatarColor: data.avatarColor || "#ff6b6b",
+      avatarUrl: data.avatarUrl || undefined,
     });
     setIsEditing(false);
   };
 
   const handleChange = (field: "displayName" | "avatarColor", value: string) => {
     setPendingChanges(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAvatarUpload = (url: string) => {
+    setPendingChanges(prev => ({ ...prev, avatarUrl: url }));
   };
 
   return (
@@ -97,9 +108,14 @@ export default function UserProfile({
         signOut={async () => {
           try {
             await signOut();
-            window.location.href = "/auth";
-          } catch {
-            // Error already handled by signOut
+            // Wait a bit to ensure session is cleared
+            await new Promise(resolve => setTimeout(resolve, 300));
+            // Force a full page reload to clear all state
+            window.location.replace("/auth");
+          } catch (error) {
+            console.error("Logout error:", error);
+            // Force redirect anyway
+            window.location.replace("/auth");
           }
         }}
       />
@@ -116,6 +132,8 @@ export default function UserProfile({
           isEditing={isEditing}
           onChange={handleChange}
           avatarLetter={avatarLetter}
+          onAvatarUpload={handleAvatarUpload}
+          googleAvatarUrl={googleAvatarUrl}
         />
 
         <ProfileStats />
