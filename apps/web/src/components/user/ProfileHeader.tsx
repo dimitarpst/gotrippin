@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, LogOut, Edit2, Check, X } from "lucide-react";
+import { ArrowLeft, Edit2, Check, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export default function ProfileHeader({
@@ -12,7 +12,6 @@ export default function ProfileHeader({
   onSave,
   onCancel,
   saving,
-  signOut,
 }: {
   title: string;
   onBack: () => void;
@@ -21,7 +20,6 @@ export default function ProfileHeader({
   onSave: () => void;
   onCancel: () => void;
   saving?: boolean;
-  signOut: () => Promise<void>;
 }) {
   const { t } = useTranslation();
 
@@ -47,16 +45,6 @@ export default function ProfileHeader({
         </div>
 
         <div className="flex items-center gap-3">
-          <motion.button
-            onClick={signOut}
-            className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 bg-white/10 hover:bg-white/20 cursor-pointer"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <LogOut className="w-4 h-4" />
-            {t("profile.logout")}
-          </motion.button>
-
           <AnimatePresence mode="wait">
             {!isEditing ? (
               <motion.button

@@ -14,7 +14,7 @@ export default function ProfileStats() {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="flex flex-col md:flex-row gap-6">
       {items.map(({ icon: Icon, label, value }, i) => (
         <motion.div
           key={label}

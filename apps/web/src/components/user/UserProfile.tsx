@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileHeader from "./ProfileHeader";
 import ProfileHero from "./ProfileHero";
@@ -54,6 +55,7 @@ export default function UserProfile({
   const displayData = isEditing ? pendingChanges : {
     displayName: data.displayName,
     avatarColor: data.avatarColor || "#ff6b6b",
+    avatarUrl: data.avatarUrl,
   };
 
   const avatarLetter = useMemo(() => {
@@ -105,19 +107,6 @@ export default function UserProfile({
         onSave={handleSave}
         onCancel={handleCancel}
         saving={saving}
-        signOut={async () => {
-          try {
-            await signOut();
-            // Wait a bit to ensure session is cleared
-            await new Promise(resolve => setTimeout(resolve, 300));
-            // Force a full page reload to clear all state
-            window.location.replace("/auth");
-          } catch (error) {
-            console.error("Logout error:", error);
-            // Force redirect anyway
-            window.location.replace("/auth");
-          }
-        }}
       />
 
       <motion.div
@@ -139,6 +128,36 @@ export default function UserProfile({
         <ProfileStats />
 
         {error && <ProfileError message={error} clearError={clearError} />}
+
+        {/* Logout button */}
+        <motion.div
+          className="flex justify-center mt-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <motion.button
+            onClick={async () => {
+              try {
+                await signOut();
+                // Wait a bit to ensure session is cleared
+                await new Promise(resolve => setTimeout(resolve, 300));
+                // Force a full page reload to clear all state
+                window.location.replace("/auth");
+              } catch (error) {
+                console.error("Logout error:", error);
+                // Force redirect anyway
+                window.location.replace("/auth");
+              }
+            }}
+            className="px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white cursor-pointer border border-white/10 transition-all"
+            whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.25)" }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <LogOut className="w-4 h-4" />
+            {t("profile.logout")}
+          </motion.button>
+        </motion.div>
       </motion.div>
     </div>
   );

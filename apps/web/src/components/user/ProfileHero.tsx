@@ -55,14 +55,26 @@ export default function ProfileHero({
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
             {data.avatarUrl ? (
-              <img 
-                src={data.avatarUrl} 
+              <img
+                src={data.avatarUrl}
                 alt={displayData.displayName}
                 className="w-full h-full object-cover absolute inset-0"
+                onError={(e) => {
+                  // Hide the broken image and show the letter fallback
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    const fallback = parent.querySelector('.avatar-fallback') as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }
+                }}
               />
-            ) : (
-              <span className="text-white text-5xl font-bold">{avatarLetter}</span>
-            )}
+            ) : null}
+            <span
+              className={`text-white text-5xl font-bold avatar-fallback ${data.avatarUrl ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}
+            >
+              {avatarLetter}
+            </span>
           </motion.div>
           
           {isEditing && (

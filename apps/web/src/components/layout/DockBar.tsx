@@ -50,18 +50,37 @@ export default function DockBar() {
     : "U";
 
   const avatarColor = user?.avatar_color || "var(--color-muted)";
+  const avatarUrl = user?.avatar_url;
 
   items.push({
     icon: (
-      <div
-        className="text-sm font-bold text-white select-none w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-105"
-        style={{
-          backgroundColor: avatarColor,
-          boxShadow: user ? `0 0 10px ${avatarColor}66` : "none",
-          opacity: user ? 1 : 0.5,
-        }}
-      >
-        {avatarLetter}
+      <div className="relative w-8 h-8 rounded-full overflow-hidden transition-transform hover:scale-105">
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt="Profile avatar"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Hide broken image and show fallback
+              e.currentTarget.style.display = 'none';
+              const parent = e.currentTarget.parentElement;
+              if (parent) {
+                const fallback = parent.querySelector('.avatar-fallback') as HTMLElement;
+                if (fallback) fallback.style.display = 'flex';
+              }
+            }}
+          />
+        ) : null}
+        <div
+          className={`avatar-fallback text-sm font-bold text-white select-none w-full h-full rounded-full flex items-center justify-center absolute inset-0 ${avatarUrl ? 'hidden' : 'flex'}`}
+          style={{
+            backgroundColor: avatarColor,
+            boxShadow: user ? `0 0 10px ${avatarColor}66` : "none",
+            opacity: user ? 1 : 0.5,
+          }}
+        >
+          {avatarLetter}
+        </div>
       </div>
     ),
     label: t("dock.profile"),
