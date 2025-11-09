@@ -38,53 +38,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadUserWithProfile = async (currentUser: User | null) => {
     if (currentUser) {
       // fetch profile data from profiles table
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
-        .select("avatar_color, preferred_lng, avatar_url")
+        .select("avatar_color, preferred_lng, avatar_url, display_name")
         .eq("id", currentUser.id)
         .single();
 
-      // If profile doesn't exist, create it (handles post-email-confirmation)
-      if (profileError && profileError.code === "PGRST116") {
-        const randomColor = `#${Array.from({ length: 3 }, () =>
-          Math.floor(Math.random() * 128)
-            .toString(16)
-            .padStart(2, "0")
-        ).join("")}`;
+      // Check if we need to sync OAuth data to profile
+      let updatedProfileData = profileData;
+      const oauthAvatarUrl = currentUser.user_metadata?.avatar_url;
+      const oauthDisplayName = currentUser.user_metadata?.full_name ||
+                              currentUser.user_metadata?.display_name;
 
-        // Extract display name from user metadata (from Google OAuth or signup)
-        const displayName = currentUser.user_metadata?.full_name || 
-                           currentUser.user_metadata?.display_name || 
-                           currentUser.email?.split('@')[0] || 
-                           'User';
+      // If OAuth provides avatar_url and it's different from stored one, update profile
+      if (oauthAvatarUrl && oauthAvatarUrl !== profileData?.avatar_url) {
+        try {
+          const { data: updatedProfile } = await supabase
+            .from("profiles")
+            .update({
+              avatar_url: oauthAvatarUrl,
+              ...(oauthDisplayName && !profileData?.display_name && { display_name: oauthDisplayName })
+            })
+            .eq("id", currentUser.id)
+            .select("avatar_color, preferred_lng, avatar_url, display_name")
+            .single();
 
-        // Extract avatar URL from Google OAuth if available
-        const avatarUrl = currentUser.user_metadata?.avatar_url || null;
-
-        await supabase
-          .from("profiles")
-          .insert({ 
-            id: currentUser.id, 
-            avatar_color: randomColor, 
-            preferred_lng: "en",
-            display_name: displayName,
-            avatar_url: avatarUrl,
-          });
-
-        setUser({
-          ...currentUser,
-          avatar_color: randomColor,
-          preferred_lng: "en",
-          avatar_url: avatarUrl,
-        });
-      } else {
-        setUser({
-          ...currentUser,
-          avatar_color: profileData?.avatar_color || null,
-          preferred_lng: profileData?.preferred_lng || "en",
-          avatar_url: profileData?.avatar_url || null,
-        });
+          updatedProfileData = updatedProfile;
+        } catch (error) {
+          console.warn("Failed to update profile with OAuth data:", error);
+        }
       }
+
+      // Profile is guaranteed to exist due to database trigger
+      setUser({
+        ...currentUser,
+        avatar_color: updatedProfileData?.avatar_color || null,
+        preferred_lng: updatedProfileData?.preferred_lng || "en",
+        avatar_url: updatedProfileData?.avatar_url || null,
+      });
     } else {
       setUser(null);
     }
