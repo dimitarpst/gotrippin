@@ -8,6 +8,7 @@ import {
   Body,
   UseGuards,
   Req,
+  BadRequestException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -18,6 +19,8 @@ import {
 } from "@nestjs/swagger";
 import { TripsService } from "./trips.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CreateTripDto } from "./dto/create-trip.dto";
+import { UpdateTripDto } from "./dto/update-trip.dto";
 
 @ApiTags("trips")
 @Controller("trips")
@@ -48,43 +51,44 @@ export class TripsController {
   @Post()
   @ApiOperation({ summary: "Create new trip" })
   @ApiResponse({ status: 201, description: "Trip created successfully" })
-  async createTrip(
-    @Req() request: any,
-    @Body()
-    data: {
-      title?: string;
-      destination?: string;
-      start_date?: string;
-      end_date?: string;
-      image_url?: string;
-      description?: string;
+  @ApiResponse({ status: 400, description: "Invalid trip data" })
+  async createTrip(@Req() request: any, @Body() data: CreateTripDto) {
+    // Validate using shared Zod schema
+    const result = CreateTripDto.safeParse(data);
+    if (!result.success) {
+      throw new BadRequestException({
+        message: "Invalid trip data",
+        errors: result.error.flatten(),
+      });
     }
-  ) {
+
     const userId = request.user.id;
-    return this.tripsService.createTrip(userId, data);
+    return this.tripsService.createTrip(userId, result.data);
   }
 
   @Put(":id")
   @ApiOperation({ summary: "Update trip" })
   @ApiParam({ name: "id", description: "Trip ID" })
   @ApiResponse({ status: 200, description: "Trip updated successfully" })
+  @ApiResponse({ status: 400, description: "Invalid trip data" })
   @ApiResponse({ status: 403, description: "Trip not found or access denied" })
   @ApiResponse({ status: 404, description: "Trip not found" })
   async updateTrip(
     @Param("id") id: string,
     @Req() request: any,
-    @Body()
-    data: {
-      title?: string;
-      destination?: string;
-      start_date?: string;
-      end_date?: string;
-      image_url?: string;
-      description?: string;
-    }
+    @Body() data: UpdateTripDto
   ) {
+    // Validate using shared Zod schema
+    const result = UpdateTripDto.safeParse(data);
+    if (!result.success) {
+      throw new BadRequestException({
+        message: "Invalid trip data",
+        errors: result.error.flatten(),
+      });
+    }
+
     const userId = request.user.id;
-    return this.tripsService.updateTrip(id, userId, data);
+    return this.tripsService.updateTrip(id, userId, result.data);
   }
 
   @Delete(":id")

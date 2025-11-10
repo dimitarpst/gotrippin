@@ -1,13 +1,21 @@
 {
-  "name": "core",
+  "name": "@gotrippin/core",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Shared types and schemas for Go Trippin'",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "dev": "tsc --watch"
   },
-  "keywords": [],
+  "keywords": ["gotrippin", "shared", "types", "schemas"],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.3"
+  }
 }

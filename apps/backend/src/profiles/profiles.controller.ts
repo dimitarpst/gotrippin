@@ -1,7 +1,8 @@
-import { Controller, Get, Put, Param, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Put, Param, Body, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ProfilesService } from './profiles.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('profiles')
 @Controller('profiles')
@@ -31,32 +32,42 @@ export class ProfilesController {
   @ApiOperation({ summary: 'Update user profile' })
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid profile data' })
   @ApiResponse({ status: 404, description: 'Profile not found' })
   async updateProfile(
     @Param('id') id: string,
-    @Body() data: {
-      display_name?: string;
-      avatar_color?: string;
-      preferred_lng?: string;
-      avatar_url?: string;
-    }
+    @Body() data: UpdateProfileDto
   ) {
-    return this.profilesService.updateProfile(id, data);
+    // Validate using shared Zod schema
+    const result = UpdateProfileDto.safeParse(data);
+    if (!result.success) {
+      throw new BadRequestException({
+        message: 'Invalid profile data',
+        errors: result.error.flatten(),
+      });
+    }
+
+    return this.profilesService.updateProfile(id, result.data);
   }
 
   @Put()
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid profile data' })
   async updateMyProfile(
     @Req() request: any,
-    @Body() data: {
-      display_name?: string;
-      avatar_color?: string;
-      preferred_lng?: string;
-      avatar_url?: string;
-    }
+    @Body() data: UpdateProfileDto
   ) {
+    // Validate using shared Zod schema
+    const result = UpdateProfileDto.safeParse(data);
+    if (!result.success) {
+      throw new BadRequestException({
+        message: 'Invalid profile data',
+        errors: result.error.flatten(),
+      });
+    }
+
     const userId = request.user.id;
-    return this.profilesService.updateProfile(userId, data);
+    return this.profilesService.updateProfile(userId, result.data);
   }
 }

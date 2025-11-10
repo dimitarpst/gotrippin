@@ -1,0 +1,7 @@
+src/
+tsconfig.json
+*.md
+!README.md
+node_modules/
+
+
