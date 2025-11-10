@@ -23,13 +23,17 @@ export class TripsService {
     description?: string;
   }) {
     try {
-      const tripWithUserId = {
+      // Create the trip (without user_id)
+      const tripToCreate = {
         ...tripData,
-        user_id: userId,
         created_at: new Date().toISOString(),
       };
 
-      const newTrip = await this.supabaseService.createTrip(tripWithUserId);
+      const newTrip = await this.supabaseService.createTrip(tripToCreate);
+      
+      // Add the creator as the first member
+      await this.supabaseService.addTripMember(newTrip.id, userId);
+      
       return newTrip;
     } catch (error) {
       throw new NotFoundException('Failed to create trip');
@@ -90,8 +94,7 @@ export class TripsService {
 
   async getTripById(tripId: string, userId: string) {
     try {
-      const trips = await this.supabaseService.getTrips(userId);
-      const trip = trips.find(t => t.id === tripId);
+      const trip = await this.supabaseService.getTrip(tripId, userId);
 
       if (!trip) {
         throw new ForbiddenException('Trip not found or access denied');
@@ -103,6 +106,64 @@ export class TripsService {
         throw error;
       }
       throw new NotFoundException('Trip not found');
+    }
+  }
+
+  async addMember(tripId: string, currentUserId: string, userIdToAdd: string) {
+    try {
+      // Check if current user is a member of the trip
+      const isMember = await this.supabaseService.isTripMember(tripId, currentUserId);
+      
+      if (!isMember) {
+        throw new ForbiddenException('You must be a member of this trip to add others');
+      }
+
+      // Add the new member
+      await this.supabaseService.addTripMember(tripId, userIdToAdd);
+      return { message: 'Member added successfully' };
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new NotFoundException('Failed to add member');
+    }
+  }
+
+  async removeMember(tripId: string, currentUserId: string, userIdToRemove: string) {
+    try {
+      // Users can remove themselves, or check if they're a member to remove others
+      const isMember = await this.supabaseService.isTripMember(tripId, currentUserId);
+      
+      if (!isMember && currentUserId !== userIdToRemove) {
+        throw new ForbiddenException('You must be a member of this trip');
+      }
+
+      await this.supabaseService.removeTripMember(tripId, userIdToRemove);
+      return { message: 'Member removed successfully' };
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new NotFoundException('Failed to remove member');
+    }
+  }
+
+  async getTripMembers(tripId: string, userId: string) {
+    try {
+      // Check if user is a member of the trip
+      const isMember = await this.supabaseService.isTripMember(tripId, userId);
+      
+      if (!isMember) {
+        throw new ForbiddenException('You must be a member of this trip to view members');
+      }
+
+      const members = await this.supabaseService.getTripMembers(tripId);
+      return members;
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new NotFoundException('Failed to fetch trip members');
     }
   }
 }

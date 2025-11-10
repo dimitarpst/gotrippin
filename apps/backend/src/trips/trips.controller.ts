@@ -16,16 +16,18 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiBody,
 } from "@nestjs/swagger";
 import { TripsService } from "./trips.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateTripDto } from "./dto/create-trip.dto";
 import { UpdateTripDto } from "./dto/update-trip.dto";
+import { AddMemberDto } from "./dto/add-member.dto";
 
 @ApiTags("trips")
 @Controller("trips")
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 export class TripsController {
   constructor(private readonly tripsService: TripsService) {}
 
@@ -100,5 +102,49 @@ export class TripsController {
   async deleteTrip(@Param("id") id: string, @Req() request: any) {
     const userId = request.user.id;
     return this.tripsService.deleteTrip(id, userId);
+  }
+
+  @Get(":id/members")
+  @ApiOperation({ summary: "Get all members of a trip" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiResponse({ status: 200, description: "Trip members retrieved successfully" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  @ApiResponse({ status: 404, description: "Trip not found" })
+  async getTripMembers(@Param("id") id: string, @Req() request: any) {
+    const userId = request.user.id;
+    return this.tripsService.getTripMembers(id, userId);
+  }
+
+  @Post(":id/members")
+  @ApiOperation({ summary: "Add a member to a trip" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiBody({ type: AddMemberDto })
+  @ApiResponse({ status: 201, description: "Member added successfully" })
+  @ApiResponse({ status: 400, description: "Invalid user ID" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  @ApiResponse({ status: 404, description: "Trip not found" })
+  async addTripMember(
+    @Param("id") id: string,
+    @Body() body: AddMemberDto,
+    @Req() request: any
+  ) {
+    const currentUserId = request.user.id;
+    return this.tripsService.addMember(id, currentUserId, body.user_id);
+  }
+
+  @Delete(":id/members/:userId")
+  @ApiOperation({ summary: "Remove a member from a trip" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiParam({ name: "userId", description: "User ID to remove" })
+  @ApiResponse({ status: 200, description: "Member removed successfully" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  @ApiResponse({ status: 404, description: "Trip not found" })
+  async removeTripMember(
+    @Param("id") id: string,
+    @Param("userId") userIdToRemove: string,
+    @Req() request: any
+  ) {
+    const currentUserId = request.user.id;
+    return this.tripsService.removeMember(id, currentUserId, userIdToRemove);
   }
 }

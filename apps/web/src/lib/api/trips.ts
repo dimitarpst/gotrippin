@@ -1,0 +1,182 @@
+/**
+ * Trip API client
+ * Handles all trip-related API calls with validation
+ */
+
+import type { Trip, TripCreateData, TripUpdateData } from '@gotrippin/core';
+import { validateTripCreate, validateTripUpdate } from '@/lib/validation';
+
+// API base URL - will be configured via environment variables
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+/**
+ * API Error with structured response
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+    public errors?: Record<string, any>
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/**
+ * Get auth token from Supabase session
+ */
+async function getAuthToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    // Get token from Supabase session storage
+    const { createBrowserClient } = await import('@supabase/ssr');
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+    );
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  } catch (error) {
+    console.error('Failed to get auth token:', error);
+    return null;
+  }
+}
+
+/**
+ * Make authenticated API request
+ */
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = await getAuthToken();
+  
+  if (!token) {
+    throw new ApiError('Authentication required', 401);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Request failed' }));
+    throw new ApiError(
+      error.message || 'Request failed',
+      response.status,
+      error.errors
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch all trips for the current user
+ */
+export async function fetchTrips(): Promise<Trip[]> {
+  return apiRequest<Trip[]>('/trips');
+}
+
+/**
+ * Fetch a single trip by ID
+ */
+export async function fetchTripById(id: string): Promise<Trip> {
+  return apiRequest<Trip>(`/trips/${id}`);
+}
+
+/**
+ * Create a new trip with validation
+ */
+export async function createTrip(data: TripCreateData): Promise<Trip> {
+  // Validate data before sending
+  const validation = validateTripCreate(data);
+  
+  if (!validation.success) {
+    throw new ApiError(
+      'Validation failed',
+      400,
+      { validationErrors: validation.errors }
+    );
+  }
+
+  return apiRequest<Trip>('/trips', {
+    method: 'POST',
+    body: JSON.stringify(validation.data),
+  });
+}
+
+/**
+ * Update an existing trip with validation
+ */
+export async function updateTrip(
+  id: string,
+  data: TripUpdateData
+): Promise<Trip> {
+  // Validate data before sending
+  const validation = validateTripUpdate(data);
+  
+  if (!validation.success) {
+    throw new ApiError(
+      'Validation failed',
+      400,
+      { validationErrors: validation.errors }
+    );
+  }
+
+  return apiRequest<Trip>(`/trips/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(validation.data),
+  });
+}
+
+/**
+ * Delete a trip
+ */
+export async function deleteTrip(id: string): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(`/trips/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Helper to format trip dates for display
+ */
+export function formatTripDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/**
+ * Calculate days until trip starts
+ */
+export function calculateDaysUntil(startDate: string): number {
+  const now = new Date();
+  const start = new Date(startDate);
+  const diffTime = start.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+/**
+ * Calculate trip duration in days
+ */
+export function calculateDuration(startDate: string, endDate: string): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+

@@ -21,9 +21,24 @@ async function bootstrap() {
     .setTitle('Go Trippin API')
     .setDescription('Backend API for Go Trippin travel planner')
     .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Enter your Supabase access token',
+        in: 'header',
+      },
+      'JWT-auth', // This name will be used in @ApiBearerAuth() decorators
+    )
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true, // Keeps the token even after page refresh
+    },
+  });
 
   await app.listen(3001);
   console.log('🚀 Backend server running on http://localhost:3001');

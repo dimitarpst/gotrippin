@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Param, Body, UseGuards, Req, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Put, Post, Param, Body, UseGuards, Req, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ProfilesService } from './profiles.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -7,9 +7,36 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 @ApiTags('profiles')
 @Controller('profiles')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+@ApiBearerAuth('JWT-auth')
 export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
+
+  @Post('initialize')
+  @ApiOperation({ summary: '🆕 Create your profile (run this first if you get 404 errors)' })
+  @ApiResponse({ status: 201, description: 'Profile created successfully' })
+  @ApiResponse({ status: 400, description: 'Profile already exists' })
+  async initializeProfile(@Req() request: any) {
+    const userId = request.user.id;
+    const userEmail = request.user.email;
+    
+    try {
+      // Check if profile already exists
+      const existing = await this.profilesService.getProfile(userId);
+      if (existing) {
+        throw new BadRequestException('Profile already exists. Use PUT /profiles to update it.');
+      }
+    } catch (error) {
+      // Profile doesn't exist, create it
+      if (error instanceof NotFoundException) {
+        return this.profilesService.createProfile(userId, {
+          display_name: userEmail?.split('@')[0] || 'User',
+          avatar_color: '#ff6b6b',
+          preferred_lng: 'en',
+        });
+      }
+      throw error;
+    }
+  }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get user profile by ID' })

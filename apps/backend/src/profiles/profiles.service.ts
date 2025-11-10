@@ -5,6 +5,25 @@ import { SupabaseService } from '../supabase/supabase.service';
 export class ProfilesService {
   constructor(private supabaseService: SupabaseService) {}
 
+  async createProfile(userId: string, data: any) {
+    try {
+      const supabase = this.supabaseService.getClient();
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          ...data,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return profile;
+    } catch (error) {
+      throw new NotFoundException('Failed to create profile');
+    }
+  }
+
   async getProfile(userId: string) {
     try {
       const profile = await this.supabaseService.getProfile(userId);

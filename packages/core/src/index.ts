@@ -13,10 +13,13 @@ export {
 
 export {
   TripSchema,
+  TripMemberSchema,
   CreateTripSchema,
   UpdateTripSchema,
   TripUpdateDataSchema,
   TripCreateDataSchema,
+  AddTripMemberSchema,
+  RemoveTripMemberSchema,
 } from './schemas/trip';
 
 // Export TypeScript types
@@ -29,10 +32,13 @@ export type {
 
 export type {
   Trip,
+  TripMember,
   CreateTrip,
   UpdateTrip,
   TripUpdateData,
   TripCreateData,
+  AddTripMember,
+  RemoveTripMember,
 } from './schemas/trip';
 
 export type {
