@@ -5,6 +5,7 @@ import { ProfilesModule } from './profiles/profiles.module';
 import { TripsModule } from './trips/trips.module';
 import { AiModule } from './ai/ai.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { ImagesModule } from './images/images.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     ProfilesModule,
     TripsModule,
     AiModule,
+    ImagesModule,
   ],
 })
 export class AppModule {}

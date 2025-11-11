@@ -22,6 +22,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@gotrippin/core": "*"
+    "@gotrippin/core": "*",
+    "@nestjs/axios": "^4.0.1",
+    "rxjs": "^7.8.2"
   }
 }

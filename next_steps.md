@@ -13,8 +13,8 @@ It should be stored in the project root and treated as a **live synchronization 
 | **Frontend – Profile**        | ✅ Complete    | 100 %    | Profile UI, editing, avatar color picker                         |
 | **Frontend – Layout / Theme** | ✅ Complete    | 100 %    | Dock, header, aurora background, design system                   |
 | **Frontend – i18n**           | ✅ Complete    | 100 %    | English + Bulgarian localization, LanguageSwitcher               |
-| **Frontend – Trips**          | 🚧 In Progress | 40 %     | API client done, hooks created, connecting UI                    |
-| **Backend – API (NestJS)**    | ✅ Complete    | 100 %    | Full CRUD API with Auth, Profiles & Trips modules                |
+| **Frontend – Trips**          | 🚧 In Progress | 80 %     | Create trip with Unsplash images, date picker, real-time search  |
+| **Backend – API (NestJS)**    | ✅ Complete    | 100 %    | Full CRUD API with Auth, Profiles, Trips & Images modules        |
 | **Shared – Core Library**     | ✅ Complete    | 100 %    | Zod schemas, TypeScript types, validation utilities              |
 | **Database – Supabase**       | ✅ Complete    | 100 %    | Tables, RLS, & storage buckets configured for many-to-many trips |
 | **AI Layer**                  | ❌ Not started | 0 %      | Placeholder only                                                 |
@@ -82,15 +82,19 @@ It should be stored in the project root and treated as a **live synchronization 
 
 ## 🌍 Phase 4 — Trip Management Frontend (Next)
 
-1. Connect existing UI components to backend endpoints:
-   - `trips-list.tsx` → fetch user trips
-   - `create-trip.tsx` → call `POST /trips`
-   - `trip-overview.tsx` → fetch + edit trip
-2. Add:
-   - Form validation (Zod frontend)
-   - Proper loading / error states
-   - Auth guards (`useSupabaseAuth`)
-3. Image upload to `trip-images` bucket
+1. ✅ Connect existing UI components to backend endpoints:
+   - ✅ `trips-list.tsx` → fetch user trips with loading states
+   - ✅ `create-trip.tsx` → call `POST /trips` with validation
+   - ✅ `trip-overview.tsx` → fetch + edit trip
+2. ✅ Add:
+   - ✅ Form validation (Zod frontend)
+   - ✅ Proper loading / error states
+   - ✅ Auth guards (Supabase session)
+3. ✅ Image selection via Unsplash API (replaces upload for now)
+4. 🚧 Remaining:
+   - [ ] Trip member management UI
+   - [ ] Trip deletion with confirmation
+   - [ ] Edit trip functionality
 
 ---
 
@@ -135,3 +139,124 @@ It should be stored in the project root and treated as a **live synchronization 
 
 1.  **Forgot Password Flow is Broken**: The password reset page (`/auth/reset-password`) gets stuck on "Verifying..." and never completes. This is due to a suspected deadlock/race-condition with the Supabase client library's automatic session recovery.
 2.  **Google Account Linking is Unreliable**: Linking a Google account to an existing email account doesn't always behave as expected. It can sometimes link the wrong Google account if the user is already logged into Google in their browser.
+
+---
+
+## ✅ Recent Updates (Nov 11, 2025 - Evening Session)
+
+### 🖼️ **Unsplash API Integration - COMPLETE**
+- ✅ Full backend images module with caching and rate limiting
+- ✅ Search endpoint with JWT authentication (`GET /images/search`)
+- ✅ Download tracking endpoint for Unsplash requirements (`POST /images/download`)
+- ✅ In-memory cache (1-hour TTL) to conserve API calls
+- ✅ Smart pagination: 9 images initial load, 12 per scroll
+- ✅ Frontend hook with debounced search (300ms)
+- ✅ Infinite scroll implementation with IntersectionObserver
+- ✅ Photographer attribution with clickable links (Unsplash requirement)
+- ✅ Loading states, error handling, and duplicate filtering
+- ✅ **Ready for Unsplash Production Application** (all requirements met)
+
+**Backend Files Created:**
+- `apps/backend/src/images/images.module.ts`
+- `apps/backend/src/images/images.service.ts`
+- `apps/backend/src/images/images.controller.ts`
+
+**Frontend Files Created:**
+- `apps/web/src/lib/api.ts` (API client helper)
+- `apps/web/src/hooks/useImageSearch.ts` (search hook with infinite scroll)
+
+**Files Modified:**
+- `apps/backend/src/app.module.ts` (registered ImagesModule + AuthModule import)
+- `apps/web/src/components/trips/background-picker.tsx` (real API integration)
+
+**Environment Setup Required:**
+```env
+# Backend (.env)
+UNSPLASH_ACCESS_KEY=your_access_key_here
+
+# Frontend (.env.local)
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+**Dependencies Installed:**
+```bash
+cd apps/backend
+npm install @nestjs/axios rxjs
+```
+
+**Unsplash Production Checklist:**
+- ✅ Hotlink images from Unsplash URLs
+- ✅ Trigger download endpoint when user selects image
+- ✅ Display "Photo by [Name] on Unsplash" attribution with links
+- ✅ App distinctly branded as "Go Trippin'"
+- 📝 Ready to apply at https://unsplash.com/oauth/applications for 5,000 req/hour
+
+---
+
+## ✅ Recent Updates (Nov 11, 2025 - Morning Session)
+
+### 🎨 **Date Picker Implementation**
+- ✅ Integrated shadcn `calendar-05` component with date range selection
+- ✅ Created custom `DatePicker` modal component matching app design
+- ✅ Connected date picker to create trip flow
+- ✅ Fixed calendar styling with Tailwind classes (coral theme colors)
+- ✅ Proper UX: modal only closes via Cancel/Done buttons, not backdrop clicks
+
+**Files Modified:**
+- `apps/web/src/components/ui/calendar.tsx` (new)
+- `apps/web/src/components/trips/date-picker.tsx` (new)
+- `apps/web/src/components/trips/create-trip.tsx` (updated)
+- `apps/web/app/globals.css` (calendar styles removed - using Tailwind only)
+
+### 🎭 **Loading States & Skeleton Loaders**
+- ✅ Removed global loading spinner from home page
+- ✅ Created `TripSkeleton` component matching actual trip card design
+- ✅ Responsive skeleton grid (1 column mobile, 2 columns desktop)
+- ✅ Skeleton includes: image area, gradient overlay, badge, title, date, location
+
+**Files Modified:**
+- `apps/web/src/components/trips/trip-skeleton.tsx` (new)
+- `apps/web/src/components/trips/trips-list.tsx` (updated to use skeleton)
+- `apps/web/app/page.tsx` (removed global spinner)
+
+### 🎨 **Trip Color Field - Full Stack Implementation**
+- ✅ Updated backend DTOs to accept `color` field
+  - `apps/backend/src/trips/dto/create-trip.dto.ts`
+  - `apps/backend/src/trips/dto/update-trip.dto.ts`
+- ✅ Updated backend service to handle `color` field
+  - `apps/backend/src/trips/trips.service.ts`
+- ✅ Fixed Zod schema to properly handle optional fields
+  - `packages/core/src/schemas/trip.ts` (union types for nullable/optional)
+- ✅ Fixed frontend to filter out undefined values before sending
+  - `apps/web/app/trips/create/page.tsx`
+- ✅ Added debug logging for trip creation
+
+**Database:** Color column already exists in `trips` table ✅
+
+### 🖼️ **Trip Overview Layout Fix**
+- ✅ Fixed background extending beyond image section
+- ✅ Now uses theme background color instead of trip color for full page
+- ✅ Gradient transitions properly from image to dark background
+
+**Files Modified:**
+- `apps/web/src/components/trips/trip-overview.tsx`
+
+### 📋 **Action Items for Next Session**
+
+1. **Apply for Unsplash Production Access:**
+   - Go to https://unsplash.com/oauth/applications
+   - Submit application with screenshots showing attribution
+   - Increase rate limit from 50/hour to 5,000/hour
+
+2. **Test Complete Trip Creation Flow:**
+   - ✅ Background image selection with Unsplash API
+   - ✅ Date range selection
+   - ✅ Color selection
+   - [ ] Verify all fields save correctly to database
+   - [ ] Test trip editing functionality
+
+3. **Remaining Features:**
+   - [ ] Trip image display in trip cards/overview
+   - [ ] Trip member management UI
+   - [ ] Trip details editing
+   - [ ] Trip deletion with confirmation
