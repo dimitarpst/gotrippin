@@ -13,7 +13,11 @@ const baseClass =
 const accentClass =
   "bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:bg-[var(--color-accent)]/80 shadow-[0_0_20px_rgba(255,107,107,0.5)] transition-all duration-300";
 
-export default function DockBar() {
+interface DockBarProps {
+  onCreateTrip?: () => void;
+}
+
+export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
@@ -37,7 +41,11 @@ export default function DockBar() {
     ),
     label: t(`dock.${key}`),
     onClick: () => {
-      if (key === "settings") router.push("/settings");
+      if (key === "add_trip" && onCreateTrip) {
+        onCreateTrip();
+      } else if (key === "settings") {
+        router.push("/settings");
+      }
     },
     className: key === "add_trip" ? accentClass : baseClass,
   }));

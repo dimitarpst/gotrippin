@@ -80,6 +80,7 @@ Custom app table for storing trips (collaborative many-to-many via bridge table)
 | `start_date` | `timestamptz` | ✅ | Trip start date |
 | `end_date` | `timestamptz` | ✅ | Trip end date |
 | `image_url` | `text` | ✅ | Cover image URL (Supabase Storage path) |
+| `color` | `text` | ✅ | Background color fallback (hex code) |
 | `description` | `text` | ✅ | Trip description/notes (max 2000 chars) |
 | `created_at` | `timestamptz` | ❌ | Auto-generated timestamp |
 

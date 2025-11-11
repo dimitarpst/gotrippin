@@ -1,67 +1,71 @@
 "use client"
 
-import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import AuroraBackground from "@/components/effects/aurora-background"
-import FloatingHeader from "@/components/layout/FloatingHeader"
-import DockBar from "@/components/layout/DockBar"
-import TripsList from "@/components/trips/trips-list"
-import { useTrips } from "@/hooks/useTrips"
+import CreateTrip from "@/components/trips/create-trip"
+import { useCreateTrip, useTrips } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
+import { useEffect } from "react"
+import type { DateRange } from "react-day-picker"
 
-export default function HomePage() {
+export default function CreateTripPage() {
   const router = useRouter()
-
-  // Check authentication status - MUST be called before any conditional logic
   const { user, loading: authLoading } = useAuth()
+  const { create, creating } = useCreateTrip()
+  const { refetch } = useTrips()
 
-  // Fetch trips data - MUST be called before any conditional logic
-  const { trips, loading, error } = useTrips()
-
-  // Handle authentication redirects - AFTER all hooks are called
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth')
     }
   }, [authLoading, user, router])
 
-  const handleSelectTrip = (tripId: string) => {
-    router.push(`/trips/${tripId}`)
+  const handleSave = async (data: { title: string; imageUrl?: string; color?: string; dateRange?: DateRange }) => {
+    try {
+      const newTrip = await create({
+        title: data.title,
+        image_url: data.imageUrl,
+        color: data.color,
+        start_date: data.dateRange?.from?.toISOString(),
+        end_date: data.dateRange?.to?.toISOString(),
+      })
+
+      if (newTrip) {
+        await refetch()
+        router.push('/')
+      }
+    } catch (error) {
+      console.error("Failed to create trip:", error)
+    }
   }
 
-  const handleCreateTrip = () => {
-    router.push('/trips/create')
+  const handleBack = () => {
+    router.push('/')
   }
 
-  // Show loading while authentication is being checked
   if (authLoading) {
     return (
       <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
         <AuroraBackground />
-        <FloatingHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-white text-lg">Loading...</p>
           </div>
         </div>
-        <DockBar />
       </main>
     )
   }
 
-  // Don't render anything if not authenticated (redirect is handled by useEffect)
   if (!user) {
     return (
       <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
         <AuroraBackground />
-        <FloatingHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-white">Redirecting to login...</p>
           </div>
         </div>
-        <DockBar />
       </main>
     )
   }
@@ -69,25 +73,13 @@ export default function HomePage() {
   return (
     <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
       <AuroraBackground />
-      <FloatingHeader />
 
-      {/* Trips Content - Replaces the "Go Trippin'" text */}
       <div className="flex-1 relative z-10">
-        {error && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 backdrop-blur-sm">
-            <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
-
-        <TripsList
-          trips={trips}
-          loading={loading}
-          onSelectTrip={handleSelectTrip}
-          onCreateTrip={handleCreateTrip}
+        <CreateTrip
+          onBack={handleBack}
+          onSave={handleSave}
         />
       </div>
-
-      <DockBar onCreateTrip={handleCreateTrip} />
     </main>
   )
 }

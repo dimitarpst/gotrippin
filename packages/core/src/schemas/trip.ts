@@ -31,6 +31,7 @@ export const TripSchema = z.object({
     .nullable()
     .optional(),
   image_url: z.string().url('Invalid image URL').nullable().optional(),
+  color: z.string().nullable().optional(),
   description: z
     .string()
     .max(2000, 'Description must be less than 2000 characters')

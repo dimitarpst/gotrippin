@@ -13,6 +13,7 @@ import {
   deleteTrip,
   ApiError,
 } from '@/lib/api/trips';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UseTripsResult {
   trips: Trip[];
@@ -28,8 +29,20 @@ export function useTrips(): UseTripsResult {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
 
   const fetchData = useCallback(async () => {
+    // Don't fetch if user is not authenticated or auth is still loading
+    if (!user && !authLoading) {
+      setLoading(false);
+      setError('Authentication required');
+      return;
+    }
+
+    if (authLoading) {
+      return; // Still loading auth, don't fetch yet
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -45,7 +58,7 @@ export function useTrips(): UseTripsResult {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user, authLoading]);
 
   useEffect(() => {
     fetchData();
@@ -53,7 +66,7 @@ export function useTrips(): UseTripsResult {
 
   return {
     trips,
-    loading,
+    loading: loading || authLoading,
     error,
     refetch: fetchData,
   };
@@ -73,11 +86,23 @@ export function useTrip(id: string | null): UseTripResult {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
 
   const fetchData = useCallback(async () => {
     if (!id) {
       setLoading(false);
       return;
+    }
+
+    // Don't fetch if user is not authenticated or auth is still loading
+    if (!user && !authLoading) {
+      setLoading(false);
+      setError('Authentication required');
+      return;
+    }
+
+    if (authLoading) {
+      return; // Still loading auth, don't fetch yet
     }
 
     try {
@@ -95,7 +120,7 @@ export function useTrip(id: string | null): UseTripResult {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user, authLoading]);
 
   useEffect(() => {
     fetchData();
@@ -103,7 +128,7 @@ export function useTrip(id: string | null): UseTripResult {
 
   return {
     trip,
-    loading,
+    loading: loading || authLoading,
     error,
     refetch: fetchData,
   };

@@ -27,7 +27,7 @@ export interface ValidationError {
  * Format Zod errors into a user-friendly format
  */
 export function formatZodErrors(error: ZodError): ValidationError[] {
-  return error.errors.map((err) => ({
+  return error.issues.map((err) => ({
     field: err.path.join('.'),
     message: err.message,
   }));

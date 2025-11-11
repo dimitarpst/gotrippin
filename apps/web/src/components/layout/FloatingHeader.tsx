@@ -11,11 +11,38 @@ export default function FloatingHeader() {
   const [openMenu, setOpenMenu] = useState<"trips" | "language" | null>(null);
   const [selected, setSelected] =
     useState<"my_trips" | "shared_trips">("my_trips");
+  const [isHidden, setIsHidden] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   // ✅ Always call all hooks unconditionally
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // Scroll detection for hiding/showing header
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const scrollingDown = currentScrollY > lastScrollY;
+      const scrollThreshold = 50;
+
+      if (Math.abs(currentScrollY - lastScrollY) < scrollThreshold) {
+        return;
+      }
+
+      if (scrollingDown && currentScrollY > 100) {
+        setIsHidden(true);
+      } else if (!scrollingDown || currentScrollY <= 100) {
+        setIsHidden(false);
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -50,7 +77,11 @@ export default function FloatingHeader() {
             "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
         }}
         initial={{ opacity: 0, y: -20, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        animate={{
+          opacity: isHidden ? 0 : 1,
+          y: isHidden ? -20 : 0,
+          scale: isHidden ? 0.95 : 1
+        }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
       >
         {/* Left side — Trips menu */}

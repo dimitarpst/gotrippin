@@ -1,93 +1,95 @@
 "use client"
 
-import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useEffect, use } from "react"
 import AuroraBackground from "@/components/effects/aurora-background"
-import FloatingHeader from "@/components/layout/FloatingHeader"
-import DockBar from "@/components/layout/DockBar"
-import TripsList from "@/components/trips/trips-list"
-import { useTrips } from "@/hooks/useTrips"
+import TripOverview from "@/components/trips/trip-overview"
+import ActivitySelector from "@/components/trips/activity-selector"
+import FlightEditor from "@/components/trips/flight-editor"
+import { useTrip } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
 
-export default function HomePage() {
+interface TripPageProps {
+  params: Promise<{
+    id: string
+  }>
+}
+
+export default function TripPage({ params }: TripPageProps) {
   const router = useRouter()
-
-  // Check authentication status - MUST be called before any conditional logic
+  const resolvedParams = use(params)
+  const tripId = resolvedParams.id
   const { user, loading: authLoading } = useAuth()
+  const { trip, loading: tripLoading } = useTrip(tripId)
 
-  // Fetch trips data - MUST be called before any conditional logic
-  const { trips, loading, error } = useTrips()
-
-  // Handle authentication redirects - AFTER all hooks are called
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth')
     }
   }, [authLoading, user, router])
 
-  const handleSelectTrip = (tripId: string) => {
-    router.push(`/trips/${tripId}`)
+  const handleNavigate = (screen: string) => {
+    if (screen === "overview") {
+      // Stay on current page
+    } else if (screen === "activity") {
+      router.push(`/trips/${tripId}/activity`)
+    } else if (screen === "flight") {
+      router.push(`/trips/${tripId}/activity/flight`)
+    }
   }
 
-  const handleCreateTrip = () => {
-    router.push('/trips/create')
+  const handleBack = () => {
+    router.push('/')
   }
 
-  // Show loading while authentication is being checked
   if (authLoading) {
     return (
       <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
         <AuroraBackground />
-        <FloatingHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-white text-lg">Loading...</p>
           </div>
         </div>
-        <DockBar />
       </main>
     )
   }
 
-  // Don't render anything if not authenticated (redirect is handled by useEffect)
   if (!user) {
     return (
       <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
         <AuroraBackground />
-        <FloatingHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-white">Redirecting to login...</p>
           </div>
         </div>
-        <DockBar />
       </main>
     )
   }
 
+  // For now, just show the overview. We can extend this later for activity/flight sub-routes
   return (
     <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
       <AuroraBackground />
-      <FloatingHeader />
 
-      {/* Trips Content - Replaces the "Go Trippin'" text */}
       <div className="flex-1 relative z-10">
-        {error && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 backdrop-blur-sm">
-            <p className="text-red-400 text-sm">{error}</p>
+        {trip && !tripLoading ? (
+          <TripOverview
+            trip={trip}
+            onNavigate={handleNavigate}
+            onBack={handleBack}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-white text-lg">Loading trip...</p>
+            </div>
           </div>
         )}
-
-        <TripsList
-          trips={trips}
-          loading={loading}
-          onSelectTrip={handleSelectTrip}
-          onCreateTrip={handleCreateTrip}
-        />
       </div>
-
-      <DockBar onCreateTrip={handleCreateTrip} />
     </main>
   )
 }

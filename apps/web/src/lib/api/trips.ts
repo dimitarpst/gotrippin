@@ -3,11 +3,11 @@
  * Handles all trip-related API calls with validation
  */
 
-import type { Trip, TripCreateData, TripUpdateData } from '@gotrippin/core';
-import { validateTripCreate, validateTripUpdate } from '@/lib/validation';
+import type { Trip, TripCreateData, TripUpdateData } from "@gotrippin/core";
+import { validateTripCreate, validateTripUpdate } from "@/lib/validation";
 
 // API base URL - will be configured via environment variables
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 /**
  * API Error with structured response
@@ -19,7 +19,7 @@ export class ApiError extends Error {
     public errors?: Record<string, any>
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -27,20 +27,35 @@ export class ApiError extends Error {
  * Get auth token from Supabase session
  */
 async function getAuthToken(): Promise<string | null> {
-  if (typeof window === 'undefined') return null;
-  
+  if (typeof window === "undefined") return null;
+
   try {
-    // Get token from Supabase session storage
-    const { createBrowserClient } = await import('@supabase/ssr');
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!
+    // Use the existing Supabase client to get the session
+    const { supabase } = await import("@/lib/supabaseClient");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      return session.access_token;
+    }
+
+    // Fallback: try to get session from localStorage directly
+    const sessionData = localStorage.getItem(
+      "sb-" +
+        process.env.NEXT_PUBLIC_SUPABASE_URL!.split("//")[1].split(".")[0] +
+        "-auth-token"
     );
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      if (parsed?.access_token) {
+        return parsed.access_token;
+      }
+    }
+
+    return null;
   } catch (error) {
-    console.error('Failed to get auth token:', error);
+    console.error("Failed to get auth token:", error);
     return null;
   }
 }
@@ -53,24 +68,26 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = await getAuthToken();
-  
+
   if (!token) {
-    throw new ApiError('Authentication required', 401);
+    throw new ApiError("Authentication required", 401);
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
       ...options.headers,
     },
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Request failed" }));
     throw new ApiError(
-      error.message || 'Request failed',
+      error.message || "Request failed",
       response.status,
       error.errors
     );
@@ -83,7 +100,7 @@ async function apiRequest<T>(
  * Fetch all trips for the current user
  */
 export async function fetchTrips(): Promise<Trip[]> {
-  return apiRequest<Trip[]>('/trips');
+  return apiRequest<Trip[]>("/trips");
 }
 
 /**
@@ -99,17 +116,15 @@ export async function fetchTripById(id: string): Promise<Trip> {
 export async function createTrip(data: TripCreateData): Promise<Trip> {
   // Validate data before sending
   const validation = validateTripCreate(data);
-  
+
   if (!validation.success) {
-    throw new ApiError(
-      'Validation failed',
-      400,
-      { validationErrors: validation.errors }
-    );
+    throw new ApiError("Validation failed", 400, {
+      validationErrors: validation.errors,
+    });
   }
 
-  return apiRequest<Trip>('/trips', {
-    method: 'POST',
+  return apiRequest<Trip>("/trips", {
+    method: "POST",
     body: JSON.stringify(validation.data),
   });
 }
@@ -123,17 +138,15 @@ export async function updateTrip(
 ): Promise<Trip> {
   // Validate data before sending
   const validation = validateTripUpdate(data);
-  
+
   if (!validation.success) {
-    throw new ApiError(
-      'Validation failed',
-      400,
-      { validationErrors: validation.errors }
-    );
+    throw new ApiError("Validation failed", 400, {
+      validationErrors: validation.errors,
+    });
   }
 
   return apiRequest<Trip>(`/trips/${id}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(validation.data),
   });
 }
@@ -143,7 +156,7 @@ export async function updateTrip(
  */
 export async function deleteTrip(id: string): Promise<{ message: string }> {
   return apiRequest<{ message: string }>(`/trips/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
@@ -152,9 +165,9 @@ export async function deleteTrip(id: string): Promise<{ message: string }> {
  */
 export function formatTripDate(dateString: string): string {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
   });
 }
 
@@ -179,4 +192,3 @@ export function calculateDuration(startDate: string, endDate: string): number {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return diffDays;
 }
-
