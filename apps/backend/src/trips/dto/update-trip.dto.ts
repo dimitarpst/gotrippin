@@ -59,6 +59,15 @@ export class UpdateTripDto {
 
   @ApiProperty({ 
     required: false,
+    example: '#ff6b6b',
+    description: 'Trip color (hex code)'
+  })
+  @IsOptional()
+  @IsString()
+  color?: string;
+
+  @ApiProperty({ 
+    required: false,
     example: 'Exploring the city of lights and enjoying French cuisine',
     description: 'Trip description (max 2000 characters)'
   })

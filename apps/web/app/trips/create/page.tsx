@@ -22,13 +22,21 @@ export default function CreateTripPage() {
 
   const handleSave = async (data: { title: string; imageUrl?: string; color?: string; dateRange?: DateRange }) => {
     try {
-      const newTrip = await create({
+      // Build trip data, filtering out undefined values
+      const tripData: any = {
         title: data.title,
-        image_url: data.imageUrl,
-        color: data.color,
-        start_date: data.dateRange?.from?.toISOString(),
-        end_date: data.dateRange?.to?.toISOString(),
-      })
+      }
+      
+      if (data.imageUrl) tripData.image_url = data.imageUrl
+      if (data.color) tripData.color = data.color
+      if (data.dateRange?.from) tripData.start_date = data.dateRange.from.toISOString()
+      if (data.dateRange?.to) tripData.end_date = data.dateRange.to.toISOString()
+      
+      console.log("Creating trip with data:", tripData)
+      
+      const newTrip = await create(tripData)
+
+      console.log("Created trip:", newTrip)
 
       if (newTrip) {
         await refetch()

@@ -7,6 +7,7 @@ import RecommendedDestinations from "./recommended-destinations"
 import TripFilters from "./trip-filters"
 import TripGrid from "./trip-grid"
 import EmptyState from "./empty-state"
+import { TripSkeletonGrid } from "./trip-skeleton"
 
 interface TripsListProps {
   trips: Trip[]
@@ -40,14 +41,6 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
     }))
   }, [filteredTrips])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen relative pb-32 flex items-center justify-center">
-        <div className="text-white text-xl">Loading trips...</div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen relative pb-32 overflow-y-auto scrollbar-hide">
       {/* Main Content */}
@@ -60,7 +53,9 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
           tripsCount={trips.length}
         />
 
-        {hasTrips ? (
+        {loading ? (
+          <TripSkeletonGrid />
+        ) : hasTrips ? (
           <TripGrid
             trips={tripsWithCalculations}
             activeFilter={activeFilter}

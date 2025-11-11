@@ -20,6 +20,7 @@ export class TripsService {
     start_date?: string;
     end_date?: string;
     image_url?: string;
+    color?: string;
     description?: string;
   }) {
     try {
@@ -46,6 +47,7 @@ export class TripsService {
     start_date: string;
     end_date: string;
     image_url: string;
+    color: string;
     description: string;
   }>) {
     try {

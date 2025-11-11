@@ -30,8 +30,8 @@ export const TripSchema = z.object({
     .datetime({ message: 'Invalid end date format' })
     .nullable()
     .optional(),
-  image_url: z.string().url('Invalid image URL').nullable().optional(),
-  color: z.string().nullable().optional(),
+  image_url: z.union([z.string().url('Invalid image URL'), z.null(), z.undefined()]).optional(),
+  color: z.union([z.string(), z.null(), z.undefined()]).optional(),
   description: z
     .string()
     .max(2000, 'Description must be less than 2000 characters')

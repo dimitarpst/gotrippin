@@ -33,37 +33,9 @@ export default function HomePage() {
     router.push('/trips/create')
   }
 
-  // Show loading while authentication is being checked
-  if (authLoading) {
-    return (
-      <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-        <AuroraBackground />
-        <FloatingHeader />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white text-lg">Loading...</p>
-          </div>
-        </div>
-        <DockBar />
-      </main>
-    )
-  }
-
   // Don't render anything if not authenticated (redirect is handled by useEffect)
-  if (!user) {
-    return (
-      <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-        <AuroraBackground />
-        <FloatingHeader />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-white">Redirecting to login...</p>
-          </div>
-        </div>
-        <DockBar />
-      </main>
-    )
+  if (!user && !authLoading) {
+    return null // Let the redirect happen
   }
 
   return (

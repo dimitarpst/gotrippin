@@ -83,7 +83,7 @@ export default function TripOverview({ trip, onNavigate, onBack }: TripOverviewP
   }, [trip.image_url])
 
   return (
-    <div className="min-h-screen relative" style={{ background: dominantColor || trip.color || "#0e0b10" }}>
+    <div className="min-h-screen relative bg-[var(--color-background)]">
       <div className="relative w-full h-[50vh]" style={{ backgroundColor: trip.image_url ? 'transparent' : trip.color || '#ff6b6b' }}>
         {trip.image_url ? (
           <img
@@ -101,7 +101,7 @@ export default function TripOverview({ trip, onNavigate, onBack }: TripOverviewP
         <div
           className="absolute inset-x-0 bottom-0 h-32 pointer-events-none"
           style={{
-            background: `linear-gradient(to bottom, transparent, ${dominantColor || trip.color || "#0e0b10"})`,
+            background: `linear-gradient(to bottom, transparent, var(--color-background))`,
           }}
         />
       </div>
@@ -112,8 +112,8 @@ export default function TripOverview({ trip, onNavigate, onBack }: TripOverviewP
           background: `linear-gradient(to bottom,
             transparent 0%,
             transparent 30%,
-            ${dominantColor || trip.color || "#0e0b10"}cc 50%,
-            ${dominantColor || trip.color || "#0e0b10"}cc 100%)`,
+            var(--color-background) 50%,
+            var(--color-background) 100%)`,
         }}
       >
         <div className="relative z-10 px-6 pt-8 flex items-center justify-between">
