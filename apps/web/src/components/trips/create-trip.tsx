@@ -4,6 +4,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { CalendarIcon, ImageIcon } from "lucide-react"
 import { BackgroundPicker } from "./background-picker"
+import { DatePicker } from "./date-picker"
 import type { DateRange } from "react-day-picker"
 
 interface CreateTripProps {
@@ -14,6 +15,7 @@ interface CreateTripProps {
 export default function CreateTrip({ onBack, onSave }: CreateTripProps) {
   const [tripName, setTripName] = useState("")
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
@@ -136,7 +138,7 @@ export default function CreateTrip({ onBack, onSave }: CreateTripProps) {
 
         <div className="relative z-10 px-6 pb-12 flex items-center justify-center gap-1">
           <button
-            onClick={() => {}}
+            onClick={() => setShowDatePicker(true)}
             className="flex-1 flex flex-col items-center gap-2 py-4 text-white/80 hover:text-white transition-colors"
           >
             <CalendarIcon className="w-6 h-6" />
@@ -159,6 +161,13 @@ export default function CreateTrip({ onBack, onSave }: CreateTripProps) {
         open={showBackgroundPicker}
         onClose={() => setShowBackgroundPicker(false)}
         onSelect={handleBackgroundSelect}
+      />
+      
+      <DatePicker
+        open={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onSelect={setDateRange}
+        selectedDateRange={dateRange}
       />
     </>
   )
