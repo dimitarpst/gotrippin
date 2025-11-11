@@ -41,8 +41,6 @@ export function ProfileFormExample() {
         throw new Error('Failed to update profile');
       }
 
-      const result = await response.json();
-      console.log('Profile updated:', result);
     } catch (error) {
       console.error('Error updating profile:', error);
     }

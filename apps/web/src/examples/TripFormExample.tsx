@@ -44,7 +44,6 @@ export function TripFormExample() {
       }
 
       const result = await response.json();
-      console.log('Trip created:', result);
       
       // Reset form
       setFormData({

@@ -50,34 +50,18 @@ export function useLanguagePreference() {
 
   // Change language function
   const changeLanguage = (lang: "en" | "bg") => {
-    console.log("🌍 Changing language to:", lang);
-
     // 1. Update i18n
     i18n.changeLanguage(lang);
 
     // 2. Update cookie
     setCookie(LANGUAGE_COOKIE, lang);
-    console.log("🍪 Cookie updated");
 
     // 3. Update database if user is logged in (truly fire and forget)
     if (user) {
-      console.log("👤 User is logged in, updating database...");
       // Use setTimeout to ensure this runs asynchronously without blocking
       setTimeout(() => {
-        supabase
-          .from("profiles")
-          .update({ preferred_lng: lang })
-          .eq("id", user.id)
-          .then(({ error }) => {
-            if (error) {
-              console.error("❌ Database update error:", error);
-            } else {
-              console.log("✅ Database updated successfully");
-            }
-          });
+        supabase.from("profiles").update({ preferred_lng: lang });
       }, 0);
-    } else {
-      console.log("⚠️ No user logged in, skipping database update");
     }
   };
 

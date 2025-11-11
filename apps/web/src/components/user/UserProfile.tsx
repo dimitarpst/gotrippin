@@ -8,7 +8,12 @@ import ProfileHeader from "./ProfileHeader";
 import ProfileHero from "./ProfileHero";
 import ProfileStats from "./ProfileStats";
 import ProfileError from "./ProfileError";
+import ChangeEmailCard from "./ChangeEmailCard";
+import ChangePasswordCard from "./ChangePasswordCard";
+import LinkedAccountsCard from "./LinkedAccountsCard";
+import EmailConfirmationBanner from "./EmailConfirmationBanner";
 import { useTranslation } from "react-i18next";
+import { ExtendedUser } from "@/contexts/AuthContext";
 
 export type UserProfileData = {
   uid: string;
@@ -22,20 +27,24 @@ export type UserProfileData = {
 
 export default function UserProfile({
   data,
+  user,
   onBack,
   onSave,
   saving,
   error,
   clearError,
-  googleAvatarUrl,
 }: {
   data: UserProfileData;
+  user: ExtendedUser | null;
   onBack: () => void;
-  onSave: (updates: { displayName: string; avatarColor: string; avatarUrl?: string }) => Promise<boolean | void>;
+  onSave: (updates: {
+    displayName: string;
+    avatarColor: string;
+    avatarUrl?: string;
+  }) => Promise<boolean | void>;
   saving?: boolean;
   error?: string | null;
   clearError?: () => void;
-  googleAvatarUrl?: string | null;
 }) {
   const { t } = useTranslation();
   const { signOut } = useAuth();
@@ -62,6 +71,23 @@ export default function UserProfile({
     const base = displayData.displayName || data.email || "U";
     return base[0]?.toUpperCase() ?? "U";
   }, [displayData.displayName, data.email]);
+
+  const hasPassword = useMemo(
+    () => user?.identities?.some((id) => id.provider === "email") ?? false,
+    [user]
+  );
+  const hasGoogle = useMemo(
+    () => user?.identities?.some((id) => id.provider === "google") ?? false,
+    [user]
+  );
+  const googleAvatarUrl = useMemo(
+    () => (user?.user_metadata?.avatar_url as string | undefined) || null,
+    [user]
+  );
+  const googleEmail = useMemo(
+    () => (user?.user_metadata?.email as string | undefined) || null,
+    [user]
+  );
 
   const handleEdit = () => {
     // Reset pending changes to current data when entering edit mode
@@ -115,6 +141,7 @@ export default function UserProfile({
         animate={{ opacity: 1 }}
         transition={{ delay: 0.05 }}
       >
+        <EmailConfirmationBanner />
         <ProfileHero
           data={data}
           displayData={displayData}
@@ -128,6 +155,17 @@ export default function UserProfile({
         <ProfileStats />
 
         {error && <ProfileError message={error} clearError={clearError} />}
+
+        {/* Email and Password Change Cards */}
+        <div className="space-y-4 mt-6">
+          {hasPassword && <ChangeEmailCard currentEmail={data.email} />}
+          <ChangePasswordCard hasPassword={hasPassword ?? false} />
+          <LinkedAccountsCard
+            hasEmailPassword={hasPassword ?? false}
+            hasGoogle={hasGoogle}
+            googleEmail={googleEmail}
+          />
+        </div>
 
         {/* Logout button */}
         <motion.div

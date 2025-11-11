@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Upload, Check } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { useTranslation } from "react-i18next";
 
 interface AvatarUploadProps {
   userId: string;
@@ -22,6 +23,7 @@ export function AvatarUpload({
   onUploadError,
   isEditing = false,
 }: AvatarUploadProps) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(currentAvatarUrl || null);
@@ -46,7 +48,6 @@ export function AvatarUpload({
       setIsLoadingAvatars(true);
 
       try {
-        console.log('Fetching avatars for user:', userId);
 
         const { data, error } = await supabase.storage
           .from('avatars')
@@ -62,7 +63,6 @@ export function AvatarUpload({
 
         if (!isMounted) return; // Component was unmounted
 
-        console.log('Fetched avatar files:', data?.length || 0);
 
         // Get public URLs for all avatars, sorted by creation date (newest first)
         const avatarUrls = data
@@ -81,7 +81,6 @@ export function AvatarUpload({
             return publicUrl;
           });
 
-        console.log('Processed avatar URLs:', avatarUrls.length);
         setUserAvatars(avatarUrls);
       } catch (error) {
         if (!isMounted) return; // Component was unmounted
@@ -97,7 +96,6 @@ export function AvatarUpload({
           errorMessage.includes('fetch')
         )) {
           retryCount++;
-          console.log('Retrying avatar fetch in 1 second...');
           setTimeout(() => {
             if (isMounted) fetchUserAvatars();
           }, 1000);
@@ -201,7 +199,7 @@ export function AvatarUpload({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-3"
     >
-      <p className="text-xs text-white/60 font-medium">Choose Avatar</p>
+      <p className="text-xs text-white/60 font-medium">{t("profile.avatar_section_title")}</p>
 
       {isLoadingAvatars ? (
         <div className="flex flex-wrap gap-2">
@@ -276,7 +274,7 @@ export function AvatarUpload({
       )}
 
       <p className="text-xs text-white/40">
-        Select an existing avatar or upload a new one
+        {t("profile.avatar_section_description")}
       </p>
     </motion.div>
   );

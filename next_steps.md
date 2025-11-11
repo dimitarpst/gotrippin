@@ -7,40 +7,36 @@ It should be stored in the project root and treated as a **live synchronization 
 
 ## ⚙️ Context Summary (as of current build)
 
-| Layer                         | Status         | Progress | Notes                                                |
-| ----------------------------- | -------------- | -------- | ---------------------------------------------------- |
-| **Frontend – Auth**           | ✅ Complete    | 100 %    | Full Supabase login/register flow, i18n ready        |
-| **Frontend – Profile**        | ✅ Complete    | 100 %    | Profile UI, editing, avatar color picker             |
-| **Frontend – Layout / Theme** | ✅ Complete    | 100 %    | Dock, header, aurora background, design system       |
-| **Frontend – i18n**           | ✅ Complete    | 100 %    | English + Bulgarian localization, LanguageSwitcher   |
-| **Frontend – Trips**          | 🚧 In Progress | 40 %     | API client done, hooks created, connecting UI        |
-| **Backend – API (NestJS)**    | ✅ Complete    | 100 %    | Full CRUD API with Auth, Profiles & Trips modules    |
-| **Shared – Core Library**     | ✅ Complete    | 100 %    | Zod schemas, TypeScript types, validation utilities  |
+| Layer                         | Status         | Progress | Notes                                                            |
+| ----------------------------- | -------------- | -------- | ---------------------------------------------------------------- |
+| **Frontend – Auth**           | ✅ Complete    | 100 %    | Full Supabase login/register flow, i18n ready                    |
+| **Frontend – Profile**        | ✅ Complete    | 100 %    | Profile UI, editing, avatar color picker                         |
+| **Frontend – Layout / Theme** | ✅ Complete    | 100 %    | Dock, header, aurora background, design system                   |
+| **Frontend – i18n**           | ✅ Complete    | 100 %    | English + Bulgarian localization, LanguageSwitcher               |
+| **Frontend – Trips**          | 🚧 In Progress | 40 %     | API client done, hooks created, connecting UI                    |
+| **Backend – API (NestJS)**    | ✅ Complete    | 100 %    | Full CRUD API with Auth, Profiles & Trips modules                |
+| **Shared – Core Library**     | ✅ Complete    | 100 %    | Zod schemas, TypeScript types, validation utilities              |
 | **Database – Supabase**       | ✅ Complete    | 100 %    | Tables, RLS, & storage buckets configured for many-to-many trips |
-| **AI Layer**                  | ❌ Not started | 0 %      | Placeholder only                                     |
+| **AI Layer**                  | ❌ Not started | 0 %      | Placeholder only                                                 |
 
 ---
 
 ## 🔑 Phase 1 — Backend Foundation
 
 1. **Initialize NestJS app**
-
    - Create `/apps/backend/src/main.ts` and base structure.
    - Add modules: `auth`, `profiles`, `trips`, `ai` (placeholder).
    - Install dependencies: `@nestjs/config`, `@supabase/supabase-js`, `zod`, `class-validator`, `swagger`.
 
 2. **Supabase Admin Integration**
-
    - Configure `.env` with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
    - Implement Supabase Admin Client provider and export via DI.
 
 3. **Auth Module**
-
    - Validate Supabase JWT.
    - Create `JwtAuthGuard` to protect routes.
 
 4. **Profiles Module**
-
    - `GET /profiles/:id`, `PUT /profiles/:id`.
    - Sync with existing frontend profile fields (`display_name`, `phone`, `avatar_color`).
 
@@ -75,6 +71,7 @@ It should be stored in the project root and treated as a **live synchronization 
 ## 🗄️ Phase 3 — Trips Database Setup ✅ **COMPLETED**
 
 ### ✅ Details:
+
 1. ✅ Implemented many-to-many trips using a bridge table (`public.trip_members`).
 2. ✅ Configured all necessary RLS policies for `public.trips` and `public.trip_members` to ensure collaborative, secure access.
 3. ✅ Updated backend API (Supabase Service, Trips Service, Trips Controller) to work with the new schema, including member management endpoints.
@@ -131,3 +128,10 @@ It should be stored in the project root and treated as a **live synchronization 
 - For multi-file changes: use **Plan Mode** first.
 - Suggest commands; never execute them.
 - Update this file after each major feature.
+
+---
+
+## ⚠️ Known Issues (as of Nov 11, 2025)
+
+1.  **Forgot Password Flow is Broken**: The password reset page (`/auth/reset-password`) gets stuck on "Verifying..." and never completes. This is due to a suspected deadlock/race-condition with the Supabase client library's automatic session recovery.
+2.  **Google Account Linking is Unreliable**: Linking a Google account to an existing email account doesn't always behave as expected. It can sometimes link the wrong Google account if the user is already logged into Google in their browser.

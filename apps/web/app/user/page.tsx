@@ -18,6 +18,25 @@ export default function UserPage() {
   // Store last saved values to show immediately (optimistic update)
   const [lastSaved, setLastSaved] = useState<{ displayName?: string; avatarColor?: string; avatarUrl?: string }>({});
 
+  // Check if we returned from account linking
+  useMemo(() => {
+    if (typeof window !== "undefined") {
+      const fullUrl = window.location.href;
+      const params = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+      
+      if (params.get('linked') === 'true' || hashParams.get('linked') === 'true') {
+        
+        // Don't immediately reload - let's see what state we're in first
+        setTimeout(() => {
+          window.history.replaceState({}, '', '/user');
+          window.location.reload();
+        }, 3000);
+      }
+    }
+  }, [user]);
+
   const profileData = useMemo(() => {
     if (!user) return null;
     return {
@@ -143,15 +162,21 @@ export default function UserPage() {
     );
   }
 
+  // Detect authentication providers
+  const hasEmailPassword = user?.identities?.some(identity => identity.provider === 'email') ?? false;
+  const hasGoogle = user?.identities?.some(identity => identity.provider === 'google') ?? false;
+  const googleAvatarUrl = (user?.user_metadata?.avatar_url as string | undefined) || null;
+  const googleEmail = hasGoogle ? (user?.user_metadata?.email as string | undefined) || null : null;
+
   return (
     <UserProfile
       data={profileData}
+      user={user}
       onBack={() => router.push("/")}
       onSave={handleSave}
       saving={saving}
       error={error}
       clearError={() => setError(null)}
-      googleAvatarUrl={(user?.user_metadata?.avatar_url as string | undefined) || null}
     />
   );
 }

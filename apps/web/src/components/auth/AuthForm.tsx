@@ -12,6 +12,7 @@ import { AuthFields } from "./AuthFields";
 import { AuthDivider } from "./AuthDivider";
 import { EmailConfirm } from "./EmailConfirm";
 import { GoogleSignInButton } from "./GoogleSignInButton";
+import { ForgotPasswordDialog } from "./ForgotPasswordDialog";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -29,6 +30,7 @@ import { useRouter } from "next/navigation";
     const [pendingConfirmation, setPendingConfirmation] = useState(false);
     const [lastEmail, setLastEmail] = useState("");
     const [googleLoading, setGoogleLoading] = useState(false);
+    const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
 
     const router = useRouter();
 
@@ -119,6 +121,7 @@ import { useRouter } from "next/navigation";
               <div className="flex justify-end">
                 <button
                   type="button"
+                  onClick={() => setForgotPasswordOpen(true)}
                   className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors cursor-pointer"
                 >
                   {t("auth.forgot_password")}
@@ -159,6 +162,11 @@ import { useRouter } from "next/navigation";
           </p>
         </div>
       </motion.div>
+
+      <ForgotPasswordDialog
+        isOpen={forgotPasswordOpen}
+        onClose={() => setForgotPasswordOpen(false)}
+      />
     </div>
   );
 }

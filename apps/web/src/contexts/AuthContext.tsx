@@ -11,7 +11,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { User } from "@supabase/supabase-js";
 
 // Extend the user with profile data
-interface ExtendedUser extends User {
+export interface ExtendedUser extends User {
   avatar_color?: string | null;
   preferred_lng?: string | null;
   avatar_url?: string | null;
@@ -37,21 +37,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Helper function to load user with profile
   const loadUserWithProfile = async (currentUser: User | null) => {
     if (currentUser) {
+      // Always get the freshest user data from Supabase to ensure identities are up-to-date
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
+
+      if (!freshUser) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       // fetch profile data from profiles table
       const { data: profileData } = await supabase
         .from("profiles")
         .select("avatar_color, preferred_lng, avatar_url, display_name")
-        .eq("id", currentUser.id)
+        .eq("id", freshUser.id)
         .single();
 
-      // Check if we need to sync OAuth data to profile
+      // Check if we need to sync OAuth data to profile (only on first login)
       let updatedProfileData = profileData;
-      const oauthAvatarUrl = currentUser.user_metadata?.avatar_url;
-      const oauthDisplayName = currentUser.user_metadata?.full_name ||
-                              currentUser.user_metadata?.display_name;
+      const oauthAvatarUrl = freshUser.user_metadata?.avatar_url;
+      const oauthDisplayName = freshUser.user_metadata?.full_name ||
+                              freshUser.user_metadata?.display_name;
 
-      // If OAuth provides avatar_url and it's different from stored one, update profile
-      if (oauthAvatarUrl && oauthAvatarUrl !== profileData?.avatar_url) {
+      // Only sync OAuth avatar if user doesn't have a custom avatar yet (avatar_url is null)
+      // This prevents overwriting user-selected avatars on subsequent logins
+      if (oauthAvatarUrl && !profileData?.avatar_url) {
         try {
           const { data: updatedProfile } = await supabase
             .from("profiles")
@@ -59,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               avatar_url: oauthAvatarUrl,
               ...(oauthDisplayName && !profileData?.display_name && { display_name: oauthDisplayName })
             })
-            .eq("id", currentUser.id)
+            .eq("id", freshUser.id)
             .select("avatar_color, preferred_lng, avatar_url, display_name")
             .single();
 
@@ -71,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Profile is guaranteed to exist due to database trigger
       setUser({
-        ...currentUser,
+        ...freshUser,
         avatar_color: updatedProfileData?.avatar_color || null,
         preferred_lng: updatedProfileData?.preferred_lng || "en",
         avatar_url: updatedProfileData?.avatar_url || null,
@@ -80,6 +90,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     }
     setLoading(false);
+  };
+
+  const refreshProfile = async () => {
+    // Force refresh the session to get latest user metadata
+    const { data: { user: freshUser } } = await supabase.auth.getUser();
+    if (freshUser) {
+      await loadUserWithProfile(freshUser);
+    }
   };
 
   useEffect(() => {
@@ -171,14 +189,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
     });
     if (error) throw error;
-  };
-
-  const refreshProfile = async () => {
-    // Force refresh the session to get latest user metadata
-    const { data: { user: freshUser } } = await supabase.auth.getUser();
-    if (freshUser) {
-      await loadUserWithProfile(freshUser);
-    }
   };
 
   const value = {
