@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, use } from "react"
 import AuroraBackground from "@/components/effects/aurora-background"
 import TripOverview from "@/components/trips/trip-overview"
-import ActivitySelector from "@/components/trips/activity-selector"
-import FlightEditor from "@/components/trips/flight-editor"
+import TripOverviewSkeleton from "@/components/trips/trip-overview-skeleton"
 import { useTrip, useDeleteTrip } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
 
@@ -21,7 +20,7 @@ export default function TripPage({ params }: TripPageProps) {
   const tripId = resolvedParams.id
   const { user, loading: authLoading } = useAuth()
   const { trip, loading: tripLoading } = useTrip(tripId)
-  const { deleteTrip, deleting } = useDeleteTrip()
+  const { deleteTrip } = useDeleteTrip()
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -96,12 +95,7 @@ export default function TripPage({ params }: TripPageProps) {
             onDelete={handleDelete}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-white text-lg">Loading trip...</p>
-            </div>
-          </div>
+          <TripOverviewSkeleton onBack={handleBack} />
         )}
       </div>
     </main>
