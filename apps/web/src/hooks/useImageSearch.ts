@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { searchImages, trackImageDownload, type UnsplashImage } from '@/lib/api';
 import { supabase } from '@/lib/supabaseClient';
 
-export function useImageSearch(initialQuery: string = 'travel destination') {
+export function useImageSearch() {
   const [token, setToken] = useState<string | null>(null);
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState<string>('');
   const [images, setImages] = useState<UnsplashImage[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -65,9 +65,9 @@ export function useImageSearch(initialQuery: string = 'travel destination') {
     [token],
   );
 
-  // Initial search
+  // Search when query changes (but not on mount if empty)
   useEffect(() => {
-    if (query) {
+    if (query && query.trim()) {
       setPage(1);
       performSearch(query, 1, false);
     }

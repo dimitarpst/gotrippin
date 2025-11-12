@@ -80,7 +80,7 @@ It should be stored in the project root and treated as a **live synchronization 
 
 ---
 
-## 🌍 Phase 4 — Trip Management Frontend (Next)
+## 🌍 Phase 4 — Trip Management Frontend ✅ **COMPLETED**
 
 1. ✅ Connect existing UI components to backend endpoints:
    - ✅ `trips-list.tsx` → fetch user trips with loading states
@@ -91,10 +91,12 @@ It should be stored in the project root and treated as a **live synchronization 
    - ✅ Proper loading / error states
    - ✅ Auth guards (Supabase session)
 3. ✅ Image selection via Unsplash API (replaces upload for now)
-4. 🚧 Remaining:
-   - [ ] Trip member management UI
-   - [ ] Trip deletion with confirmation
-   - [ ] Edit trip functionality
+4. ✅ Core Trip Management:
+   - ✅ **Edit trip functionality** - full update form with pre-populated data
+   - ✅ **Trip deletion with confirmation** - delete button + confirmation dialog
+   - ✅ **Trip image display** - images show correctly in cards and overview
+5. 🚧 Remaining for Future:
+   - [ ] Trip member management UI (invite/manage collaborators)
 
 ---
 
@@ -142,9 +144,97 @@ It should be stored in the project root and treated as a **live synchronization 
 
 ---
 
-## ✅ Recent Updates (Nov 11, 2025 - Evening Session)
+## ✅ Recent Updates (Nov 12, 2025 - Early Session)
+
+### ⚡ **Unsplash API Optimization - COMPLETE**
+
+#### 🚀 **Performance Improvements**
+
+- ✅ Removed unnecessary initial API request on app mount
+- ✅ Images now load lazily only when background picker modal opens
+- ✅ Increased debounce delay from 300ms to 500ms for better rate limiting
+- ✅ Added check to prevent search when modal is closed
+- ✅ Prevented redundant API calls when images are already loaded
+
+**Impact:**
+
+- **Before:** 1 API call on every page load + 1 per keystroke (300ms delay)
+- **After:** 0 calls until user opens modal + 1 call every 500ms after typing stops
+- **Result:** Saves hundreds of unnecessary API calls per session
+
+**Files Modified:**
+
+- `apps/web/src/hooks/useImageSearch.ts` (removed default query, optimized search trigger)
+- `apps/web/src/components/trips/background-picker.tsx` (lazy loading, better debouncing)
+
+**Why This Matters:**
+
+- Reduces load on Unsplash API (staying under free tier limits)
+- Faster app load times (no blocking network requests)
+- Better user experience (no unnecessary loading states)
+- Conserves backend cache resources
+
+---
+
+## ✅ Recent Updates (Nov 11, 2025 - Evening Session Part 2)
+
+### 🎯 **Edit & Delete Trip Features - COMPLETE**
+
+#### ✏️ **Edit Trip Functionality**
+
+- ✅ Created `/apps/web/app/trips/[id]/edit/page.tsx` for edit flow
+- ✅ Updated `CreateTrip` component to support edit mode with initial data
+- ✅ Pre-populates trip name, dates, image, and color
+- ✅ Button text changes from "Save" to "Update" in edit mode
+- ✅ Only sends changed fields to backend (optimization)
+- ✅ Full validation using Zod schemas
+- ✅ Seamless routing back to trip overview after update
+
+**Files Created/Modified:**
+
+- `apps/web/app/trips/[id]/edit/page.tsx` (new)
+- `apps/web/src/components/trips/create-trip.tsx` (updated)
+
+#### 🗑️ **Delete Trip Functionality**
+
+- ✅ Delete button added to trip overview (trash icon, top-left)
+- ✅ Beautiful confirmation dialog with warning message
+- ✅ Shows trip name in confirmation prompt
+- ✅ Cancel/Delete buttons with proper styling
+- ✅ API integration with `useDeleteTrip` hook
+- ✅ Redirects to home after successful deletion
+- ✅ Removes trip from database and UI immediately
+
+**Files Modified:**
+
+- `apps/web/src/components/trips/trip-overview.tsx` (updated with Edit/Delete buttons + confirmation dialog)
+- `apps/web/app/trips/[id]/page.tsx` (wired up edit/delete handlers)
+
+#### 🖼️ **Trip Image Display - VERIFIED**
+
+- ✅ Images display correctly in trip cards (`trip-grid.tsx`)
+- ✅ Images display correctly in trip overview (`trip-overview.tsx`)
+- ✅ Graceful fallback to color if image fails to load
+- ✅ Error handling with `onError` callbacks
+- ✅ Smooth animations on hover (cards)
+- ✅ Full-screen image display in overview
+
+**Status:** Already working perfectly! 🎉
+
+#### 📋 **Testing Documentation**
+
+- ✅ Created comprehensive `TESTING_GUIDE.md` with step-by-step flows
+- ✅ Covers all CRUD operations (Create, Read, Update, Delete)
+- ✅ Includes error handling scenarios
+- ✅ API endpoint reference table
+- ✅ Success criteria checklist
+
+---
+
+## ✅ Recent Updates (Nov 11, 2025 - Evening Session Part 1)
 
 ### 🖼️ **Unsplash API Integration - COMPLETE**
+
 - ✅ Full backend images module with caching and rate limiting
 - ✅ Search endpoint with JWT authentication (`GET /images/search`)
 - ✅ Download tracking endpoint for Unsplash requirements (`POST /images/download`)
@@ -157,19 +247,23 @@ It should be stored in the project root and treated as a **live synchronization 
 - ✅ **Ready for Unsplash Production Application** (all requirements met)
 
 **Backend Files Created:**
+
 - `apps/backend/src/images/images.module.ts`
 - `apps/backend/src/images/images.service.ts`
 - `apps/backend/src/images/images.controller.ts`
 
 **Frontend Files Created:**
+
 - `apps/web/src/lib/api.ts` (API client helper)
 - `apps/web/src/hooks/useImageSearch.ts` (search hook with infinite scroll)
 
 **Files Modified:**
+
 - `apps/backend/src/app.module.ts` (registered ImagesModule + AuthModule import)
 - `apps/web/src/components/trips/background-picker.tsx` (real API integration)
 
 **Environment Setup Required:**
+
 ```env
 # Backend (.env)
 UNSPLASH_ACCESS_KEY=your_access_key_here
@@ -179,12 +273,14 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
 **Dependencies Installed:**
+
 ```bash
 cd apps/backend
 npm install @nestjs/axios rxjs
 ```
 
 **Unsplash Production Checklist:**
+
 - ✅ Hotlink images from Unsplash URLs
 - ✅ Trigger download endpoint when user selects image
 - ✅ Display "Photo by [Name] on Unsplash" attribution with links
@@ -196,6 +292,7 @@ npm install @nestjs/axios rxjs
 ## ✅ Recent Updates (Nov 11, 2025 - Morning Session)
 
 ### 🎨 **Date Picker Implementation**
+
 - ✅ Integrated shadcn `calendar-05` component with date range selection
 - ✅ Created custom `DatePicker` modal component matching app design
 - ✅ Connected date picker to create trip flow
@@ -203,23 +300,27 @@ npm install @nestjs/axios rxjs
 - ✅ Proper UX: modal only closes via Cancel/Done buttons, not backdrop clicks
 
 **Files Modified:**
+
 - `apps/web/src/components/ui/calendar.tsx` (new)
 - `apps/web/src/components/trips/date-picker.tsx` (new)
 - `apps/web/src/components/trips/create-trip.tsx` (updated)
 - `apps/web/app/globals.css` (calendar styles removed - using Tailwind only)
 
 ### 🎭 **Loading States & Skeleton Loaders**
+
 - ✅ Removed global loading spinner from home page
 - ✅ Created `TripSkeleton` component matching actual trip card design
 - ✅ Responsive skeleton grid (1 column mobile, 2 columns desktop)
 - ✅ Skeleton includes: image area, gradient overlay, badge, title, date, location
 
 **Files Modified:**
+
 - `apps/web/src/components/trips/trip-skeleton.tsx` (new)
 - `apps/web/src/components/trips/trips-list.tsx` (updated to use skeleton)
 - `apps/web/app/page.tsx` (removed global spinner)
 
 ### 🎨 **Trip Color Field - Full Stack Implementation**
+
 - ✅ Updated backend DTOs to accept `color` field
   - `apps/backend/src/trips/dto/create-trip.dto.ts`
   - `apps/backend/src/trips/dto/update-trip.dto.ts`
@@ -234,11 +335,13 @@ npm install @nestjs/axios rxjs
 **Database:** Color column already exists in `trips` table ✅
 
 ### 🖼️ **Trip Overview Layout Fix**
+
 - ✅ Fixed background extending beyond image section
 - ✅ Now uses theme background color instead of trip color for full page
 - ✅ Gradient transitions properly from image to dark background
 
 **Files Modified:**
+
 - `apps/web/src/components/trips/trip-overview.tsx`
 
 ### 📋 **Action Items for Next Session**

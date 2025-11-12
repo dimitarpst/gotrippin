@@ -6,7 +6,7 @@ import AuroraBackground from "@/components/effects/aurora-background"
 import TripOverview from "@/components/trips/trip-overview"
 import ActivitySelector from "@/components/trips/activity-selector"
 import FlightEditor from "@/components/trips/flight-editor"
-import { useTrip } from "@/hooks/useTrips"
+import { useTrip, useDeleteTrip } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
 
 interface TripPageProps {
@@ -21,6 +21,7 @@ export default function TripPage({ params }: TripPageProps) {
   const tripId = resolvedParams.id
   const { user, loading: authLoading } = useAuth()
   const { trip, loading: tripLoading } = useTrip(tripId)
+  const { deleteTrip, deleting } = useDeleteTrip()
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -40,6 +41,17 @@ export default function TripPage({ params }: TripPageProps) {
 
   const handleBack = () => {
     router.push('/')
+  }
+
+  const handleEdit = () => {
+    router.push(`/trips/${tripId}/edit`)
+  }
+
+  const handleDelete = async () => {
+    const success = await deleteTrip(tripId)
+    if (success) {
+      router.push('/')
+    }
   }
 
   if (authLoading) {
@@ -80,6 +92,8 @@ export default function TripPage({ params }: TripPageProps) {
             trip={trip}
             onNavigate={handleNavigate}
             onBack={handleBack}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">

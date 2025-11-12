@@ -21,6 +21,8 @@ import {
   Zap,
   Users,
   Settings,
+  Edit3,
+  Trash2,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -32,10 +34,13 @@ interface TripOverviewProps {
   trip: Trip
   onNavigate: (screen: "activity" | "flight") => void
   onBack: () => void
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
-export default function TripOverview({ trip, onNavigate, onBack }: TripOverviewProps) {
+export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelete }: TripOverviewProps) {
   const [dominantColor, setDominantColor] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Calculate trip details
   const daysUntil = trip.start_date ? calculateDaysUntil(trip.start_date) : 0
@@ -117,14 +122,30 @@ export default function TripOverview({ trip, onNavigate, onBack }: TripOverviewP
         }}
       >
         <div className="relative z-10 px-6 pt-8 flex items-center justify-between">
-          <motion.button
-            className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
-            style={{ background: "rgba(0,0,0,0.3)" }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <MoreHorizontal className="w-5 h-5 text-white" />
-          </motion.button>
+          <div className="flex gap-3">
+            {onEdit && (
+              <motion.button
+                onClick={onEdit}
+                className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
+                style={{ background: "rgba(0,0,0,0.3)" }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Edit3 className="w-5 h-5 text-white" />
+              </motion.button>
+            )}
+            {onDelete && (
+              <motion.button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
+                style={{ background: "rgba(220,38,38,0.3)" }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Trash2 className="w-5 h-5 text-red-300" />
+              </motion.button>
+            )}
+          </div>
 
           <div className="flex gap-3">
             <motion.button
@@ -408,6 +429,55 @@ export default function TripOverview({ trip, onNavigate, onBack }: TripOverviewP
           </motion.div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <motion.div
+            className="bg-[#0e0b10] border border-white/10 rounded-2xl p-6 mx-6 max-w-md w-full"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Delete Trip</h3>
+                <p className="text-sm text-white/60">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-white/80 mb-6">
+              Are you sure you want to delete <span className="font-semibold text-white">{trip.destination || trip.title}</span>? All trip data will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  onDelete?.()
+                }}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   )
 }

@@ -10,15 +10,22 @@ import type { DateRange } from "react-day-picker"
 interface CreateTripProps {
   onBack: () => void
   onSave: (data: { title: string; imageUrl?: string; color?: string; dateRange?: DateRange }) => Promise<void>
+  initialData?: {
+    title: string
+    imageUrl?: string
+    color?: string
+    dateRange?: DateRange
+  }
+  isEditing?: boolean
 }
 
-export default function CreateTrip({ onBack, onSave }: CreateTripProps) {
-  const [tripName, setTripName] = useState("")
+export default function CreateTrip({ onBack, onSave, initialData, isEditing = false }: CreateTripProps) {
+  const [tripName, setTripName] = useState(initialData?.title || "")
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [selectedColor, setSelectedColor] = useState<string | null>(null)
-  const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [selectedImage, setSelectedImage] = useState<string | null>(initialData?.imageUrl || null)
+  const [selectedColor, setSelectedColor] = useState<string | null>(initialData?.color || null)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(initialData?.dateRange)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -120,7 +127,7 @@ export default function CreateTrip({ onBack, onSave }: CreateTripProps) {
             className="px-6 py-2 rounded-full bg-white text-black font-semibold disabled:opacity-50"
             disabled={!tripName.trim() || saving}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? (isEditing ? "Updating..." : "Saving...") : (isEditing ? "Update" : "Save")}
           </button>
         </div>
 

@@ -35,17 +35,28 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
   const observerRef = useRef<HTMLDivElement>(null)
   const { images, loading, loadingMore, error, hasMore, loadMore, setQuery, selectImage } = useImageSearch()
 
-  // Debounced search
+  // Load default images when modal opens (only once)
   useEffect(() => {
+    if (open && images.length === 0 && !searchInput) {
+      setQuery("travel destination")
+    }
+  }, [open, images.length, searchInput, setQuery])
+
+  // Debounced search (500ms to reduce API calls)
+  useEffect(() => {
+    if (!open) return // Don't search if modal is closed
+
     const timer = setTimeout(() => {
       if (searchInput.trim()) {
         setQuery(searchInput)
-      } else {
+      } else if (images.length === 0) {
+        // Only set default if we have no images
         setQuery("travel destination")
       }
-    }, 300)
+    }, 500) // Increased from 300ms to 500ms for better debouncing
+    
     return () => clearTimeout(timer)
-  }, [searchInput, setQuery])
+  }, [searchInput, setQuery, open, images.length])
 
   // Infinite scroll observer
   useEffect(() => {
