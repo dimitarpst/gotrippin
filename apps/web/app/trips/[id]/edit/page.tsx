@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect, use } from "react"
+import { useEffect, use, useState } from "react"
 import AuroraBackground from "@/components/effects/aurora-background"
 import CreateTrip from "@/components/trips/create-trip"
 import { useUpdateTrip, useTrip } from "@/hooks/useTrips"
@@ -23,6 +23,11 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   const { user, loading: authLoading } = useAuth()
   const { trip, loading: tripLoading } = useTrip(tripId)
   const { update } = useUpdateTrip()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -78,14 +83,14 @@ export default function EditTripPage({ params }: EditTripPageProps) {
     router.push(`/trips/${tripId}`)
   }
 
-  if (authLoading || tripLoading) {
+  if (!mounted || authLoading || tripLoading) {
     return (
       <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
         <AuroraBackground />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white text-lg">{t('trips.loading')}</p>
+            {mounted && <p className="text-white text-lg">{t('trips.loading')}</p>}
           </div>
         </div>
       </main>

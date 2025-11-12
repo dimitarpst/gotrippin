@@ -146,6 +146,53 @@ It should be stored in the project root and treated as a **live synchronization 
 
 ## ✅ Recent Updates (Nov 12, 2025 - Evening Session)
 
+### 🐛 **Critical Bug Fixes - COMPLETE**
+
+#### **1. Date Clearing Bug in Edit Trip**
+
+- **Issue**: When editing a trip, if a user cleared previously set dates, the API wouldn't receive the update because the conditions were never met
+- **Fix**: Added explicit `null` value handling for cleared dates
+- **Impact**: Users can now properly clear trip dates when editing
+
+```typescript
+// Before: dates would remain unchanged if cleared
+if (data.dateRange?.from) { ... }
+
+// After: explicitly send null to clear dates
+else if (trip?.start_date) {
+  tripData.start_date = null
+}
+```
+
+#### **2. i18n Hydration Mismatch**
+
+- **Issue**: Server rendered English text ("Loading...") but client detected Bulgarian ("Зареждане..."), causing hydration errors
+- **Root Cause**: Language detection happens client-side, so server doesn't know which language to use
+- **Fix**: Added `mounted` state to prevent rendering translations until after client hydration
+- **Files Fixed**:
+  - `apps/web/app/trips/create/page.tsx`
+  - `apps/web/app/trips/[id]/page.tsx`
+  - `apps/web/app/trips/[id]/edit/page.tsx`
+
+```typescript
+const [mounted, setMounted] = useState(false)
+
+useEffect(() => {
+  setMounted(true)
+}, [])
+
+// Only render translations after hydration
+{mounted && <p>{t('trips.loading')}</p>}
+```
+
+**Impact**:
+
+- ✅ No more hydration warnings in console
+- ✅ Smooth client-side rendering
+- ✅ i18n works perfectly without React errors
+
+---
+
 ### 🌍 **i18n Translation Implementation - COMPLETE**
 
 #### 🎯 **Comprehensive i18n Coverage**
