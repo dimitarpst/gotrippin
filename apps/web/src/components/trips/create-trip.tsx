@@ -6,6 +6,7 @@ import { CalendarIcon, ImageIcon } from "lucide-react"
 import { BackgroundPicker } from "./background-picker"
 import { DatePicker } from "./date-picker"
 import type { DateRange } from "react-day-picker"
+import { useTranslation } from "react-i18next"
 
 interface CreateTripProps {
   onBack: () => void
@@ -20,6 +21,7 @@ interface CreateTripProps {
 }
 
 export default function CreateTrip({ onBack, onSave, initialData, isEditing = false }: CreateTripProps) {
+  const { t } = useTranslation()
   const [tripName, setTripName] = useState(initialData?.title || "")
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
@@ -58,7 +60,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
   }
 
   const formatDateRange = () => {
-    if (!dateRange?.from) return "No date set"
+    if (!dateRange?.from) return t('trips.no_date_set')
     if (!dateRange.to) {
       const month = dateRange.from.toLocaleDateString("en-US", { month: "short" })
       const day = dateRange.from.getDate()
@@ -120,14 +122,14 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
 
         <div className="relative z-10 px-6 pt-12 flex items-center justify-between">
           <button onClick={onBack} className="text-[#ff6b6b] text-lg font-medium" disabled={saving}>
-            Cancel
+            {t('trips.cancel')}
           </button>
           <button 
             onClick={handleSave} 
             className="px-6 py-2 rounded-full bg-white text-black font-semibold disabled:opacity-50"
             disabled={!tripName.trim() || saving}
           >
-            {saving ? (isEditing ? "Updating..." : "Saving...") : (isEditing ? "Update" : "Save")}
+            {saving ? (isEditing ? t('trips.updating') : t('trips.saving')) : (isEditing ? t('trips.update') : t('trips.save'))}
           </button>
         </div>
 
@@ -136,7 +138,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
             type="text"
             value={tripName}
             onChange={(e) => setTripName(e.target.value)}
-            placeholder="Trip name"
+            placeholder={t('trips.trip_name')}
             className="w-full bg-transparent border-none text-white text-5xl font-bold placeholder:text-white/40 focus:outline-none text-center mb-4"
             style={{ caretColor: "#ff6b6b" }}
           />
@@ -149,7 +151,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
             className="flex-1 flex flex-col items-center gap-2 py-4 text-white/80 hover:text-white transition-colors"
           >
             <CalendarIcon className="w-6 h-6" />
-            <span className="text-sm font-medium">Set Dates</span>
+            <span className="text-sm font-medium">{t('trips.set_dates')}</span>
           </button>
 
           <div className="w-px h-12 bg-white/20" />
@@ -159,7 +161,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
             className="flex-1 flex flex-col items-center gap-2 py-4 text-white/80 hover:text-white transition-colors"
           >
             <ImageIcon className="w-6 h-6" />
-            <span className="text-sm font-medium">Background</span>
+            <span className="text-sm font-medium">{t('trips.background')}</span>
           </button>
         </div>
       </div>

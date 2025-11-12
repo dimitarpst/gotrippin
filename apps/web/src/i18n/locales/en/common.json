@@ -106,5 +106,73 @@
     "add_trip": "Add Trip",
     "settings": "Settings",
     "profile": "Profile"
+  },
+  "trips": {
+    "my_trips": "My Trips",
+    "no_trips": "No trips yet",
+    "no_trips_description": "Start planning your next adventure by creating your first trip!",
+    "create_first_trip": "Create Your First Trip",
+    "all": "All",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "trip_name": "Trip name",
+    "set_dates": "Set Dates",
+    "background": "Background",
+    "save": "Save",
+    "update": "Update",
+    "saving": "Saving...",
+    "updating": "Updating...",
+    "cancel": "Cancel",
+    "no_date_set": "No date set",
+    "loading": "Loading...",
+    "loading_trip": "Loading trip...",
+    "trip_not_found": "Trip not found",
+    "go_home": "Go Home",
+    "redirecting": "Redirecting to login...",
+    "days": "days",
+    "started": "Started",
+    "starts_in": "Starts in {{count}} days",
+    "day_trip": "{{count}}-day trip",
+    "duration_tbd": "Duration TBD",
+    "untitled_trip": "Untitled Trip"
+  },
+  "trip_overview": {
+    "itinerary": "Itinerary",
+    "start_organizing": "Start organizing your itinerary",
+    "view_all_days": "View All Days",
+    "documents": "Documents",
+    "pro_badge": "PRO",
+    "add_documents_description": "Start adding documents to your trip. You can add photos, links, emails, notes and files.",
+    "add_document": "Add Document",
+    "invite_guests": "Invite Guests",
+    "invite_guests_description": "Add frequent guests. They can view, add, edit and remove items, but you're the admin.",
+    "share_trip": "Share Trip",
+    "customize": "Customize",
+    "delete_trip": "Delete Trip",
+    "delete_confirmation": "This action cannot be undone",
+    "delete_message": "Are you sure you want to delete {{tripName}}? All trip data will be permanently removed.",
+    "delete": "Delete"
+  },
+  "background_picker": {
+    "title": "Choose Image",
+    "cancel": "Cancel",
+    "images": "Images",
+    "colors": "Colors",
+    "search_placeholder": "Search travel images",
+    "photo_by": "Photo by",
+    "on_unsplash": "on Unsplash",
+    "loading": "Loading images...",
+    "error": "Failed to load images",
+    "check_connection": "Please check your connection and try again"
+  },
+  "date_picker": {
+    "title": "Select Dates",
+    "cancel": "Cancel",
+    "done": "Done",
+    "select_range": "Select a date range for your trip"
+  },
+  "recommended": {
+    "title": "Recommended Destinations",
+    "subtitle": "Discover your next adventure"
   }
 }

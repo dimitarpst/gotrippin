@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { Star, MapPin } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { useTranslation } from "react-i18next"
 
 const recommendedDestinations = [
   {
@@ -36,6 +37,8 @@ const recommendedDestinations = [
 ]
 
 export default function RecommendedDestinations() {
+  const { t } = useTranslation()
+  
   return (
     <motion.div
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
@@ -44,7 +47,7 @@ export default function RecommendedDestinations() {
       transition={{ delay: 0.3, type: "spring", damping: 20 }}
     >
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">Recommended</h2>
+        <h2 className="text-2xl font-bold text-white">{t('recommended.title')}</h2>
         <motion.button
           className="text-[#ff6b6b] font-semibold text-sm hover:text-[#ff8585] transition-colors"
           whileHover={{ scale: 1.05 }}

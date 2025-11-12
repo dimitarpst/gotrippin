@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
+import { useTranslation } from "react-i18next"
 
 interface TripFiltersProps {
   activeFilter: "all" | "upcoming" | "past"
@@ -10,6 +11,14 @@ interface TripFiltersProps {
 }
 
 export default function TripFilters({ activeFilter, onFilterChange, tripsCount }: TripFiltersProps) {
+  const { t } = useTranslation()
+  
+  const filterLabels = {
+    all: t('trips.all'),
+    upcoming: t('trips.upcoming'),
+    past: t('trips.past')
+  }
+  
   return (
     <motion.div
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
@@ -43,7 +52,7 @@ export default function TripFilters({ activeFilter, onFilterChange, tripsCount }
               />
             )}
             <span className="relative z-10 flex items-center gap-2">
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              {filterLabels[filter]}
               {filter === "all" && (
                 <motion.span
                   initial={{ scale: 0 }}

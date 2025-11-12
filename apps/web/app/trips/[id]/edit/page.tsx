@@ -1,12 +1,13 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useEffect, use, useState } from "react"
+import { useEffect, use } from "react"
 import AuroraBackground from "@/components/effects/aurora-background"
 import CreateTrip from "@/components/trips/create-trip"
 import { useUpdateTrip, useTrip } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
 import type { DateRange } from "react-day-picker"
+import { useTranslation } from "react-i18next"
 
 interface EditTripPageProps {
   params: Promise<{
@@ -15,12 +16,13 @@ interface EditTripPageProps {
 }
 
 export default function EditTripPage({ params }: EditTripPageProps) {
+  const { t } = useTranslation()
   const router = useRouter()
   const resolvedParams = use(params)
   const tripId = resolvedParams.id
   const { user, loading: authLoading } = useAuth()
   const { trip, loading: tripLoading } = useTrip(tripId)
-  const { update, updating } = useUpdateTrip()
+  const { update } = useUpdateTrip()
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -43,12 +45,19 @@ export default function EditTripPage({ params }: EditTripPageProps) {
         if (newStartDate !== trip?.start_date) {
           tripData.start_date = newStartDate
         }
+      } else if (trip?.start_date) {
+        // User cleared the start date, send null to clear it
+        tripData.start_date = null
       }
+      
       if (data.dateRange?.to) {
         const newEndDate = data.dateRange.to.toISOString()
         if (newEndDate !== trip?.end_date) {
           tripData.end_date = newEndDate
         }
+      } else if (trip?.end_date) {
+        // User cleared the end date, send null to clear it
+        tripData.end_date = null
       }
       
       console.log("Updating trip with data:", tripData)
@@ -76,7 +85,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white text-lg">Loading...</p>
+            <p className="text-white text-lg">{t('trips.loading')}</p>
           </div>
         </div>
       </main>
@@ -89,7 +98,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
         <AuroraBackground />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-white">Redirecting to login...</p>
+            <p className="text-white">{t('trips.redirecting')}</p>
           </div>
         </div>
       </main>
@@ -102,13 +111,13 @@ export default function EditTripPage({ params }: EditTripPageProps) {
         <AuroraBackground />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-white text-lg">Trip not found</p>
+            <p className="text-white text-lg">{t('trips.trip_not_found')}</p>
             <button
               onClick={() => router.push('/')}
               className="mt-4 px-6 py-2 rounded-full font-semibold"
               style={{ background: "#ff6b6b", color: "white" }}
             >
-              Go Home
+              {t('trips.go_home')}
             </button>
           </div>
         </div>

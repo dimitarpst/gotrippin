@@ -7,11 +7,13 @@ import { useCreateTrip, useTrips } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
 import { useEffect } from "react"
 import type { DateRange } from "react-day-picker"
+import { useTranslation } from "react-i18next"
 
 export default function CreateTripPage() {
+  const { t } = useTranslation()
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const { create, creating } = useCreateTrip()
+  const { create } = useCreateTrip()
   const { refetch } = useTrips()
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export default function CreateTripPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-white text-lg">Loading...</p>
+            <p className="text-white text-lg">{t('trips.loading')}</p>
           </div>
         </div>
       </main>
@@ -71,7 +73,7 @@ export default function CreateTripPage() {
         <AuroraBackground />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-white">Redirecting to login...</p>
+            <p className="text-white">{t('trips.redirecting')}</p>
           </div>
         </div>
       </main>

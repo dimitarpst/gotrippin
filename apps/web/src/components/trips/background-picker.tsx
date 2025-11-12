@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Plus, Search, Loader2 } from "lucide-react"
 import { useImageSearch } from "@/hooks/useImageSearch"
+import { useTranslation } from "react-i18next"
 
 interface BackgroundPickerProps {
   open: boolean
@@ -30,6 +31,7 @@ const sampleColors = [
 ]
 
 export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<"images" | "colors">("images")
   const [searchInput, setSearchInput] = useState("")
   const observerRef = useRef<HTMLDivElement>(null)
@@ -104,9 +106,9 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
               <button onClick={onClose} className="text-[#ff6b6b] text-lg font-medium">
-                Cancel
+                {t('background_picker.cancel')}
               </button>
-              <h2 className="text-white text-lg font-semibold">Choose Image</h2>
+              <h2 className="text-white text-lg font-semibold">{t('background_picker.title')}</h2>
               <button className="text-[#ff6b6b]">
                 <Plus className="w-6 h-6" />
               </button>
@@ -120,7 +122,7 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                   activeTab === "images" ? "bg-white/20 text-white" : "bg-white/5 text-white/60"
                 }`}
               >
-                Images
+                {t('background_picker.images')}
               </button>
               <button
                 onClick={() => setActiveTab("colors")}
@@ -128,7 +130,7 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                   activeTab === "colors" ? "bg-white/20 text-white" : "bg-white/5 text-white/60"
                 }`}
               >
-                Colors
+                {t('background_picker.colors')}
               </button>
             </div>
 
@@ -141,7 +143,7 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                     type="text"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Search travel images"
+                    placeholder={t('background_picker.search_placeholder')}
                     className="w-full bg-white/10 border border-white/10 rounded-lg pl-10 pr-10 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[#ff6b6b]/50"
                   />
                   {searchInput && (
@@ -163,8 +165,8 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                     </div>
                   ) : error ? (
                     <div className="flex flex-col items-center justify-center py-12 text-white/60">
-                      <p>{error}</p>
-                      <p className="text-sm mt-2">Please check your connection and try again</p>
+                      <p>{t('background_picker.error')}</p>
+                      <p className="text-sm mt-2">{t('background_picker.check_connection')}</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-3 gap-3">
@@ -182,7 +184,7 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                           <div className="absolute bottom-2 left-2 right-2 text-left">
                             <p className="text-white text-xs">
-                              Photo by{" "}
+                              {t('background_picker.photo_by')}{" "}
                               <a
                                 href={image.user.links.html}
                                 target="_blank"
@@ -194,7 +196,7 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                               </a>
                             </p>
                             <p className="text-white/60 text-xs">
-                              on{" "}
+                              {t('background_picker.on_unsplash')}{" "}
                               <a
                                 href="https://unsplash.com"
                                 target="_blank"

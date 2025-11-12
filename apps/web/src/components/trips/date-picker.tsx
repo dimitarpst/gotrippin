@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { type DateRange } from "react-day-picker"
 import { Calendar } from "@/components/ui/calendar"
+import { useTranslation } from "react-i18next"
 
 interface DatePickerProps {
   open: boolean
@@ -12,6 +13,8 @@ interface DatePickerProps {
 }
 
 export function DatePicker({ open, onClose, onSelect, selectedDateRange }: DatePickerProps) {
+  const { t } = useTranslation()
+  
   const handleDateSelect = (dateRange: DateRange | undefined) => {
     onSelect(dateRange)
   }
@@ -39,9 +42,9 @@ export function DatePicker({ open, onClose, onSelect, selectedDateRange }: DateP
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
               <button onClick={onClose} className="text-[#ff6b6b] text-lg font-medium">
-                Cancel
+                {t('date_picker.cancel')}
               </button>
-              <h2 className="text-white text-lg font-semibold">Select Dates</h2>
+              <h2 className="text-white text-lg font-semibold">{t('date_picker.title')}</h2>
               <button
                 onClick={() => {
                   if (selectedDateRange?.from && selectedDateRange?.to) {
@@ -51,7 +54,7 @@ export function DatePicker({ open, onClose, onSelect, selectedDateRange }: DateP
                 className="text-[#ff6b6b] text-lg font-medium disabled:opacity-50"
                 disabled={!selectedDateRange?.from || !selectedDateRange?.to}
               >
-                Done
+                {t('date_picker.done')}
               </button>
             </div>
 

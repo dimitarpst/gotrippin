@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import GlowCard from "./glow-card"
 import type { Trip } from "@gotrippin/core"
 import { formatTripDate, calculateDaysUntil, calculateDuration } from "@/lib/api/trips"
+import { useTranslation } from "react-i18next"
 
 interface TripOverviewProps {
   trip: Trip
@@ -39,6 +40,7 @@ interface TripOverviewProps {
 }
 
 export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelete }: TripOverviewProps) {
+  const { t } = useTranslation()
   const [dominantColor, setDominantColor] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -187,7 +189,7 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
               visible: { opacity: 1, y: 0 },
             }}
           >
-            {trip.destination || trip.title || "Untitled Trip"}
+            {trip.destination || trip.title || t('trips.untitled_trip')}
           </motion.h1>
           <motion.p
             className="text-white/90 text-base mb-1 drop-shadow-md"
@@ -196,7 +198,7 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
               visible: { opacity: 1, y: 0 },
             }}
           >
-            {daysUntil > 0 ? `Starts in ${daysUntil} days` : "Started"} • {duration > 0 ? `${duration}-day trip` : "Duration TBD"}
+            {daysUntil > 0 ? t('trips.starts_in', { count: daysUntil }) : t('trips.started')} • {duration > 0 ? t('trips.day_trip', { count: duration }) : t('trips.duration_tbd')}
           </motion.p>
           <motion.p
             className="text-white/70 text-sm drop-shadow-md"
@@ -275,16 +277,16 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
                       <Calendar className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h2 className="text-base font-semibold text-white">Itinerary</h2>
+                      <h2 className="text-base font-semibold text-white">{t('trip_overview.itinerary')}</h2>
                       <span className="text-xs text-[var(--muted)]">{startDate}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-sm mb-3">
                     <Plus className="w-4 h-4" style={{ color: "#ff6b6b" }} />
-                    <span className="text-[var(--muted)]">Start organizing your itinerary</span>
+                    <span className="text-[var(--muted)]">{t('trip_overview.start_organizing')}</span>
                   </div>
                   <button className="font-semibold text-sm" style={{ color: "#ff6b6b" }}>
-                    View All Days
+                    {t('trip_overview.view_all_days')}
                   </button>
                 </div>
               </Card>
@@ -328,14 +330,14 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
                       <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
                         <FileText className="w-5 h-5 text-white" />
                       </div>
-                      <h2 className="text-base font-semibold text-white">Documents</h2>
+                      <h2 className="text-base font-semibold text-white">{t('trip_overview.documents')}</h2>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge
                         className="text-xs font-bold px-2 py-1 rounded border-0"
                         style={{ background: "#ff6b6b", color: "white" }}
                       >
-                        PRO
+                        {t('trip_overview.pro_badge')}
                       </Badge>
                       <Lock className="w-4 h-4 text-white/40" />
                     </div>
@@ -349,11 +351,11 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
                   </div>
 
                   <p className="text-[var(--muted)] text-sm text-center mb-4">
-                    Start adding documents to your trip. You can add photos, links, emails, notes and files.
+                    {t('trip_overview.add_documents_description')}
                   </p>
 
                   <button className="w-full font-semibold text-sm" style={{ color: "#ff6b6b" }}>
-                    Add Document
+                    {t('trip_overview.add_document')}
                   </button>
                 </div>
               </Card>
@@ -396,15 +398,15 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
                     <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
                       <Users className="w-5 h-5 text-white" />
                     </div>
-                    <h2 className="text-base font-semibold text-white">Invite Guests</h2>
+                    <h2 className="text-base font-semibold text-white">{t('trip_overview.invite_guests')}</h2>
                   </div>
 
                   <p className="text-[var(--muted)] text-sm mb-4">
-                    Add frequent guests. They can view, add, edit and remove items, but you're the admin.
+                    {t('trip_overview.invite_guests_description')}
                   </p>
 
                   <button className="w-full font-semibold text-sm" style={{ color: "#ff6b6b" }}>
-                    Share Trip
+                    {t('trip_overview.share_trip')}
                   </button>
                 </div>
               </Card>
@@ -424,7 +426,7 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
               whileTap={{ scale: 0.95 }}
             >
               <Settings className="w-5 h-5 text-white" />
-              <span className="text-white font-semibold">Customize</span>
+              <span className="text-white font-semibold">{t('trip_overview.customize')}</span>
             </motion.button>
           </motion.div>
         </div>
@@ -451,19 +453,19 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
                 <Trash2 className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white">Delete Trip</h3>
-                <p className="text-sm text-white/60">This action cannot be undone</p>
+                <h3 className="text-lg font-semibold text-white">{t('trip_overview.delete_trip')}</h3>
+                <p className="text-sm text-white/60">{t('trip_overview.delete_confirmation')}</p>
               </div>
             </div>
             <p className="text-white/80 mb-6">
-              Are you sure you want to delete <span className="font-semibold text-white">{trip.destination || trip.title}</span>? All trip data will be permanently removed.
+              {t('trip_overview.delete_message', { tripName: trip.destination || trip.title })}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 px-4 py-2 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
               >
-                Cancel
+                {t('trips.cancel')}
               </button>
               <button
                 onClick={() => {
@@ -472,7 +474,7 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
                 }}
                 className="flex-1 px-4 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
               >
-                Delete
+                {t('trip_overview.delete')}
               </button>
             </div>
           </motion.div>
