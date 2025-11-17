@@ -74,27 +74,47 @@ async function apiRequest<T>(
     throw new ApiError("Authentication required", 401);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
 
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ message: "Request failed" }));
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ message: "Request failed" }));
+      throw new ApiError(
+        error.message || "Request failed",
+        response.status,
+        error.errors
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    // Handle network errors (backend not running, CORS, etc.)
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      const isLocalhost = API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1");
+      const message = isLocalhost
+        ? `Backend server is not running. Please start it with 'npm run dev:backend' or 'npm run dev' to start both frontend and backend.`
+        : `Cannot connect to backend API at ${API_BASE_URL}. Please check if the server is running.`;
+      throw new ApiError(message, 503);
+    }
+    // Re-throw ApiError instances as-is
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    // Wrap other errors
     throw new ApiError(
-      error.message || "Request failed",
-      response.status,
-      error.errors
+      error instanceof Error ? error.message : "Network request failed",
+      503
     );
   }
-
-  return response.json();
 }
 
 /**

@@ -56,33 +56,44 @@ export function AvatarUpload({
       setIsLoadingAvatars(true);
 
       try {
+        // Add timeout to prevent hanging forever
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Storage listing timeout')), 5000)
+        );
 
-        const { data, error } = await supabase.storage
+        const listPromise = supabase.storage
           .from('avatars')
           .list(userId, {
             limit: 100,
             offset: 0
           });
 
+        const { data, error } = await Promise.race([listPromise, timeoutPromise]) as { data: any, error: any };
+
         if (error) {
           console.error('Supabase storage error:', error);
+          // Don't throw for "not found" errors - just use empty array
+          if (error.message?.includes('not found') || error.message?.includes('No such bucket')) {
+            setUserAvatars([]);
+            if (isMounted) setIsLoadingAvatars(false);
+            return;
+          }
           throw error;
         }
 
         if (!isMounted) return; // Component was unmounted
 
-
         // Get public URLs for all avatars, sorted by creation date (newest first)
-        const avatarUrls = data
-          .filter(file => file.name && !file.name.startsWith('.')) // Filter out hidden files
-          .sort((a, b) => {
+        const avatarUrls = (data || [])
+          .filter((file: any) => file.name && !file.name.startsWith('.')) // Filter out hidden files
+          .sort((a: any, b: any) => {
             // Sort by created_at if available, otherwise by name (which includes timestamp)
             if (a.created_at && b.created_at) {
               return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             }
             return b.name.localeCompare(a.name);
           })
-          .map(file => {
+          .map((file: any) => {
             const { data: { publicUrl } } = supabase.storage
               .from('avatars')
               .getPublicUrl(`${userId}/${file.name}`);
@@ -93,14 +104,13 @@ export function AvatarUpload({
       } catch (error) {
         if (!isMounted) return; // Component was unmounted
 
-        console.error('Error fetching user avatars (attempt', retryCount + 1, '):', error);
+        console.warn('Error fetching user avatars (attempt', retryCount + 1, '):', error);
 
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-        // Retry on certain errors
-        if (retryCount < maxRetries && (
+        // Retry on certain errors (but not timeout)
+        if (retryCount < maxRetries && !errorMessage.includes('timeout') && (
           errorMessage.includes('network') ||
-          errorMessage.includes('timeout') ||
           errorMessage.includes('fetch')
         )) {
           retryCount++;
@@ -110,12 +120,8 @@ export function AvatarUpload({
           return;
         }
 
-        if (errorMessage.includes('not found') || errorMessage.includes('permission')) {
-          onUploadError?.('Unable to access avatar storage. Please try uploading a new avatar.');
-        } else {
-          onUploadError?.('Failed to load existing avatars');
-        }
-        // Set empty array to prevent issues
+        // For timeout or other errors, just set empty array and stop loading
+        // Don't show error to user - they can still use Google avatar or upload new
         setUserAvatars([]);
       } finally {
         if (isMounted) {
@@ -210,13 +216,13 @@ export function AvatarUpload({
     >
       <p className="text-xs text-white/60 font-medium">{t("profile.avatar_section_title")}</p>
 
-      {isLoadingAvatars ? (
+      {isLoadingAvatars && allAvatars.length === 0 ? (
         <div className="flex flex-wrap gap-2">
-          {/* Skeleton loaders */}
+          {/* Skeleton loaders - only show if no avatars available yet */}
           {Array.from({ length: 6 }).map((_, index) => (
             <motion.div
               key={`skeleton-${index}`}
-              className="w-12 h-12 rounded-lg bg-white/5 animate-pulse flex-shrink-0"
+              className="w-12 h-12 rounded-lg bg-white/5 animate-pulse shrink-0"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: index * 0.1 }}
@@ -225,7 +231,7 @@ export function AvatarUpload({
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {/* All existing avatars */}
+          {/* Show Google avatar immediately if available, even while loading */}
           {allAvatars.map((avatarUrl, index) => (
             <motion.button
               key={avatarUrl}

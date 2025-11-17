@@ -50,15 +50,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleAuthError = async (error: AuthError | null) => {
     if (!error) return false;
 
+    // Check for various refresh token error messages
+    const errorMessage = error.message?.toLowerCase() || "";
     const isInvalidRefreshToken =
       error instanceof AuthApiError &&
-      typeof error.message === "string" &&
-      error.message.toLowerCase().includes("refresh token");
+      (errorMessage.includes("refresh token") ||
+       errorMessage.includes("invalid refresh token") ||
+       errorMessage.includes("refresh token not found") ||
+       error.code === "invalid_grant" ||
+       error.status === 400);
 
     if (isInvalidRefreshToken) {
       console.warn("Invalid or expired refresh token. Clearing session.");
       resetClientSession();
-      await supabase.auth.signOut();
+      // Silently sign out - don't throw errors if signOut fails
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        // Ignore sign out errors when token is already invalid
+        console.warn("Sign out error (expected):", signOutError);
+      }
       setLoading(false);
       return true;
     }
@@ -82,27 +93,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.warn("Failed to load profile:", profileError);
         }
 
-      // Check if we need to sync OAuth data to profile (only on first login)
+      // Check if we need to sync OAuth data to profile
       let updatedProfileData = profileData;
       const oauthAvatarUrl = currentUser.user_metadata?.avatar_url;
       const oauthDisplayName = currentUser.user_metadata?.full_name ||
                               currentUser.user_metadata?.display_name;
 
-      // Only sync OAuth avatar if user doesn't have a custom avatar yet (avatar_url is null)
-      // This prevents overwriting user-selected avatars on subsequent logins
-      if (oauthAvatarUrl && !profileData?.avatar_url) {
+      // Sync OAuth avatar if:
+      // 1. User has OAuth avatar from Google
+      // 2. Profile doesn't have an avatar_url OR avatar_url is null/empty
+      // This ensures Google avatars are always synced on first login, but won't overwrite custom avatars
+      const needsAvatarSync = oauthAvatarUrl && (
+        !profileData?.avatar_url || 
+        profileData.avatar_url === null || 
+        profileData.avatar_url === ''
+      );
+      
+      const needsNameSync = oauthDisplayName && (
+        !profileData?.display_name || 
+        profileData.display_name === null || 
+        profileData.display_name === ''
+      );
+
+      if (needsAvatarSync || needsNameSync) {
         try {
+          const updateData: { avatar_url?: string; display_name?: string } = {};
+          if (needsAvatarSync) {
+            updateData.avatar_url = oauthAvatarUrl;
+          }
+          if (needsNameSync) {
+            updateData.display_name = oauthDisplayName;
+          }
+
           const { data: updatedProfile } = await supabase
             .from("profiles")
-            .update({
-              avatar_url: oauthAvatarUrl,
-              ...(oauthDisplayName && !profileData?.display_name && { display_name: oauthDisplayName })
-            })
+            .update(updateData)
             .eq("id", currentUser.id)
             .select("avatar_color, preferred_lng, avatar_url, display_name")
             .single();
 
-          updatedProfileData = updatedProfile;
+          updatedProfileData = updatedProfile || profileData;
         } catch (error) {
           console.warn("Failed to update profile with OAuth data:", error);
         }
@@ -146,32 +176,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Load the current session on mount
     const loadSession = async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
-      if (await handleAuthError(error)) {
-        return;
+        if (await handleAuthError(error)) {
+          return;
+        }
+
+        setAccessToken(session?.access_token ?? null);
+        await loadUserWithProfile(session?.user ?? null);
+        hasHandledInitialSession.current = true;
+      } catch (error) {
+        // Catch any unexpected errors during session load
+        const authError = error as AuthError;
+        if (await handleAuthError(authError)) {
+          return;
+        }
+        console.error("Unexpected error loading session:", error);
+        setLoading(false);
       }
-
-      setAccessToken(session?.access_token ?? null);
-      await loadUserWithProfile(session?.user ?? null);
-      hasHandledInitialSession.current = true;
     };
 
     loadSession();
 
-    // Set up auth state listener
+    // Set up auth state listener with error handling
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!hasHandledInitialSession.current && event === "INITIAL_SESSION") {
-        hasHandledInitialSession.current = true;
-        return;
+      try {
+        if (!hasHandledInitialSession.current && event === "INITIAL_SESSION") {
+          hasHandledInitialSession.current = true;
+          return;
+        }
+
+        // Handle token refresh errors
+        if (event === "TOKEN_REFRESHED" && !session) {
+          // Token refresh failed - session is null
+          console.warn("Token refresh failed. Clearing session.");
+          resetClientSession();
+          setLoading(false);
+          return;
+        }
+
+        setAccessToken(session?.access_token ?? null);
+        await loadUserWithProfile(session?.user ?? null);
+      } catch (error) {
+        // Catch any errors during auth state change
+        const authError = error as AuthError;
+        if (await handleAuthError(authError)) {
+          return;
+        }
+        console.error("Error in auth state change:", error);
       }
-      setAccessToken(session?.access_token ?? null);
-      await loadUserWithProfile(session?.user ?? null);
     });
 
     return () => {
