@@ -4,8 +4,12 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
-
-const LANGUAGE_COOKIE = "preferred_language";
+import {
+  DEFAULT_LANGUAGE,
+  PREFERRED_LANGUAGE_COOKIE,
+  SupportedLanguage,
+  isSupportedLanguage,
+} from "@/i18n/config";
 
 // Cookie helpers
 const setCookie = (name: string, value: string, days = 365) => {
@@ -27,10 +31,12 @@ export function useLanguagePreference() {
   useEffect(() => {
     const initLanguage = async () => {
       // 1. Try to get from cookie first (fastest)
-      const cookieLang = getCookie(LANGUAGE_COOKIE);
+      const cookieLang = getCookie(PREFERRED_LANGUAGE_COOKIE);
 
-      if (cookieLang && (cookieLang === "en" || cookieLang === "bg")) {
+      if (isSupportedLanguage(cookieLang)) {
         i18n.changeLanguage(cookieLang);
+      } else {
+        i18n.changeLanguage(DEFAULT_LANGUAGE);
       }
 
       // 2. If user is logged in, sync with database
@@ -39,7 +45,7 @@ export function useLanguagePreference() {
 
         // If DB language differs from cookie, update cookie
         if (dbLang !== cookieLang) {
-          setCookie(LANGUAGE_COOKIE, dbLang);
+          setCookie(PREFERRED_LANGUAGE_COOKIE, dbLang);
           i18n.changeLanguage(dbLang);
         }
       }
@@ -49,12 +55,12 @@ export function useLanguagePreference() {
   }, [user, i18n]);
 
   // Change language function
-  const changeLanguage = (lang: "en" | "bg") => {
+  const changeLanguage = (lang: SupportedLanguage) => {
     // 1. Update i18n
     i18n.changeLanguage(lang);
 
     // 2. Update cookie
-    setCookie(LANGUAGE_COOKIE, lang);
+    setCookie(PREFERRED_LANGUAGE_COOKIE, lang);
 
     // 3. Update database if user is logged in (truly fire and forget)
     if (user) {

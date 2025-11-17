@@ -13,6 +13,7 @@ interface AvatarUploadProps {
   onUploadSuccess: (url: string) => void;
   onUploadError?: (error: string) => void;
   isEditing?: boolean;
+  editSessionId: number;
 }
 
 export function AvatarUpload({
@@ -22,6 +23,7 @@ export function AvatarUpload({
   onUploadSuccess,
   onUploadError,
   isEditing = false,
+  editSessionId,
 }: AvatarUploadProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,9 +37,15 @@ export function AvatarUpload({
     setSelectedAvatar(currentAvatarUrl || null);
   }, [currentAvatarUrl]);
 
-  // Fetch all user avatars from storage when component mounts with userId
+  const lastFetchedSession = useRef<number | null>(null);
+
+  // Fetch all user avatars from storage when an edit session starts
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !isEditing) return;
+    if (lastFetchedSession.current === editSessionId) {
+      return;
+    }
+    lastFetchedSession.current = editSessionId;
 
     let isMounted = true;
     let retryCount = 0;
@@ -116,12 +124,13 @@ export function AvatarUpload({
       }
     };
 
+    setUserAvatars([]);
     fetchUserAvatars();
 
     return () => {
       isMounted = false;
     };
-  }, [userId, onUploadError]); // Removed isEditing from dependencies since we fetch on mount
+  }, [userId, isEditing, editSessionId, onUploadError]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

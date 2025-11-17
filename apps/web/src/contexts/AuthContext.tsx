@@ -4,11 +4,12 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   ReactNode,
 } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import type { User } from "@supabase/supabase-js";
+import { AuthApiError, type AuthError, type User } from "@supabase/supabase-js";
 
 // Extend the user with profile data
 export interface ExtendedUser extends User {
@@ -20,6 +21,7 @@ export interface ExtendedUser extends User {
 interface AuthContextType {
   user: ExtendedUser | null;
   loading: boolean;
+  accessToken: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -33,31 +35,58 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const hasHandledInitialSession = useRef(false);
+
+  const resetClientSession = () => {
+    setUser(null);
+    setAccessToken(null);
+    if (typeof window !== "undefined") {
+      sessionStorage.clear();
+      localStorage.removeItem("supabase.auth.token");
+    }
+  };
+
+  const handleAuthError = async (error: AuthError | null) => {
+    if (!error) return false;
+
+    const isInvalidRefreshToken =
+      error instanceof AuthApiError &&
+      typeof error.message === "string" &&
+      error.message.toLowerCase().includes("refresh token");
+
+    if (isInvalidRefreshToken) {
+      console.warn("Invalid or expired refresh token. Clearing session.");
+      resetClientSession();
+      await supabase.auth.signOut();
+      setLoading(false);
+      return true;
+    }
+
+    console.error("Supabase auth error:", error.message);
+    return false;
+  };
 
   // Helper function to load user with profile
   const loadUserWithProfile = async (currentUser: User | null) => {
-    if (currentUser) {
-      // Always get the freshest user data from Supabase to ensure identities are up-to-date
-      const { data: { user: freshUser } } = await supabase.auth.getUser();
+    try {
+      if (currentUser) {
+        // fetch profile data from profiles table
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("avatar_color, preferred_lng, avatar_url, display_name")
+          .eq("id", currentUser.id)
+          .single();
 
-      if (!freshUser) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      // fetch profile data from profiles table
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("avatar_color, preferred_lng, avatar_url, display_name")
-        .eq("id", freshUser.id)
-        .single();
+        if (profileError) {
+          console.warn("Failed to load profile:", profileError);
+        }
 
       // Check if we need to sync OAuth data to profile (only on first login)
       let updatedProfileData = profileData;
-      const oauthAvatarUrl = freshUser.user_metadata?.avatar_url;
-      const oauthDisplayName = freshUser.user_metadata?.full_name ||
-                              freshUser.user_metadata?.display_name;
+      const oauthAvatarUrl = currentUser.user_metadata?.avatar_url;
+      const oauthDisplayName = currentUser.user_metadata?.full_name ||
+                              currentUser.user_metadata?.display_name;
 
       // Only sync OAuth avatar if user doesn't have a custom avatar yet (avatar_url is null)
       // This prevents overwriting user-selected avatars on subsequent logins
@@ -69,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               avatar_url: oauthAvatarUrl,
               ...(oauthDisplayName && !profileData?.display_name && { display_name: oauthDisplayName })
             })
-            .eq("id", freshUser.id)
+            .eq("id", currentUser.id)
             .select("avatar_color, preferred_lng, avatar_url, display_name")
             .single();
 
@@ -79,32 +108,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Profile is guaranteed to exist due to database trigger
-      setUser({
-        ...freshUser,
-        avatar_color: updatedProfileData?.avatar_color || null,
-        preferred_lng: updatedProfileData?.preferred_lng || "en",
-        avatar_url: updatedProfileData?.avatar_url || null,
-      });
-    } else {
+        // Profile is guaranteed to exist due to database trigger
+        setUser({
+          ...currentUser,
+          avatar_color: updatedProfileData?.avatar_color || null,
+          preferred_lng: updatedProfileData?.preferred_lng || "en",
+          avatar_url: updatedProfileData?.avatar_url || null,
+        });
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Unexpected auth load error:", error);
       setUser(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const refreshProfile = async () => {
     // Force refresh the session to get latest user metadata
-    const { data: { user: freshUser } } = await supabase.auth.getUser();
-    if (freshUser) {
-      await loadUserWithProfile(freshUser);
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.refreshSession();
+
+    if (await handleAuthError(error)) {
+      return;
+    }
+
+    setAccessToken(session?.access_token ?? null);
+    if (session?.user) {
+      await loadUserWithProfile(session.user);
     }
   };
 
   useEffect(() => {
     // Load the current session on mount
     const loadSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (await handleAuthError(error)) {
+        return;
+      }
+
+      setAccessToken(session?.access_token ?? null);
       await loadUserWithProfile(session?.user ?? null);
+      hasHandledInitialSession.current = true;
     };
 
     loadSession();
@@ -113,6 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!hasHandledInitialSession.current && event === "INITIAL_SESSION") {
+        hasHandledInitialSession.current = true;
+        return;
+      }
+      setAccessToken(session?.access_token ?? null);
       await loadUserWithProfile(session?.user ?? null);
     });
 
@@ -164,23 +222,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    // Clear user state immediately
-    setUser(null);
-    
-    // Sign out from Supabase
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error("Sign out error:", error);
       throw error;
     }
-    
-    // Clear any cached data
-    if (typeof window !== "undefined") {
-      // Clear session storage
-      sessionStorage.clear();
-      // Clear specific localStorage keys if needed
-      localStorage.removeItem('supabase.auth.token');
-    }
+    resetClientSession();
   };
 
   const resendConfirmation = async (email: string) => {
@@ -194,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     user,
     loading,
+    accessToken,
     signIn,
     signUp,
     signInWithGoogle,

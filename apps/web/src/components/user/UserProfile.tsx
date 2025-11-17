@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileHeader from "./ProfileHeader";
@@ -14,6 +14,7 @@ import LinkedAccountsCard from "./LinkedAccountsCard";
 import EmailConfirmationBanner from "./EmailConfirmationBanner";
 import { useTranslation } from "react-i18next";
 import { ExtendedUser } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
 
 export type UserProfileData = {
   uid: string;
@@ -48,6 +49,8 @@ export default function UserProfile({
 }) {
   const { t } = useTranslation();
   const { signOut } = useAuth();
+  const [editSessionId, setEditSessionId] = useState(0);
+  const [editRefreshing, setEditRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
   // Track pending changes during edit session
@@ -89,15 +92,42 @@ export default function UserProfile({
     [user]
   );
 
-  const handleEdit = () => {
-    // Reset pending changes to current data when entering edit mode
+  const handleEdit = useCallback(() => {
+    setEditSessionId((session) => session + 1);
+    setIsEditing(true);
     setPendingChanges({
       displayName: data.displayName,
       avatarColor: data.avatarColor || "#ff6b6b",
       avatarUrl: data.avatarUrl || undefined,
     });
-    setIsEditing(true);
-  };
+
+    const syncProfile = async () => {
+      setEditRefreshing(true);
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("display_name, avatar_color, avatar_url")
+          .eq("id", data.uid)
+          .single();
+
+        if (profileError) {
+          throw profileError;
+        }
+
+        setPendingChanges({
+          displayName: profile?.display_name || data.displayName,
+          avatarColor: profile?.avatar_color || data.avatarColor || "#ff6b6b",
+          avatarUrl: profile?.avatar_url || data.avatarUrl || undefined,
+        });
+      } catch (error) {
+        console.warn("Failed to refresh profile before editing:", error);
+      } finally {
+        setEditRefreshing(false);
+      }
+    };
+
+    void syncProfile();
+  }, [data]);
 
   const handleSave = async () => {
     const success = await onSave(pendingChanges);
@@ -113,6 +143,7 @@ export default function UserProfile({
       avatarUrl: data.avatarUrl || undefined,
     });
     setIsEditing(false);
+    setEditRefreshing(false);
   };
 
   const handleChange = (field: "displayName" | "avatarColor", value: string) => {
@@ -132,7 +163,7 @@ export default function UserProfile({
         onEdit={handleEdit}
         onSave={handleSave}
         onCancel={handleCancel}
-        saving={saving}
+        saving={saving || editRefreshing}
       />
 
       <motion.div
@@ -150,6 +181,7 @@ export default function UserProfile({
           avatarLetter={avatarLetter}
           onAvatarUpload={handleAvatarUpload}
           googleAvatarUrl={googleAvatarUrl}
+          editSessionId={editSessionId}
         />
 
         <ProfileStats />

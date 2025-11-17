@@ -29,7 +29,7 @@ export function useTrips(): UseTripsResult {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, accessToken } = useAuth();
 
   const fetchData = useCallback(async () => {
     // Don't fetch if user is not authenticated or auth is still loading
@@ -39,14 +39,14 @@ export function useTrips(): UseTripsResult {
       return;
     }
 
-    if (authLoading) {
+    if (authLoading || !accessToken) {
       return; // Still loading auth, don't fetch yet
     }
 
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchTrips();
+      const data = await fetchTrips(accessToken);
       setTrips(data);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -58,7 +58,7 @@ export function useTrips(): UseTripsResult {
     } finally {
       setLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, accessToken]);
 
   useEffect(() => {
     fetchData();
@@ -86,7 +86,7 @@ export function useTrip(id: string | null): UseTripResult {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, accessToken } = useAuth();
 
   const fetchData = useCallback(async () => {
     if (!id) {
@@ -101,14 +101,14 @@ export function useTrip(id: string | null): UseTripResult {
       return;
     }
 
-    if (authLoading) {
+    if (authLoading || !accessToken) {
       return; // Still loading auth, don't fetch yet
     }
 
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchTripById(id);
+      const data = await fetchTripById(id, accessToken);
       setTrip(data);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -120,7 +120,7 @@ export function useTrip(id: string | null): UseTripResult {
     } finally {
       setLoading(false);
     }
-  }, [id, user, authLoading]);
+  }, [id, user, authLoading, accessToken]);
 
   useEffect(() => {
     fetchData();
@@ -148,14 +148,18 @@ export function useCreateTrip(): UseCreateTripResult {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string> | null>(null);
+  const { accessToken } = useAuth();
 
   const create = useCallback(async (data: TripCreateData): Promise<Trip | null> => {
     try {
+      if (!accessToken) {
+        throw new ApiError('Authentication required', 401);
+      }
       setCreating(true);
       setError(null);
       setValidationErrors(null);
       
-      const newTrip = await createTrip(data);
+      const newTrip = await createTrip(data, accessToken);
       return newTrip;
     } catch (err) {
       if (err instanceof ApiError) {
@@ -177,7 +181,7 @@ export function useCreateTrip(): UseCreateTripResult {
     } finally {
       setCreating(false);
     }
-  }, []);
+  }, [accessToken]);
 
   return {
     create,
@@ -201,6 +205,7 @@ export function useUpdateTrip(): UseUpdateTripResult {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string> | null>(null);
+  const { accessToken } = useAuth();
 
   const update = useCallback(async (
     id: string,
@@ -211,7 +216,11 @@ export function useUpdateTrip(): UseUpdateTripResult {
       setError(null);
       setValidationErrors(null);
       
-      const updatedTrip = await updateTrip(id, data);
+      if (!accessToken) {
+        throw new ApiError('Authentication required', 401);
+      }
+
+      const updatedTrip = await updateTrip(id, data, accessToken);
       return updatedTrip;
     } catch (err) {
       if (err instanceof ApiError) {
@@ -233,7 +242,7 @@ export function useUpdateTrip(): UseUpdateTripResult {
     } finally {
       setUpdating(false);
     }
-  }, []);
+  }, [accessToken]);
 
   return {
     update,
@@ -255,13 +264,17 @@ interface UseDeleteTripResult {
 export function useDeleteTrip(): UseDeleteTripResult {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { accessToken } = useAuth();
 
   const deleteTripFn = useCallback(async (id: string): Promise<boolean> => {
     try {
+      if (!accessToken) {
+        throw new ApiError('Authentication required', 401);
+      }
       setDeleting(true);
       setError(null);
       
-      await deleteTrip(id);
+      await deleteTrip(id, accessToken);
       return true;
     } catch (err) {
       if (err instanceof ApiError) {
@@ -274,7 +287,7 @@ export function useDeleteTrip(): UseDeleteTripResult {
     } finally {
       setDeleting(false);
     }
-  }, []);
+  }, [accessToken]);
 
   return {
     deleteTrip: deleteTripFn,

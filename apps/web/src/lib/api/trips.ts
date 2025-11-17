@@ -65,9 +65,10 @@ async function getAuthToken(): Promise<string | null> {
  */
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  providedToken?: string | null
 ): Promise<T> {
-  const token = await getAuthToken();
+  const token = providedToken ?? (await getAuthToken());
 
   if (!token) {
     throw new ApiError("Authentication required", 401);
@@ -99,21 +100,21 @@ async function apiRequest<T>(
 /**
  * Fetch all trips for the current user
  */
-export async function fetchTrips(): Promise<Trip[]> {
-  return apiRequest<Trip[]>("/trips");
+export async function fetchTrips(token?: string | null): Promise<Trip[]> {
+  return apiRequest<Trip[]>("/trips", undefined, token);
 }
 
 /**
  * Fetch a single trip by ID
  */
-export async function fetchTripById(id: string): Promise<Trip> {
-  return apiRequest<Trip>(`/trips/${id}`);
+export async function fetchTripById(id: string, token?: string | null): Promise<Trip> {
+  return apiRequest<Trip>(`/trips/${id}`, undefined, token);
 }
 
 /**
  * Create a new trip with validation
  */
-export async function createTrip(data: TripCreateData): Promise<Trip> {
+export async function createTrip(data: TripCreateData, token?: string | null): Promise<Trip> {
   // Validate data before sending
   const validation = validateTripCreate(data);
 
@@ -123,10 +124,14 @@ export async function createTrip(data: TripCreateData): Promise<Trip> {
     });
   }
 
-  return apiRequest<Trip>("/trips", {
-    method: "POST",
-    body: JSON.stringify(validation.data),
-  });
+  return apiRequest<Trip>(
+    "/trips",
+    {
+      method: "POST",
+      body: JSON.stringify(validation.data),
+    },
+    token
+  );
 }
 
 /**
@@ -134,7 +139,8 @@ export async function createTrip(data: TripCreateData): Promise<Trip> {
  */
 export async function updateTrip(
   id: string,
-  data: TripUpdateData
+  data: TripUpdateData,
+  token?: string | null
 ): Promise<Trip> {
   // Validate data before sending
   const validation = validateTripUpdate(data);
@@ -145,19 +151,30 @@ export async function updateTrip(
     });
   }
 
-  return apiRequest<Trip>(`/trips/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(validation.data),
-  });
+  return apiRequest<Trip>(
+    `/trips/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(validation.data),
+    },
+    token
+  );
 }
 
 /**
  * Delete a trip
  */
-export async function deleteTrip(id: string): Promise<{ message: string }> {
-  return apiRequest<{ message: string }>(`/trips/${id}`, {
-    method: "DELETE",
-  });
+export async function deleteTrip(
+  id: string,
+  token?: string | null
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(
+    `/trips/${id}`,
+    {
+      method: "DELETE",
+    },
+    token
+  );
 }
 
 /**

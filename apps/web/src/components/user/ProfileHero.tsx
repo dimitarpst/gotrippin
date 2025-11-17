@@ -15,6 +15,7 @@ export default function ProfileHero({
   avatarLetter,
   onAvatarUpload,
   googleAvatarUrl,
+  editSessionId,
 }: {
   data: UserProfileData;
   displayData: { displayName: string; avatarColor: string };
@@ -23,6 +24,7 @@ export default function ProfileHero({
   avatarLetter: string;
   onAvatarUpload?: (url: string) => void;
   googleAvatarUrl?: string | null;
+  editSessionId: number;
 }) {
   const { t } = useTranslation();
 
@@ -122,6 +124,7 @@ export default function ProfileHero({
               googleAvatarUrl={googleAvatarUrl}
               onUploadSuccess={onAvatarUpload || (() => {})}
               isEditing={isEditing}
+              editSessionId={editSessionId}
             />
           )}
 
