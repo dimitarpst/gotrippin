@@ -2,10 +2,12 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { X, Search, Plane, Hotel, Car, MapPin, Utensils, Palette, Music, ShoppingBag, ChevronRight } from "lucide-react"
+import { X, Search, Plane, Hotel, Car, MapPin, Utensils, Palette, Music, ShoppingBag, ChevronRight, Train } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { useRouter } from "next/navigation"
 
 interface ActivitySelectorProps {
+  tripId: string
   onBack: () => void
 }
 
@@ -39,14 +41,49 @@ const activities = [
     section: "Transportation",
     items: [
       { icon: Plane, label: "Flight", color: "#4ECDC4" },
+      { icon: Train, label: "Train", color: "#4ECDC4" },
       { icon: Car, label: "Car Rental", color: "#FFA07A" },
       { icon: MapPin, label: "Route", color: "#95E1D3" },
     ],
   },
 ]
 
-export default function ActivitySelector({ onBack }: ActivitySelectorProps) {
+export default function ActivitySelector({ tripId, onBack }: ActivitySelectorProps) {
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
+
+  const handleActivityClick = (activityLabel: string) => {
+    // Map activity labels to routes
+    const activityRoutes: Record<string, string> = {
+      "Flight": `/trips/${tripId}/activity/flight`,
+      "Lodging": `/trips/${tripId}/activity/lodging`,
+      "Route": `/trips/${tripId}/activity/route`,
+      "Train": `/trips/${tripId}/activity/route`,
+      "Car Rental": `/trips/${tripId}/activity/route`,
+      // Add more mappings as needed
+    }
+
+    const route = activityRoutes[activityLabel]
+    if (route) {
+      router.push(route)
+    } else {
+      // Default behavior for unmapped activities
+      onBack()
+    }
+  }
+
+  const handleCategoryClick = (categoryLabel: string) => {
+    const categoryRoutes: Record<string, string> = {
+      "Flights": `/trips/${tripId}/activity/flight`,
+      "Lodging": `/trips/${tripId}/activity/lodging`,
+      "Routes": `/trips/${tripId}/activity/route`,
+    }
+
+    const route = categoryRoutes[categoryLabel]
+    if (route) {
+      router.push(route)
+    }
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
@@ -112,6 +149,7 @@ export default function ActivitySelector({ onBack }: ActivitySelectorProps) {
           {categories.map((category, index) => (
             <motion.button
               key={category.label}
+              onClick={() => handleCategoryClick(category.label)}
               className="flex-shrink-0 flex flex-col items-center gap-2 group"
               initial={{ opacity: 0, y: 20, scale: 0.8 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -176,7 +214,7 @@ export default function ActivitySelector({ onBack }: ActivitySelectorProps) {
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-alt)")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                    onClick={onBack}
+                    onClick={() => handleActivityClick(item.label)}
                     whileHover={{ x: 4 }}
                     whileTap={{ scale: 0.98 }}
                   >

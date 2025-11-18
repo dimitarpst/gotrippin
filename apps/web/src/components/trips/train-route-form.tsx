@@ -2,22 +2,40 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Plane, Calendar, Clock, FileText, LinkIcon, ImageIcon, Camera, DollarSign, StickyNote } from "lucide-react"
+import { Train, Calendar, Clock, Plus, DollarSign, FileText, LinkIcon, StickyNote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ImageIcon, Camera } from "lucide-react"
 
-interface FlightEditorProps {
+interface TrainRouteFormProps {
   tripId: string
-  flightId?: string
   onBack: () => void
 }
 
-export default function FlightEditor({ tripId, flightId, onBack }: FlightEditorProps) {
+export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) {
   const [showDocumentModal, setShowDocumentModal] = useState(false)
+  
   // Hardcoded data for visual tweaking
-  const [departure, setDeparture] = useState({ code: "BOJ", date: "26 Oct", time: "10:30 AM" })
-  const [arrival, setArrival] = useState({ code: "LCA", date: "26 Oct", time: "12:45 PM" })
+  const [formData, setFormData] = useState({
+    routeName: "Express Route",
+    transportNumber: "TR-1234",
+    company: "Railway Co.",
+    departureStation: "Central Station",
+    departureDate: "26 Oct",
+    departureTime: "10:30 AM",
+    arrivalStation: "North Terminal",
+    arrivalDate: "26 Oct",
+    arrivalTime: "2:45 PM",
+    phone: "(555) 123-4567",
+    website: "https://tripsy.app",
+    reservationCode: "ABC123",
+    coachNumber: "1A",
+    seat: "3B",
+    seatClass: "Economy Premium",
+    trainType: "Intercity",
+  })
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
@@ -33,122 +51,201 @@ export default function FlightEditor({ tripId, flightId, onBack }: FlightEditorP
           <button onClick={onBack} className="text-sm font-medium" style={{ color: "var(--accent)" }}>
             Cancel
           </button>
-          <h1 className="text-lg font-semibold text-white">Flight Details</h1>
-          <button className="text-sm font-medium" style={{ color: "var(--accent)" }}>
+          <h1 className="text-lg font-semibold text-white">Train Route</h1>
+          <button className="text-sm font-medium px-4 py-2 rounded-lg" style={{ backgroundColor: "var(--accent)", color: "white" }}>
             Save
           </button>
         </div>
       </motion.div>
 
       <div className="px-6 py-6 space-y-4">
-        {/* Route Card */}
+        {/* Route Details */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
           <Card
-            className="rounded-2xl p-5 shadow-card border-white/[0.08]"
+            className="rounded-2xl p-5 shadow-card border-white/[0.08] space-y-4"
             style={{ backgroundColor: "var(--surface)" }}
           >
-            {/* Departure */}
-            <div className="flex items-start gap-4 mb-6">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{
-                  backgroundColor: "#FF6B6B20",
-                  border: "1px solid #FF6B6B40",
-                }}
-              >
-                <Plane className="w-6 h-6" style={{ color: "var(--accent)" }} />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs mb-1" style={{ color: "var(--muted)" }}>
-                  Departure
-                </p>
-                <p className="text-2xl font-bold text-white mb-3">{departure.code}</p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white hover:bg-opacity-80 transition-all bg-transparent border-white/[0.08]"
-                    style={{ backgroundColor: "var(--surface-alt)" }}
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    {departure.date}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white hover:bg-opacity-80 transition-all bg-transparent border-white/[0.08]"
-                    style={{ backgroundColor: "var(--surface-alt)" }}
-                  >
-                    <Clock className="w-4 h-4 mr-2" />
-                    {departure.time}
-                  </Button>
-                </div>
-              </div>
+            <div>
+              <label className="text-xs mb-2 block" style={{ color: "var(--muted)" }}>
+                Route Name
+              </label>
+              <Input
+                value={formData.routeName}
+                onChange={(e) => setFormData({ ...formData, routeName: e.target.value })}
+                className="w-full text-white bg-transparent border-white/[0.08]"
+                placeholder="Route name"
+              />
             </div>
-
-            {/* Divider */}
-            <div className="h-px bg-white/10 mb-6" />
-
-            {/* Arrival */}
-            <div className="flex items-start gap-4">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{
-                  backgroundColor: "#4ECDC420",
-                  border: "1px solid #4ECDC440",
-                }}
-              >
-                <Plane className="w-6 h-6 rotate-90" style={{ color: "#4ECDC4" }} />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs mb-1" style={{ color: "var(--muted)" }}>
-                  Arrival
-                </p>
-                <p className="text-2xl font-bold text-white mb-3">{arrival.code}</p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white hover:bg-opacity-80 transition-all bg-transparent border-white/[0.08]"
-                    style={{ backgroundColor: "var(--surface-alt)" }}
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    {arrival.date}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white hover:bg-opacity-80 transition-all bg-transparent border-white/[0.08]"
-                    style={{ backgroundColor: "var(--surface-alt)" }}
-                  >
-                    <Clock className="w-4 h-4 mr-2" />
-                    {arrival.time}
-                  </Button>
-                </div>
-              </div>
+            <div>
+              <label className="text-xs mb-2 block" style={{ color: "var(--muted)" }}>
+                Transport Number
+              </label>
+              <Input
+                value={formData.transportNumber}
+                onChange={(e) => setFormData({ ...formData, transportNumber: e.target.value })}
+                className="w-full text-white bg-transparent border-white/[0.08]"
+                placeholder="Transport number"
+              />
+            </div>
+            <div>
+              <label className="text-xs mb-2 block" style={{ color: "var(--muted)" }}>
+                Company
+              </label>
+              <Input
+                value={formData.company}
+                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                className="w-full text-white bg-transparent border-white/[0.08]"
+                placeholder="Company name"
+              />
             </div>
           </Card>
         </motion.div>
 
-        {/* Detail Fields */}
+        {/* Departure Station */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
           <Card
+            className="rounded-2xl p-5 shadow-card border-white/[0.08]"
+            style={{ backgroundColor: "var(--surface)" }}
+          >
+            <motion.button
+              className="w-full flex items-center gap-3 mb-4"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  backgroundColor: "#FF6B6B20",
+                  border: "1px solid #FF6B6B40",
+                }}
+              >
+                <Plus className="w-5 h-5" style={{ color: "#FF6B6B" }} />
+              </div>
+              <span className="text-white font-medium" style={{ color: "#FF6B6B" }}>
+                Add Departure Station
+              </span>
+            </motion.button>
+            {formData.departureStation && (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <Calendar className="w-5 h-5" style={{ color: "var(--accent)" }} />
+                  <span className="text-sm font-medium text-white">Departure</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white hover:bg-opacity-80 transition-all bg-transparent border-white/[0.08]"
+                    style={{ backgroundColor: "var(--surface-alt)" }}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {formData.departureDate}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white hover:bg-opacity-80 transition-all bg-transparent border-white/[0.08]"
+                    style={{ backgroundColor: "var(--surface-alt)" }}
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    {formData.departureTime}
+                  </Button>
+                </div>
+              </>
+            )}
+          </Card>
+        </motion.div>
+
+        {/* Arrival Station */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
+          <Card
+            className="rounded-2xl p-5 shadow-card border-white/[0.08]"
+            style={{ backgroundColor: "var(--surface)" }}
+          >
+            <motion.button
+              className="w-full flex items-center gap-3 mb-4"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  backgroundColor: "#4ECDC420",
+                  border: "1px solid #4ECDC440",
+                }}
+              >
+                <Plus className="w-5 h-5" style={{ color: "#4ECDC4" }} />
+              </div>
+              <span className="text-white font-medium" style={{ color: "#4ECDC4" }}>
+                Add Arrival Station
+              </span>
+            </motion.button>
+            {formData.arrivalStation && (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <Calendar className="w-5 h-5" style={{ color: "var(--accent)" }} />
+                  <span className="text-sm font-medium text-white">Arrival</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white hover:bg-opacity-80 transition-all bg-transparent border-white/[0.08]"
+                    style={{ backgroundColor: "var(--surface-alt)" }}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {formData.arrivalDate}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white hover:bg-opacity-80 transition-all bg-transparent border-white/[0.08]"
+                    style={{ backgroundColor: "var(--surface-alt)" }}
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    {formData.arrivalTime}
+                  </Button>
+                </div>
+              </>
+            )}
+          </Card>
+        </motion.div>
+
+        {/* Booking Information */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+        >
+          <Card
             className="rounded-2xl p-5 shadow-card space-y-4 border-white/[0.08]"
             style={{ backgroundColor: "var(--surface)" }}
           >
-            <FieldRow label="Reservation Code" value="AB1234" />
+            <FieldRow label="Phone" value={formData.phone} />
             <div className="h-px bg-white/10" />
-            <FieldRow label="Seat" value="12A" />
+            <FieldRow label="Website" value={formData.website} />
             <div className="h-px bg-white/10" />
-            <FieldRow label="Seat Class" value="Economy" />
+            <FieldRow label="Reservation Code" value={formData.reservationCode} />
+            <div className="h-px bg-white/10" />
+            <FieldRow label="Coach Number" value={formData.coachNumber} />
+            <div className="h-px bg-white/10" />
+            <FieldRow label="Seat" value={formData.seat} />
+            <div className="h-px bg-white/10" />
+            <FieldRow label="Seat Class" value={formData.seatClass} />
+            <div className="h-px bg-white/10" />
+            <FieldRow label="Train Type" value={formData.trainType} />
           </Card>
         </motion.div>
 
@@ -157,7 +254,7 @@ export default function FlightEditor({ tripId, flightId, onBack }: FlightEditorP
           className="space-y-3"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
         >
           <ActionButton icon={DollarSign} label="Total Cost" iconColor="#FFD93D" />
           <ActionButton icon={FileText} label="Write a note" iconColor="#95E1D3" />
