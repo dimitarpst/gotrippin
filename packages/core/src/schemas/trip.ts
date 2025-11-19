@@ -8,6 +8,10 @@ import { z } from 'zod';
  */
 export const TripSchema = z.object({
   id: z.string().uuid('Invalid trip ID format'),
+  share_code: z
+    .string()
+    .length(8, 'Share code must be exactly 8 characters')
+    .regex(/^[a-zA-Z0-9]{8}$/, 'Share code must be exactly 8 alphanumeric characters'),
   title: z
     .string()
     .min(1, 'Title is required')
@@ -39,19 +43,19 @@ export const TripSchema = z.object({
     .optional(),
   created_at: z.string().datetime({ message: 'Invalid creation date format' }),
 })
-.refine(
-  (data) => {
-    // Validate that end_date is after start_date if both are provided
-    if (data.start_date && data.end_date) {
-      return new Date(data.end_date) >= new Date(data.start_date);
+  .refine(
+    (data) => {
+      // Validate that end_date is after start_date if both are provided
+      if (data.start_date && data.end_date) {
+        return new Date(data.end_date) >= new Date(data.start_date);
+      }
+      return true;
+    },
+    {
+      message: 'End date must be after or equal to start date',
+      path: ['end_date'],
     }
-    return true;
-  },
-  {
-    message: 'End date must be after or equal to start date',
-    path: ['end_date'],
-  }
-);
+  );
 
 /**
  * Zod schema for trip member (bridge table)
@@ -70,6 +74,7 @@ export const TripMemberSchema = z.object({
 export const CreateTripSchema = TripSchema.omit({
   id: true,
   created_at: true,
+  share_code: true,
 });
 
 /**
@@ -113,20 +118,20 @@ export const TripCreateDataSchema = TripSchema.omit({
   id: true,
   created_at: true,
 })
-.partial()
-.refine(
-  (data) => {
-    // Validate that end_date is after start_date if both are provided
-    if (data.start_date && data.end_date) {
-      return new Date(data.end_date) >= new Date(data.start_date);
+  .partial()
+  .refine(
+    (data) => {
+      // Validate that end_date is after start_date if both are provided
+      if (data.start_date && data.end_date) {
+        return new Date(data.end_date) >= new Date(data.start_date);
+      }
+      return true;
+    },
+    {
+      message: 'End date must be after or equal to start date',
+      path: ['end_date'],
     }
-    return true;
-  },
-  {
-    message: 'End date must be after or equal to start date',
-    path: ['end_date'],
-  }
-);
+  );
 
 /**
  * TypeScript types inferred from Zod schemas

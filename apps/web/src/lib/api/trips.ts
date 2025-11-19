@@ -43,8 +43,8 @@ async function getAuthToken(): Promise<string | null> {
     // Fallback: try to get session from localStorage directly
     const sessionData = localStorage.getItem(
       "sb-" +
-        process.env.NEXT_PUBLIC_SUPABASE_URL!.split("//")[1].split(".")[0] +
-        "-auth-token"
+      process.env.NEXT_PUBLIC_SUPABASE_URL!.split("//")[1].split(".")[0] +
+      "-auth-token"
     );
     if (sessionData) {
       const parsed = JSON.parse(sessionData);
@@ -129,6 +129,13 @@ export async function fetchTrips(token?: string | null): Promise<Trip[]> {
  */
 export async function fetchTripById(id: string, token?: string | null): Promise<Trip> {
   return apiRequest<Trip>(`/trips/${id}`, undefined, token);
+}
+
+/**
+ * Fetch a single trip by share code
+ */
+export async function fetchTripByShareCode(shareCode: string, token?: string | null): Promise<Trip> {
+  return apiRequest<Trip>(`/trips/share/${shareCode}`, undefined, token);
 }
 
 /**

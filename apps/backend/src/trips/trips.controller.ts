@@ -29,7 +29,7 @@ import { AddMemberDto } from "./dto/add-member.dto";
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
 export class TripsController {
-  constructor(private readonly tripsService: TripsService) {}
+  constructor(private readonly tripsService: TripsService) { }
 
   @Get()
   @ApiOperation({ summary: "Get current user trips" })
@@ -37,6 +37,17 @@ export class TripsController {
   async getMyTrips(@Req() request: any) {
     const userId = request.user.id;
     return this.tripsService.getTrips(userId);
+  }
+
+  @Get('share/:shareCode')
+  @ApiOperation({ summary: 'Get trip by share code' })
+  @ApiParam({ name: 'shareCode', description: 'Trip share code' })
+  @ApiResponse({ status: 200, description: 'Trip retrieved successfully' })
+  @ApiResponse({ status: 403, description: 'Trip not found or access denied' })
+  @ApiResponse({ status: 404, description: 'Trip not found' })
+  async getTripByShareCode(@Param('shareCode') shareCode: string, @Req() request: any) {
+    const userId = request.user.id;
+    return this.tripsService.getTripByShareCode(shareCode, userId);
   }
 
   @Get(":id")

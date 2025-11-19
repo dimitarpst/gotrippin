@@ -19,9 +19,9 @@ export default function TripPage({ params }: TripPageProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const resolvedParams = use(params)
-  const tripId = resolvedParams.id
+  const shareCode = resolvedParams.id // Route param is 'id' but we use it as shareCode
   const { user, loading: authLoading } = useAuth()
-  const { trip, loading: tripLoading } = useTrip(tripId)
+  const { trip, loading: tripLoading } = useTrip(shareCode)
   const { deleteTrip } = useDeleteTrip()
   const [mounted, setMounted] = useState(false)
 
@@ -39,9 +39,9 @@ export default function TripPage({ params }: TripPageProps) {
     if (screen === "overview") {
       // Stay on current page
     } else if (screen === "activity") {
-      router.push(`/trips/${tripId}/activity`)
+      router.push(`/trips/${shareCode}/activity`)
     } else if (screen === "flight") {
-      router.push(`/trips/${tripId}/activity/flight`)
+      router.push(`/trips/${shareCode}/activity/flight`)
     }
   }
 
@@ -50,11 +50,16 @@ export default function TripPage({ params }: TripPageProps) {
   }
 
   const handleEdit = () => {
-    router.push(`/trips/${tripId}/edit`)
+    router.push(`/trips/${shareCode}/edit`)
   }
 
   const handleDelete = async () => {
-    const success = await deleteTrip(tripId)
+    // Delete requires trip ID, not share code
+    if (!trip?.id) {
+      console.error('Cannot delete: trip ID not available')
+      return
+    }
+    const success = await deleteTrip(trip.id)
     if (success) {
       router.push('/')
     }

@@ -13,8 +13,8 @@ function ProtectedHomeContent() {
   const router = useRouter()
   const { trips, loading, error } = useTrips()
 
-  const handleSelectTrip = (tripId: string) => {
-    router.push(`/trips/${tripId}`)
+  const handleSelectTrip = (shareCode: string) => {
+    router.push(`/trips/${shareCode}`)
   }
 
   const handleCreateTrip = () => {

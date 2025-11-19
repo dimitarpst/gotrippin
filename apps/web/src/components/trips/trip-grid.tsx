@@ -16,7 +16,7 @@ interface TripWithCalculations extends Trip {
 interface TripGridProps {
   trips: TripWithCalculations[]
   activeFilter: "all" | "upcoming" | "past"
-  onSelectTrip: (tripId: string) => void
+  onSelectTrip: (shareCode: string) => void
 }
 
 export default function TripGrid({ trips, activeFilter, onSelectTrip }: TripGridProps) {
@@ -53,7 +53,7 @@ export default function TripGrid({ trips, activeFilter, onSelectTrip }: TripGrid
             >
               <Card
                 className="border-white/[0.08] rounded-2xl overflow-hidden shadow-lg cursor-pointer transition-all duration-300 bg-[var(--surface)] backdrop-blur-xl group hover:border-white/[0.15] hover:shadow-2xl hover:shadow-[#ff6b6b]/10"
-                onClick={() => onSelectTrip(trip.id)}
+                onClick={() => onSelectTrip(trip.share_code)}
               >
                       <div className="relative h-48 overflow-hidden" style={{ backgroundColor: trip.image_url ? 'transparent' : trip.color || '#ff6b6b' }}>
                         {trip.image_url ? (

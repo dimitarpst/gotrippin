@@ -12,7 +12,7 @@ import { TripSkeletonGrid } from "./trip-skeleton"
 interface TripsListProps {
   trips: Trip[]
   loading?: boolean
-  onSelectTrip: (tripId: string) => void
+  onSelectTrip: (shareCode: string) => void
   onCreateTrip: () => void
 }
 

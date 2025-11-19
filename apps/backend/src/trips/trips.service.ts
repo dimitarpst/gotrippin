@@ -3,7 +3,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class TripsService {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(private supabaseService: SupabaseService) { }
 
   async getTrips(userId: string) {
     try {
@@ -31,10 +31,10 @@ export class TripsService {
       };
 
       const newTrip = await this.supabaseService.createTrip(tripToCreate);
-      
+
       // Add the creator as the first member
       await this.supabaseService.addTripMember(newTrip.id, userId);
-      
+
       return newTrip;
     } catch (error) {
       throw new NotFoundException('Failed to create trip');
@@ -111,11 +111,28 @@ export class TripsService {
     }
   }
 
+  async getTripByShareCode(shareCode: string, userId: string) {
+    try {
+      const trip = await this.supabaseService.getTripByShareCode(shareCode, userId);
+
+      if (!trip) {
+        throw new ForbiddenException('Trip not found or access denied');
+      }
+
+      return trip;
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new NotFoundException('Trip not found');
+    }
+  }
+
   async addMember(tripId: string, currentUserId: string, userIdToAdd: string) {
     try {
       // Check if current user is a member of the trip
       const isMember = await this.supabaseService.isTripMember(tripId, currentUserId);
-      
+
       if (!isMember) {
         throw new ForbiddenException('You must be a member of this trip to add others');
       }
@@ -135,7 +152,7 @@ export class TripsService {
     try {
       // Users can remove themselves, or check if they're a member to remove others
       const isMember = await this.supabaseService.isTripMember(tripId, currentUserId);
-      
+
       if (!isMember && currentUserId !== userIdToRemove) {
         throw new ForbiddenException('You must be a member of this trip');
       }
@@ -154,7 +171,7 @@ export class TripsService {
     try {
       // Check if user is a member of the trip
       const isMember = await this.supabaseService.isTripMember(tripId, userId);
-      
+
       if (!isMember) {
         throw new ForbiddenException('You must be a member of this trip to view members');
       }

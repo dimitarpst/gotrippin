@@ -8,6 +8,7 @@ import type { Trip, TripCreateData, TripUpdateData } from '@gotrippin/core';
 import {
   fetchTrips,
   fetchTripById,
+  fetchTripByShareCode,
   createTrip,
   updateTrip,
   deleteTrip,
@@ -80,16 +81,16 @@ interface UseTripResult {
 }
 
 /**
- * Hook to fetch a single trip by ID
+ * Hook to fetch a single trip by share code
  */
-export function useTrip(id: string | null): UseTripResult {
+export function useTrip(shareCode: string | null): UseTripResult {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading, accessToken } = useAuth();
 
   const fetchData = useCallback(async () => {
-    if (!id) {
+    if (!shareCode) {
       setLoading(false);
       return;
     }
@@ -108,7 +109,7 @@ export function useTrip(id: string | null): UseTripResult {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchTripById(id, accessToken);
+      const data = await fetchTripByShareCode(shareCode, accessToken);
       setTrip(data);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -120,7 +121,7 @@ export function useTrip(id: string | null): UseTripResult {
     } finally {
       setLoading(false);
     }
-  }, [id, user, authLoading, accessToken]);
+  }, [shareCode, user, authLoading, accessToken]);
 
   useEffect(() => {
     fetchData();
@@ -158,13 +159,13 @@ export function useCreateTrip(): UseCreateTripResult {
       setCreating(true);
       setError(null);
       setValidationErrors(null);
-      
+
       const newTrip = await createTrip(data, accessToken);
       return newTrip;
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
-        
+
         // Handle validation errors
         if (err.errors?.validationErrors) {
           const errors: Record<string, string> = {};
@@ -215,7 +216,7 @@ export function useUpdateTrip(): UseUpdateTripResult {
       setUpdating(true);
       setError(null);
       setValidationErrors(null);
-      
+
       if (!accessToken) {
         throw new ApiError('Authentication required', 401);
       }
@@ -225,7 +226,7 @@ export function useUpdateTrip(): UseUpdateTripResult {
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
-        
+
         // Handle validation errors
         if (err.errors?.validationErrors) {
           const errors: Record<string, string> = {};
@@ -273,7 +274,7 @@ export function useDeleteTrip(): UseDeleteTripResult {
       }
       setDeleting(true);
       setError(null);
-      
+
       await deleteTrip(id, accessToken);
       return true;
     } catch (err) {

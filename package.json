@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:backend\"",
     "dev:web": "npm --workspace apps/web run dev",
-    "dev:backend": "npm run --workspace=backend start:dev"
+    "dev:backend": "npm run --workspace=backend start:dev",
+    "postinstall": "npm run build --workspace=@gotrippin/core",
+    "build:core": "npm run build --workspace=@gotrippin/core"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

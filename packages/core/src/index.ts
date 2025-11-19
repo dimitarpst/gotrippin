@@ -52,4 +52,5 @@ export type {
   Expense,
 } from './types';
 
-
+// Export utility functions
+export { generateShareCode, isValidShareCode } from './utils/share-code';

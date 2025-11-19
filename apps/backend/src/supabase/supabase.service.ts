@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { generateShareCode } from '@gotrippin/core';
 
 @Injectable()
 export class SupabaseService {
@@ -53,9 +54,28 @@ export class SupabaseService {
 
   // Helper method to create trips
   async createTrip(tripData: any) {
+    // Generate unique share code
+    let shareCode = generateShareCode();
+    let isUnique = false;
+
+    // Ensure uniqueness (very unlikely to collide with 62^8 combinations)
+    while (!isUnique) {
+      const { data: existing } = await this.supabase
+        .from('trips')
+        .select('id')
+        .eq('share_code', shareCode)
+        .single();
+
+      if (!existing) {
+        isUnique = true;
+      } else {
+        shareCode = generateShareCode();
+      }
+    }
+
     const { data, error } = await this.supabase
       .from('trips')
-      .insert(tripData)
+      .insert({ ...tripData, share_code: shareCode })
       .select()
       .single();
 
@@ -97,6 +117,25 @@ export class SupabaseService {
 
     if (error) throw error;
     return data;
+  }
+
+  // Helper method to get a trip by share code (if user is a member)
+  async getTripByShareCode(shareCode: string, userId: string) {
+    // Get trip by share code
+    const { data: trip, error: tripError } = await this.supabase
+      .from('trips')
+      .select('*')
+      .eq('share_code', shareCode)
+      .single();
+
+    if (tripError || !trip) return null;
+
+    // Check if user is a member
+    const isMember = await this.isTripMember(trip.id, userId);
+
+    if (!isMember) return null;
+
+    return trip;
   }
 
   // Helper method to update trips

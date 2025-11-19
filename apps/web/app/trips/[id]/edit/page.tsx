@@ -19,9 +19,9 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const resolvedParams = use(params)
-  const tripId = resolvedParams.id
+  const shareCode = resolvedParams.id // Route param is share code, not UUID
   const { user, loading: authLoading } = useAuth()
-  const { trip, loading: tripLoading } = useTrip(tripId)
+  const { trip, loading: tripLoading } = useTrip(shareCode)
   const { update } = useUpdateTrip()
   const [mounted, setMounted] = useState(false)
 
@@ -67,12 +67,18 @@ export default function EditTripPage({ params }: EditTripPageProps) {
       
       console.log("Updating trip with data:", tripData)
       
-      const updatedTrip = await update(tripId, tripData)
+      // Update uses trip ID (UUID), not share code
+      if (!trip?.id) {
+        console.error("Cannot update: trip ID not available")
+        return
+      }
+      
+      const updatedTrip = await update(trip.id, tripData)
 
       console.log("Updated trip:", updatedTrip)
 
       if (updatedTrip) {
-        router.push(`/trips/${tripId}`)
+        router.push(`/trips/${shareCode}`)
       }
     } catch (error) {
       console.error("Failed to update trip:", error)
@@ -80,7 +86,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   }
 
   const handleBack = () => {
-    router.push(`/trips/${tripId}`)
+    router.push(`/trips/${shareCode}`)
   }
 
   if (!mounted || authLoading || tripLoading) {
