@@ -13,7 +13,7 @@ It should be stored in the project root and treated as a **live synchronization 
 | **Frontend – Profile**        | ✅ Complete    | 100 %    | Profile UI, editing, avatar color picker                         |
 | **Frontend – Layout / Theme** | ✅ Complete    | 100 %    | Dock, header, aurora background, design system                   |
 | **Frontend – i18n**           | ✅ Complete    | 100 %    | English + Bulgarian localization, LanguageSwitcher               |
-| **Frontend – Trips**          | 🚧 In Progress | 80 %     | Create trip with Unsplash images, date picker, real-time search  |
+| **Frontend – Trips**          | ✅ Complete    | 100 %    | Full CRUD, share codes, Unsplash images, date picker, edit/delete  |
 | **Backend – API (NestJS)**    | ✅ Complete    | 100 %    | Full CRUD API with Auth, Profiles, Trips & Images modules        |
 | **Shared – Core Library**     | ✅ Complete    | 100 %    | Zod schemas, TypeScript types, validation utilities              |
 | **Database – Supabase**       | ✅ Complete    | 100 %    | Tables, RLS, & storage buckets configured for many-to-many trips |
@@ -95,8 +95,10 @@ It should be stored in the project root and treated as a **live synchronization 
    - ✅ **Edit trip functionality** - full update form with pre-populated data
    - ✅ **Trip deletion with confirmation** - delete button + confirmation dialog
    - ✅ **Trip image display** - images show correctly in cards and overview
+   - ✅ **Shareable URLs** - trips use share codes instead of UUIDs for clean URLs
 5. 🚧 Remaining for Future:
    - [ ] Trip member management UI (invite/manage collaborators)
+   - [ ] Share trip functionality (copy share code link to clipboard)
 
 ---
 
@@ -141,6 +143,57 @@ It should be stored in the project root and treated as a **live synchronization 
 
 1.  **Forgot Password Flow is Broken**: The password reset page (`/auth/reset-password`) gets stuck on "Verifying..." and never completes. This is due to a suspected deadlock/race-condition with the Supabase client library's automatic session recovery.
 2.  **Google Account Linking is Unreliable**: Linking a Google account to an existing email account doesn't always behave as expected. It can sometimes link the wrong Google account if the user is already logged into Google in their browser.
+
+---
+
+## ✅ Recent Updates (Current Session - Share Codes Implementation)
+
+### 🔗 **Shareable Trip URLs with Share Codes - COMPLETE**
+
+#### 🎯 **Implementation Overview**
+
+- ✅ Trips now use short share codes (8 alphanumeric characters) instead of UUIDs for URLs
+- ✅ URL format: `/trips/{shareCode}` (e.g., `/trips/AbC123Xy`) instead of `/trips/{uuid}`
+- ✅ Share codes automatically generated when creating trips
+- ✅ Backend generates unique share codes with collision checking
+- ✅ Frontend navigation updated to use share codes throughout
+
+**Backend Changes:**
+- ✅ `generateShareCode()` utility function in `packages/core/src/utils/share-code.ts`
+- ✅ Backend `createTrip` automatically generates unique share codes
+- ✅ `GET /trips/share/:shareCode` endpoint for fetching trips by share code
+- ✅ Share code validation and uniqueness enforcement
+
+**Frontend Changes:**
+- ✅ Updated `TripGrid` to navigate using `trip.share_code` instead of `trip.id`
+- ✅ Updated all trip navigation handlers to use share codes
+- ✅ `useTrip` hook accepts share code parameter
+- ✅ All route references updated: `/trips/${shareCode}` format
+- ✅ Edit page correctly uses share code for navigation, trip ID for API calls
+
+**Build System:**
+- ✅ Added `postinstall` script to automatically build `@gotrippin/core` package
+- ✅ Added `build:core` script for manual builds
+- ✅ Ensures core package is built after `npm install` (fixes TypeScript compilation errors)
+
+**Files Modified:**
+- `packages/core/src/utils/share-code.ts` (new utility functions)
+- `packages/core/src/index.ts` (export share code utilities)
+- `apps/backend/src/supabase/supabase.service.ts` (share code generation in createTrip)
+- `apps/backend/src/trips/trips.controller.ts` (share code endpoint)
+- `apps/web/src/components/trips/trip-grid.tsx` (use share_code for navigation)
+- `apps/web/src/components/trips/trips-list.tsx` (updated interface)
+- `apps/web/app/page.tsx` (use shareCode parameter)
+- `apps/web/app/trips/page.tsx` (use shareCode parameter)
+- `apps/web/app/trips/[id]/edit/page.tsx` (clarified share code usage)
+- `package.json` (added postinstall and build:core scripts)
+- `readme.md` (added share code documentation)
+
+**Impact:**
+- ✅ Clean, shareable URLs that don't expose UUIDs
+- ✅ Better UX with readable trip URLs
+- ✅ Maintains security via RLS (users must be trip members)
+- ✅ Automatic build ensures core package is always up-to-date
 
 ---
 
@@ -445,15 +498,14 @@ npm install @nestjs/axios rxjs
    - Submit application with screenshots showing attribution
    - Increase rate limit from 50/hour to 5,000/hour
 
-2. **Test Complete Trip Creation Flow:**
-   - ✅ Background image selection with Unsplash API
-   - ✅ Date range selection
-   - ✅ Color selection
-   - [ ] Verify all fields save correctly to database
-   - [ ] Test trip editing functionality
+2. **Remaining Features:**
+   - [ ] Trip member management UI (invite/manage collaborators)
+   - [ ] Share trip functionality (copy share code link)
+   - [ ] Activity management (flights, lodging, routes)
+   - [ ] Trip collaboration features (real-time updates)
 
-3. **Remaining Features:**
-   - [ ] Trip image display in trip cards/overview
-   - [ ] Trip member management UI
-   - [ ] Trip details editing
-   - [ ] Trip deletion with confirmation
+3. **Future Enhancements:**
+   - [ ] Supabase Realtime integration for live updates
+   - [ ] Trip sharing via share code links
+   - [ ] Trip member invitation system
+   - [ ] Activity/Itinerary management

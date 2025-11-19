@@ -45,5 +45,6 @@ Thumbs.db
 *.tsbuildin*
 package-lock.json
 
-# VSCode Settings
+# IDE Settings
 .vscode/
+.idea/

@@ -1,12 +1,20 @@
-🌍 Go Trippin’
+🌍 Go Trippin'
 
-Explore. Connect. Go Trippin’.
+Explore. Connect. Go Trippin'.
 A modern travel companion that helps you plan, organize, and share your trips — from the first idea to the final photo.
 
 ✨ Overview
 
-Go Trippin’ is a cross-platform travel planner built to make trip creation simple, visual, and collaborative.
-It’s designed for explorers, digital nomads, and friend groups who want an effortless way to plan journeys together — without the chaos of group chats and scattered notes.
+Go Trippin' is a cross-platform travel planner built to make trip creation simple, visual, and collaborative.
+It's designed for explorers, digital nomads, and friend groups who want an effortless way to plan journeys together — without the chaos of group chats and scattered notes.
+
+🔗 Shareable Trip URLs
+
+Trips use short share codes (8 alphanumeric characters) instead of UUIDs for clean, shareable URLs:
+- URL format: `/trips/{shareCode}` (e.g., `/trips/AbC123Xy`)
+- Share codes are automatically generated when creating trips
+- Each trip has a unique share code that can be used to access the trip
+- Security: Access is still controlled via RLS - users must be trip members to view/edit
 
 🎯 Purpose
 
