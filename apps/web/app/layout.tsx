@@ -29,7 +29,7 @@ export default async function RootLayout({
   const initialLanguage = await resolveInitialLanguage();
 
   return (
-    <html lang={initialLanguage}>
+    <html lang={initialLanguage} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <AuthProvider>
           <I18nProvider initialLanguage={initialLanguage}>{children}</I18nProvider>

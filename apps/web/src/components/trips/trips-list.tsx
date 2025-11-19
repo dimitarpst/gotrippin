@@ -18,17 +18,34 @@ interface TripsListProps {
 
 export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }: TripsListProps) {
   const [activeFilter, setActiveFilter] = useState<"all" | "upcoming" | "past">("all")
+  const [searchQuery, setSearchQuery] = useState("")
   const hasTrips = trips.length > 0
 
   const filteredTrips = useMemo(() => {
     return trips.filter((trip) => {
-      if (activeFilter === "all") return true
-      const daysUntil = trip.start_date ? calculateDaysUntil(trip.start_date) : 0
-      if (activeFilter === "upcoming") return daysUntil > 0
-      if (activeFilter === "past") return daysUntil < 0
-      return true
+      // Filter by status
+      let matchesFilter = true
+      if (activeFilter === "all") matchesFilter = true
+      else {
+        const daysUntil = trip.start_date ? calculateDaysUntil(trip.start_date) : 0
+        if (activeFilter === "upcoming") matchesFilter = daysUntil > 0
+        else if (activeFilter === "past") matchesFilter = daysUntil < 0
+      }
+
+      // Filter by search query
+      let matchesSearch = true
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim()
+        matchesSearch = (
+          (trip.title?.toLowerCase().includes(query) ?? false) ||
+          (trip.destination?.toLowerCase().includes(query) ?? false) ||
+          (trip.description?.toLowerCase().includes(query) ?? false)
+        )
+      }
+
+      return matchesFilter && matchesSearch
     })
-  }, [activeFilter, trips])
+  }, [activeFilter, searchQuery, trips])
 
   // Transform trips to include calculated fields
   const tripsWithCalculations = useMemo(() => {
@@ -50,7 +67,9 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
         <TripFilters
           activeFilter={activeFilter}
           onFilterChange={setActiveFilter}
-          tripsCount={trips.length}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          tripsCount={filteredTrips.length}
         />
 
         {loading ? (
