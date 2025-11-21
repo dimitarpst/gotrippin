@@ -55,7 +55,7 @@ export default function TripGrid({ trips, activeFilter, onSelectTrip }: TripGrid
                 className="border-white/[0.08] rounded-2xl overflow-hidden shadow-lg cursor-pointer transition-all duration-300 bg-[var(--surface)] backdrop-blur-xl group hover:border-white/[0.15] hover:shadow-2xl hover:shadow-[#ff6b6b]/10"
                 onClick={() => onSelectTrip(trip.share_code)}
               >
-                      <div className="relative h-48 overflow-hidden" style={{ backgroundColor: trip.image_url ? 'transparent' : trip.color || '#ff6b6b' }}>
+                      <div className="relative h-48 overflow-hidden" style={{ background: trip.image_url ? 'transparent' : trip.color || '#ff6b6b' }}>
                         {trip.image_url ? (
                           <motion.img
                             src={trip.image_url}
@@ -67,7 +67,7 @@ export default function TripGrid({ trips, activeFilter, onSelectTrip }: TripGrid
                               // Fallback to color if image fails to load
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';
-                              target.parentElement!.style.backgroundColor = trip.color || '#ff6b6b';
+                              target.parentElement!.style.background = trip.color || '#ff6b6b';
                             }}
                           />
                         ) : null}

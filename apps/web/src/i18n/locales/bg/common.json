@@ -134,7 +134,8 @@
     "starts_in": "Започва след {{count}} дни",
     "day_trip": "{{count}}-дневно пътуване",
     "duration_tbd": "Продължителността е неизвестна",
-    "untitled_trip": "Пътуване без име"
+    "untitled_trip": "Пътуване без име",
+    "edit": "Редактирай"
   },
   "trip_overview": {
     "itinerary": "Маршрут",
@@ -151,19 +152,30 @@
     "delete_trip": "Изтрий пътуването",
     "delete_confirmation": "Това действие не може да бъде отменено",
     "delete_message": "Сигурен ли си, че искаш да изтриеш {{tripName}}? Всички данни за пътуването ще бъдат премахнати завинаги.",
-    "delete": "Изтрий"
+    "delete": "Изтрий",
+    "menu_share_trip": "Сподели пътуване",
+    "menu_manage_guests": "Управлявай гости",
+    "menu_edit_name": "Редактирай име",
+    "menu_change_dates": "Промени дати",
+    "menu_change_background": "Промени фон",
+    "menu_notifications_on": "Включи известия",
+    "menu_notifications_off": "Изключи известия",
+    "menu_remove_trip": "Премахни пътуване"
   },
   "background_picker": {
     "title": "Избери изображение",
     "cancel": "Отказ",
+    "done": "Готово",
     "images": "Изображения",
     "colors": "Цветове",
     "search_placeholder": "Търси изображения за пътувания",
     "photo_by": "Снимка от",
-    "on_unsplash": "в Unsplash",
+    "on": "в",
     "loading": "Зареждане на изображения...",
     "error": "Грешка при зареждане на изображенията",
-    "check_connection": "Моля, провери интернет връзката си и опитай отново"
+    "check_connection": "Моля, провери интернет връзката си и опитай отново",
+    "no_results": "Все още няма резултати",
+    "search_hint": "Търси град или дестинация"
   },
   "date_picker": {
     "title": "Избери дати",

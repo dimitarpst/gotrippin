@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 export function useImageSearch() {
   const [token, setToken] = useState<string | null>(null);
+  const [tokenReady, setTokenReady] = useState(false); // Stable boolean for "auth is ready"
   const [query, setQuery] = useState<string>('');
   const [images, setImages] = useState<UnsplashImage[]>([]);
   const [page, setPage] = useState(1);
@@ -17,12 +18,20 @@ export function useImageSearch() {
     const getToken = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setToken(session?.access_token || null);
+      // Set tokenReady to true once, never goes back to false during refresh
+      if (session?.access_token) {
+        setTokenReady(true);
+      }
     };
 
     getToken();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setToken(session?.access_token || null);
+      // Set tokenReady to true once, stays true even during token refresh
+      if (session?.access_token) {
+        setTokenReady(true);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -30,7 +39,10 @@ export function useImageSearch() {
 
   const performSearch = useCallback(
     async (searchQuery: string, pageNum: number, isLoadingMore: boolean = false) => {
-      if (!token) return;
+      if (!token) {
+        // If we have a query but no token yet, wait for token to become available
+        return;
+      }
 
       try {
         if (isLoadingMore) {
@@ -65,13 +77,14 @@ export function useImageSearch() {
     [token],
   );
 
-  // Search when query changes (but not on mount if empty)
+  // Search when query changes OR when token first becomes available
+  // tokenReady is stable (doesn't change on token refresh), preventing unnecessary re-searches
   useEffect(() => {
-    if (query && query.trim()) {
+    if (query && query.trim() && tokenReady) {
       setPage(1);
       performSearch(query, 1, false);
     }
-  }, [query, performSearch]);
+  }, [query, performSearch, tokenReady]);
 
   // Load more
   const loadMore = useCallback(() => {

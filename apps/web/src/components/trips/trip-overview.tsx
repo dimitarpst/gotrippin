@@ -23,6 +23,8 @@ import {
   Settings,
   Edit3,
   Trash2,
+  Share2,
+  Pencil,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -30,6 +32,16 @@ import GlowCard from "./glow-card"
 import type { Trip } from "@gotrippin/core"
 import { formatTripDate, calculateDaysUntil, calculateDuration } from "@/lib/api/trips"
 import { useTranslation } from "react-i18next"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { DatePicker } from "./date-picker"
+import { BackgroundPicker } from "./background-picker"
+import type { DateRange } from "react-day-picker"
 
 interface TripOverviewProps {
   trip: Trip
@@ -37,12 +49,30 @@ interface TripOverviewProps {
   onBack: () => void
   onEdit?: () => void
   onDelete?: () => void
+  onShare?: () => void
+  onManageGuests?: () => void
+  onEditName?: () => void
+  onChangeDates?: (dateRange: DateRange | undefined) => void
+  onChangeBackground?: (type: "image" | "color", value: string) => void
 }
 
-export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelete }: TripOverviewProps) {
+export default function TripOverview({ 
+  trip, 
+  onNavigate, 
+  onBack, 
+  onEdit, 
+  onDelete,
+  onShare,
+  onManageGuests,
+  onEditName,
+  onChangeDates,
+  onChangeBackground,
+}: TripOverviewProps) {
   const { t } = useTranslation()
   const [dominantColor, setDominantColor] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
 
   // Calculate trip details
   const daysUntil = trip.start_date ? calculateDaysUntil(trip.start_date) : 0
@@ -51,7 +81,11 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
   const endDate = trip.end_date ? formatTripDate(trip.end_date) : "TBD"
 
   useEffect(() => {
-    if (!trip.image_url) return
+    // Reset dominant color when image_url changes or is removed
+    if (!trip.image_url) {
+      setDominantColor(null)
+      return
+    }
 
     const img = new Image()
     img.crossOrigin = "Anonymous"
@@ -87,11 +121,15 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
       const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
       setDominantColor(hexColor)
     }
-  }, [trip.image_url])
+
+    img.onerror = () => {
+      setDominantColor(null)
+    }
+  }, [trip.image_url, trip.color])
 
   return (
     <div className="min-h-screen relative bg-[var(--color-background)]">
-      <div className="relative w-full h-[50vh]" style={{ backgroundColor: trip.image_url ? 'transparent' : trip.color || '#ff6b6b' }}>
+      <div className="relative w-full h-[50vh]" style={{ background: trip.image_url ? 'transparent' : trip.color || '#ff6b6b' }}>
         {trip.image_url ? (
           <img
             src={trip.image_url}
@@ -101,7 +139,7 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
               // Fallback to color if image fails to load
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
-              target.parentElement!.style.backgroundColor = trip.color || '#ff6b6b';
+              target.parentElement!.style.background = trip.color || '#ff6b6b';
             }}
           />
         ) : null}
@@ -124,30 +162,92 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
         }}
       >
         <div className="relative z-10 px-6 pt-8 flex items-center justify-between">
-          <div className="flex gap-3">
-            {onEdit && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <motion.button
-                onClick={onEdit}
                 className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
                 style={{ background: "rgba(0,0,0,0.3)" }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Edit3 className="w-5 h-5 text-white" />
+                <MoreHorizontal className="w-5 h-5 text-white" />
               </motion.button>
-            )}
-            {onDelete && (
-              <motion.button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
-                style={{ background: "rgba(220,38,38,0.3)" }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Trash2 className="w-5 h-5 text-red-300" />
-              </motion.button>
-            )}
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              sideOffset={8}
+              className="min-w-[200px] bg-[#0e0b10]/95 backdrop-blur-xl border border-white/10 rounded-xl p-2 shadow-2xl"
+              style={{
+                boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.8)",
+              }}
+            >
+              {onShare && (
+                <DropdownMenuItem
+                  onClick={onShare}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('trip_overview.menu_share_trip')}</span>
+                </DropdownMenuItem>
+              )}
+              {onManageGuests && (
+                <DropdownMenuItem
+                  onClick={onManageGuests}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                >
+                  <Users className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('trip_overview.menu_manage_guests')}</span>
+                </DropdownMenuItem>
+              )}
+              {onEditName && (
+                <DropdownMenuItem
+                  onClick={onEditName}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                >
+                  <Pencil className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('trip_overview.menu_edit_name')}</span>
+                </DropdownMenuItem>
+              )}
+              {onChangeDates && (
+                <DropdownMenuItem
+                  onClick={() => setShowDatePicker(true)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('trip_overview.menu_change_dates')}</span>
+                </DropdownMenuItem>
+              )}
+              {onChangeBackground && (
+                <DropdownMenuItem
+                  onClick={() => setShowBackgroundPicker(true)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('trip_overview.menu_change_background')}</span>
+                </DropdownMenuItem>
+              )}
+              {(onEdit || onDelete) && <DropdownMenuSeparator className="bg-white/10 my-2" />}
+              {onEdit && (
+                <DropdownMenuItem
+                  onClick={onEdit}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('trips.edit')}</span>
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteConfirm(true)}
+                  variant="destructive"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 cursor-pointer hover:bg-red-500/20 focus:bg-red-500/20 transition-colors data-[variant=destructive]:text-red-400"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('trip_overview.menu_remove_trip')}</span>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <div className="flex gap-3">
             <motion.button
@@ -479,6 +579,44 @@ export default function TripOverview({ trip, onNavigate, onBack, onEdit, onDelet
             </div>
           </motion.div>
         </motion.div>
+      )}
+
+      {/* Date Picker Modal */}
+      {onChangeDates && (
+        <DatePicker
+          open={showDatePicker}
+          onClose={() => setShowDatePicker(false)}
+          onSelect={(dateRange) => {
+            onChangeDates(dateRange)
+            setShowDatePicker(false)
+          }}
+          selectedDateRange={
+            trip.start_date && trip.end_date
+              ? {
+                  from: new Date(trip.start_date),
+                  to: new Date(trip.end_date),
+                }
+              : trip.start_date
+              ? {
+                  from: new Date(trip.start_date),
+                  to: undefined,
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {/* Background Picker Modal */}
+      {onChangeBackground && (
+        <BackgroundPicker
+          open={showBackgroundPicker}
+          onClose={() => setShowBackgroundPicker(false)}
+          onSelect={(type, value) => {
+            onChangeBackground(type, value)
+            setShowBackgroundPicker(false)
+          }}
+          defaultSearchQuery={trip.destination || trip.title || undefined}
+        />
       )}
     </div>
   )

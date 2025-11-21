@@ -134,7 +134,8 @@
     "starts_in": "Starts in {{count}} days",
     "day_trip": "{{count}}-day trip",
     "duration_tbd": "Duration TBD",
-    "untitled_trip": "Untitled Trip"
+    "untitled_trip": "Untitled Trip",
+    "edit": "Edit"
   },
   "trip_overview": {
     "itinerary": "Itinerary",
@@ -151,19 +152,30 @@
     "delete_trip": "Delete Trip",
     "delete_confirmation": "This action cannot be undone",
     "delete_message": "Are you sure you want to delete {{tripName}}? All trip data will be permanently removed.",
-    "delete": "Delete"
+    "delete": "Delete",
+    "menu_share_trip": "Share Trip",
+    "menu_manage_guests": "Manage Guests",
+    "menu_edit_name": "Edit Trip Name",
+    "menu_change_dates": "Change Dates",
+    "menu_change_background": "Change Background",
+    "menu_notifications_on": "Turn On Notifications",
+    "menu_notifications_off": "Turn Off Notifications",
+    "menu_remove_trip": "Remove Trip"
   },
   "background_picker": {
     "title": "Choose Image",
     "cancel": "Cancel",
+    "done": "Done",
     "images": "Images",
     "colors": "Colors",
     "search_placeholder": "Search travel images",
     "photo_by": "Photo by",
-    "on_unsplash": "on Unsplash",
+    "on": "on",
     "loading": "Loading images...",
     "error": "Failed to load images",
-    "check_connection": "Please check your connection and try again"
+    "check_connection": "Please check your connection and try again",
+    "no_results": "No results yet",
+    "search_hint": "Search for a city or destination"
   },
   "date_picker": {
     "title": "Select Dates",

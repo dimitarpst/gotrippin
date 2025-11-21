@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Plus, Search, Loader2 } from "lucide-react"
+import { X, Search, Loader2 } from "lucide-react"
 import { useImageSearch } from "@/hooks/useImageSearch"
 import { useTranslation } from "react-i18next"
 
@@ -10,55 +10,70 @@ interface BackgroundPickerProps {
   open: boolean
   onClose: () => void
   onSelect: (type: "image" | "color", value: string) => void
+  defaultSearchQuery?: string
 }
 
-const sampleColors = [
-  "#ff6b6b",
-  "#4ecdc4",
-  "#45b7d1",
-  "#f7b731",
-  "#5f27cd",
-  "#00d2d3",
-  "#ff9ff3",
-  "#54a0ff",
-  "#48dbfb",
-  "#1dd1a1",
-  "#ee5a6f",
-  "#c44569",
-  "#f8b500",
-  "#6c5ce7",
-  "#a29bfe",
+const sampleGradients = [
+  "linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%)", // Coral sunset
+  "linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%)", // Teal wave
+  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", // Purple dream
+  "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)", // Pink passion
+  "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)", // Ocean blue
+  "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)", // Mint fresh
+  "linear-gradient(135deg, #fa709a 0%, #fee140 100%)", // Sunset glow
+  "linear-gradient(135deg, #30cfd0 0%, #330867 100%)", // Deep ocean
+  "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)", // Pastel dream
+  "linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)", // Warm embrace
+  "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)", // Peach cream
+  "linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)", // Cotton candy
+  "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)", // Lavender sky
+  "linear-gradient(135deg, #f8b500 0%, #fceabb 100%)", // Golden hour
+  "linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)", // Rose garden
 ]
 
-export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerProps) {
+export function BackgroundPicker({ open, onClose, onSelect, defaultSearchQuery }: BackgroundPickerProps) {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<"images" | "colors">("images")
   const [searchInput, setSearchInput] = useState("")
+  const [hasSearched, setHasSearched] = useState(false)
   const observerRef = useRef<HTMLDivElement>(null)
+  const justOpenedRef = useRef(false)
   const { images, loading, loadingMore, error, hasMore, loadMore, setQuery, selectImage } = useImageSearch()
 
-  // Load default images when modal opens (only once)
+  // Auto-fill search input with trip title when modal opens
   useEffect(() => {
-    if (open && images.length === 0 && !searchInput) {
-      setQuery("travel destination")
+    if (open && defaultSearchQuery) {
+      // Pre-fill the search input with the trip title
+      justOpenedRef.current = true
+      setSearchInput(defaultSearchQuery)
+      // Immediately search with that title
+      setQuery(defaultSearchQuery)
+      setHasSearched(true)
+    } else if (open) {
+      // If no default query, reset to empty
+      setSearchInput("")
+      setHasSearched(false)
     }
-  }, [open, images.length, searchInput, setQuery])
+  }, [open, defaultSearchQuery, setQuery])
 
-  // Debounced search (500ms to reduce API calls)
+  // Debounced search when user types (only if they've typed something)
   useEffect(() => {
     if (!open) return // Don't search if modal is closed
+    if (!searchInput.trim()) return // Don't search if input is empty
+    
+    // Skip debounced search if we just auto-filled from defaultSearchQuery
+    if (justOpenedRef.current) {
+      justOpenedRef.current = false
+      return
+    }
 
     const timer = setTimeout(() => {
-      if (searchInput.trim()) {
-        setQuery(searchInput)
-      } else if (images.length === 0) {
-        // Only set default if we have no images
-        setQuery("travel destination")
-      }
-    }, 500) // Increased from 300ms to 500ms for better debouncing
+      setQuery(searchInput.trim())
+      setHasSearched(true)
+    }, 500) // Debounce user input
     
     return () => clearTimeout(timer)
-  }, [searchInput, setQuery, open, images.length])
+  }, [searchInput, setQuery, open])
 
   // Infinite scroll observer
   useEffect(() => {
@@ -109,8 +124,8 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                 {t('background_picker.cancel')}
               </button>
               <h2 className="text-white text-lg font-semibold">{t('background_picker.title')}</h2>
-              <button className="text-[#ff6b6b]">
-                <Plus className="w-6 h-6" />
+              <button onClick={onClose} className="text-[#ff6b6b] text-lg font-medium">
+                {t('background_picker.done')}
               </button>
             </div>
 
@@ -168,6 +183,11 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                       <p>{t('background_picker.error')}</p>
                       <p className="text-sm mt-2">{t('background_picker.check_connection')}</p>
                     </div>
+                  ) : images.length === 0 && hasSearched ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-white/60">
+                      <p className="text-base mb-2">{t('background_picker.no_results')}</p>
+                      <p className="text-sm text-white/40">{t('background_picker.search_hint')}</p>
+                    </div>
                   ) : (
                     <div className="grid grid-cols-3 gap-3">
                       {images.map((image, index) => (
@@ -181,27 +201,27 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                             alt={image.alt_description || "Travel photo"}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                          <div className="absolute bottom-2 left-2 right-2 text-left">
-                            <p className="text-white text-xs">
+                          {/* Subtle gradient for attribution readability */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          {/* Very subtle attribution - only visible on hover */}
+                          <div className="absolute bottom-1.5 left-2 right-2 text-left opacity-0 group-hover:opacity-100 transition-opacity">
+                            <p className="text-white text-[10px] leading-tight drop-shadow-lg">
                               {t('background_picker.photo_by')}{" "}
                               <a
-                                href={image.user.links.html}
+                                href={`${image.user.links.html}?utm_source=gotrippin&utm_medium=referral`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="underline hover:text-[#ff6b6b]"
+                                className="hover:text-[#ff6b6b]"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {image.user.name}
                               </a>
-                            </p>
-                            <p className="text-white/60 text-xs">
-                              {t('background_picker.on_unsplash')}{" "}
+                              {" "}{t('background_picker.on')}{" "}
                               <a
-                                href="https://unsplash.com"
+                                href="https://unsplash.com?utm_source=gotrippin&utm_medium=referral"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="underline hover:text-[#ff6b6b]"
+                                className="hover:text-[#ff6b6b]"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 Unsplash
@@ -222,12 +242,12 @@ export function BackgroundPicker({ open, onClose, onSelect }: BackgroundPickerPr
                 </>
               ) : (
                 <div className="grid grid-cols-5 gap-3">
-                  {sampleColors.map((color) => (
+                  {sampleGradients.map((gradient, index) => (
                     <button
-                      key={color}
-                      onClick={() => onSelect("color", color)}
-                      className="aspect-square rounded-xl hover:scale-110 transition-transform"
-                      style={{ backgroundColor: color }}
+                      key={index}
+                      onClick={() => onSelect("color", gradient)}
+                      className="aspect-square rounded-xl hover:scale-110 transition-transform shadow-lg"
+                      style={{ background: gradient }}
                     />
                   ))}
                 </div>

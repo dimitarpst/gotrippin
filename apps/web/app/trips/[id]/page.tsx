@@ -5,9 +5,10 @@ import { useEffect, use, useState } from "react"
 import AuroraBackground from "@/components/effects/aurora-background"
 import TripOverview from "@/components/trips/trip-overview"
 import TripOverviewSkeleton from "@/components/trips/trip-overview-skeleton"
-import { useTrip, useDeleteTrip } from "@/hooks/useTrips"
+import { useTrip, useDeleteTrip, useUpdateTrip } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
 import { useTranslation } from "react-i18next"
+import type { DateRange } from "react-day-picker"
 
 interface TripPageProps {
   params: Promise<{
@@ -21,9 +22,20 @@ export default function TripPage({ params }: TripPageProps) {
   const resolvedParams = use(params)
   const shareCode = resolvedParams.id // Route param is 'id' but we use it as shareCode
   const { user, loading: authLoading } = useAuth()
-  const { trip, loading: tripLoading } = useTrip(shareCode)
+  const { trip: fetchedTrip, loading: tripLoading, refetch: refetchTrip } = useTrip(shareCode)
   const { deleteTrip } = useDeleteTrip()
+  const { update: updateTrip } = useUpdateTrip()
   const [mounted, setMounted] = useState(false)
+  const [localTrip, setLocalTrip] = useState(fetchedTrip)
+
+  // Sync local trip with fetched trip
+  useEffect(() => {
+    if (fetchedTrip) {
+      setLocalTrip(fetchedTrip)
+    }
+  }, [fetchedTrip])
+
+  const trip = localTrip || fetchedTrip
 
   useEffect(() => {
     setMounted(true)
@@ -65,6 +77,97 @@ export default function TripPage({ params }: TripPageProps) {
     }
   }
 
+  const handleShare = () => {
+    // TODO: Implement share functionality
+    console.log('Share trip:', shareCode)
+    // Could open a share dialog or copy share code to clipboard
+  }
+
+  const handleManageGuests = () => {
+    // TODO: Implement manage guests functionality
+    console.log('Manage guests for trip:', shareCode)
+    // Could navigate to a guests management page
+  }
+
+  const handleEditName = () => {
+    // TODO: Implement edit name functionality
+    console.log('Edit trip name:', shareCode)
+    // Could open an inline edit or navigate to edit page
+    // For now, redirect to edit page
+    router.push(`/trips/${shareCode}/edit`)
+  }
+
+  const handleChangeDates = async (dateRange: DateRange | undefined) => {
+    if (!trip?.id || !dateRange?.from) {
+      return
+    }
+
+    const updateData: {
+      start_date?: string | null
+      end_date?: string | null
+    } = {
+      start_date: dateRange.from ? dateRange.from.toISOString() : null,
+      end_date: dateRange.to ? dateRange.to.toISOString() : null,
+    }
+
+    // Optimistically update local state
+    if (trip) {
+      setLocalTrip({
+        ...trip,
+        start_date: updateData.start_date || null,
+        end_date: updateData.end_date || null,
+      })
+    }
+
+    const updatedTrip = await updateTrip(trip.id, updateData)
+    if (updatedTrip) {
+      setLocalTrip(updatedTrip)
+      // Also refetch to ensure we have the latest data
+      refetchTrip().catch(console.error)
+    } else {
+      // Revert on error
+      setLocalTrip(fetchedTrip)
+    }
+  }
+
+  const handleChangeBackground = async (type: "image" | "color", value: string) => {
+    if (!trip?.id) {
+      return
+    }
+
+    const updateData: {
+      image_url?: string | null
+      color?: string | null
+    } = {}
+
+    if (type === "image") {
+      updateData.image_url = value
+      updateData.color = null
+    } else {
+      updateData.color = value
+      updateData.image_url = null
+    }
+
+    // Optimistically update local state immediately
+    if (trip) {
+      setLocalTrip({
+        ...trip,
+        image_url: updateData.image_url ?? trip.image_url,
+        color: updateData.color ?? trip.color,
+      })
+    }
+
+    const updatedTrip = await updateTrip(trip.id, updateData)
+    if (updatedTrip) {
+      setLocalTrip(updatedTrip)
+      // Also refetch to ensure we have the latest data
+      refetchTrip().catch(console.error)
+    } else {
+      // Revert on error
+      setLocalTrip(fetchedTrip)
+    }
+  }
+
   if (!mounted || authLoading) {
     return (
       <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
@@ -100,11 +203,17 @@ export default function TripPage({ params }: TripPageProps) {
       <div className="flex-1 relative z-10">
         {trip && !tripLoading ? (
           <TripOverview
+            key={`${trip.id}-${trip.image_url || trip.color || 'default'}-${trip.start_date || ''}-${trip.end_date || ''}`}
             trip={trip}
             onNavigate={handleNavigate}
             onBack={handleBack}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onShare={handleShare}
+            onManageGuests={handleManageGuests}
+            onEditName={handleEditName}
+            onChangeDates={handleChangeDates}
+            onChangeBackground={handleChangeBackground}
           />
         ) : (
           <TripOverviewSkeleton onBack={handleBack} />
