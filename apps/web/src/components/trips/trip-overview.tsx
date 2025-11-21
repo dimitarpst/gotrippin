@@ -73,12 +73,19 @@ export default function TripOverview({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
+  const [scrollY, setScrollY] = useState(0)
 
   // Calculate trip details
   const daysUntil = trip.start_date ? calculateDaysUntil(trip.start_date) : 0
   const duration = trip.start_date && trip.end_date ? calculateDuration(trip.start_date, trip.end_date) : 0
   const startDate = trip.start_date ? formatTripDate(trip.start_date) : "TBD"
   const endDate = trip.end_date ? formatTripDate(trip.end_date) : "TBD"
+
+  // Parallax scroll handler
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = e.currentTarget.scrollTop
+    setScrollY(scrollTop)
+  }
 
   useEffect(() => {
     // Reset dominant color when image_url changes or is removed
@@ -128,8 +135,14 @@ export default function TripOverview({
   }, [trip.image_url, trip.color])
 
   return (
-    <div className="min-h-screen relative bg-[var(--color-background)]">
-      <div className="relative w-full h-[50vh]" style={{ background: trip.image_url ? 'transparent' : trip.color || '#ff6b6b' }}>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Fixed background image at the top */}
+      <div 
+        className="fixed top-0 left-0 w-full h-[45vh] z-[1]" 
+        style={{ 
+          background: trip.image_url ? 'transparent' : (dominantColor || trip.color || '#ff6b6b'),
+        }}
+      >
         {trip.image_url ? (
           <img
             src={trip.image_url}
@@ -139,29 +152,51 @@ export default function TripOverview({
               // Fallback to color if image fails to load
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
-              target.parentElement!.style.background = trip.color || '#ff6b6b';
+              target.parentElement!.style.background = dominantColor || trip.color || '#ff6b6b';
             }}
           />
         ) : null}
-        <div
-          className="absolute inset-x-0 bottom-0 h-32 pointer-events-none"
+        {/* Dark overlay for text readability */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
           style={{
-            background: `linear-gradient(to bottom, transparent, var(--color-background))`,
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%)',
           }}
         />
       </div>
 
-      <div
-        className="absolute inset-0 overflow-y-auto scrollbar-hide"
+
+      {/* Gradient overlay that stretches up as you scroll - ABOVE the image */}
+      <div 
+        className="fixed left-0 w-full pointer-events-none z-[2]"
         style={{
-          background: `linear-gradient(to bottom,
-            transparent 0%,
-            transparent 30%,
-            var(--color-background) 50%,
-            var(--color-background) 100%)`,
+          bottom: 0,
+          height: `calc(90vh + ${scrollY * 1.5}px)`,
+          background: `linear-gradient(to top, 
+            ${dominantColor || trip.color || '#ff6b6b'} 0%,
+            ${dominantColor || trip.color || '#ff6b6b'} 50%,
+            ${dominantColor || trip.color || '#ff6b6b'}dd 70%,
+            ${dominantColor || trip.color || '#ff6b6b'}99 85%,
+            transparent 100%)`,
+          willChange: 'height',
         }}
-      >
-        <div className="relative z-10 px-6 pt-8 flex items-center justify-between">
+      />
+
+      {/* Sticky header with collapsing title */}
+      <div className="fixed top-0 left-0 right-0 z-30">
+        {/* Header background - fades in when scrolling */}
+        <motion.div
+          className="absolute inset-0 backdrop-blur-xl"
+          style={{ 
+            background: `${dominantColor || trip.color || '#ff6b6b'}f0`,
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: scrollY > 200 ? 1 : 0 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        />
+        
+        <div className="relative p-4 flex items-center justify-between">
+          {/* Left: Menu button */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <motion.button
@@ -246,9 +281,37 @@ export default function TripOverview({
                   <span className="text-sm font-medium">{t('trip_overview.menu_remove_trip')}</span>
                 </DropdownMenuItem>
               )}
-            </DropdownMenuContent>
+             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Center: Collapsed title - morphs in when scrolling */}
+          <motion.div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ 
+              opacity: scrollY > 200 ? 1 : 0,
+              scale: scrollY > 200 ? 1 : 0.8,
+              y: scrollY > 200 ? 0 : 20
+            }}
+            transition={{ 
+              duration: 0.4, 
+              ease: [0.4, 0.0, 0.2, 1], // Custom easing for smooth morph
+              opacity: { duration: 0.3 },
+              scale: { duration: 0.4 },
+              y: { duration: 0.4 }
+            }}
+          >
+            <div className="text-center">
+              <h2 className="text-lg font-bold text-white whitespace-nowrap">
+                {trip.destination || trip.title || t('trips.untitled_trip')}
+              </h2>
+              <p className="text-xs text-white/70 whitespace-nowrap">
+                {startDate} → {endDate}
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Right: Search and close buttons */}
           <div className="flex gap-3">
             <motion.button
               className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
@@ -269,15 +332,33 @@ export default function TripOverview({
             </motion.button>
           </div>
         </div>
+      </div>
 
+      {/* Scrollable content */}
+      <div
+        className="relative h-screen overflow-y-auto scrollbar-hide z-[10]"
+        onScroll={handleScroll}
+      >
         <motion.div
-          className="relative z-10 px-6 pt-20 text-center"
+          className="relative z-10 px-6 pt-60 pb-6 text-center"
           initial="hidden"
-          animate="visible"
+          animate={scrollY > 200 ? "hidden" : "visible"}
           variants={{
-            visible: {
+            hidden: { 
+              opacity: 0, 
+              y: -20,
+              transition: {
+                duration: 0.4,
+                ease: [0.4, 0.0, 0.2, 1],
+              }
+            },
+            visible: { 
+              opacity: 1, 
+              y: 0,
               transition: {
                 staggerChildren: 0.1,
+                duration: 0.4,
+                ease: [0.4, 0.0, 0.2, 1],
               },
             },
           }}
@@ -312,7 +393,7 @@ export default function TripOverview({
         </motion.div>
 
         <motion.div
-          className="relative z-10 flex justify-center pt-8 pb-12"
+          className="relative z-10 flex flex-col items-center gap-2 pt-8 pb-12"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
@@ -334,16 +415,18 @@ export default function TripOverview({
           >
             <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
           </motion.button>
+          <span className="text-white/80 text-sm">{t('trip_overview.add_first_activity')}</span>
         </motion.div>
 
         <div className="relative z-10 px-6 pb-8 space-y-4">
           {/* Itinerary Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
             <GlowCard>
-              <Card
+               <Card
                 className="border-white/[0.08] rounded-2xl p-5 overflow-hidden relative"
                 style={{
-                  background: "#0e0b10",
+                  background: "rgba(26, 26, 26, 0.95)",
+                  backdropFilter: "blur(10px)",
                   boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.6)",
                   isolation: "isolate",
                 }}
@@ -396,10 +479,11 @@ export default function TripOverview({
           {/* Documents Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
             <GlowCard>
-              <Card
+               <Card
                 className="border-white/[0.08] rounded-2xl p-5 overflow-hidden relative"
                 style={{
-                  background: "#0e0b10",
+                  background: "rgba(26, 26, 26, 0.95)",
+                  backdropFilter: "blur(10px)",
                   boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.6)",
                   isolation: "isolate",
                 }}
@@ -465,10 +549,11 @@ export default function TripOverview({
           {/* Invite Guests Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
             <GlowCard>
-              <Card
+               <Card
                 className="border-white/[0.08] rounded-2xl p-5 overflow-hidden relative"
                 style={{
-                  background: "#0e0b10",
+                  background: "rgba(26, 26, 26, 0.95)",
+                  backdropFilter: "blur(10px)",
                   boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.6)",
                   isolation: "isolate",
                 }}
