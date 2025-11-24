@@ -221,6 +221,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Handle successful token refresh - update access token immediately
+        // without reloading profile (profile data doesn't change on token refresh)
+        if (event === "TOKEN_REFRESHED" && session) {
+          console.log("Token refreshed successfully");
+          setAccessToken(session.access_token ?? null);
+          // Update user object with new session data, but don't reload profile
+          if (session.user) {
+            setUser((prevUser) => {
+              if (!prevUser) {
+                // If no previous user, we need to load the profile
+                // This shouldn't happen normally, but handle it gracefully
+                loadUserWithProfile(session.user).catch(console.error);
+                return null; // Will be set by loadUserWithProfile
+              }
+              // Keep existing profile data, just update the user object
+              return {
+                ...session.user,
+                avatar_color: prevUser.avatar_color,
+                preferred_lng: prevUser.preferred_lng,
+                avatar_url: prevUser.avatar_url,
+              };
+            });
+          }
+          // Ensure loading is false after token refresh
+          setLoading(false);
+          return;
+        }
+
+        // For other events (SIGNED_IN, SIGNED_OUT, USER_UPDATED), reload full profile
         setAccessToken(session?.access_token ?? null);
         await loadUserWithProfile(session?.user ?? null);
       } catch (error) {

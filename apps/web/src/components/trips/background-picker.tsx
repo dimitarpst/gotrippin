@@ -14,21 +14,21 @@ interface BackgroundPickerProps {
 }
 
 const sampleGradients = [
-  "linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%)", // Coral sunset
-  "linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%)", // Teal wave
-  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", // Purple dream
-  "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)", // Pink passion
-  "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)", // Ocean blue
-  "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)", // Mint fresh
-  "linear-gradient(135deg, #fa709a 0%, #fee140 100%)", // Sunset glow
-  "linear-gradient(135deg, #30cfd0 0%, #330867 100%)", // Deep ocean
-  "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)", // Pastel dream
-  "linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)", // Warm embrace
-  "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)", // Peach cream
-  "linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)", // Cotton candy
-  "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)", // Lavender sky
-  "linear-gradient(135deg, #f8b500 0%, #fceabb 100%)", // Golden hour
-  "linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)", // Rose garden
+  "linear-gradient(to bottom, #d32f2f 0%, #b71c1c 100%)", // Deep red
+  "linear-gradient(to bottom, #1976d2 0%, #0d47a1 100%)", // Deep blue
+  "linear-gradient(to bottom, #6a1b9a 0%, #4a148c 100%)", // Deep purple
+  "linear-gradient(to bottom, #c2185b 0%, #880e4f 100%)", // Deep pink
+  "linear-gradient(to bottom, #00838f 0%, #004d40 100%)", // Deep teal
+  "linear-gradient(to bottom, #2e7d32 0%, #1b5e20 100%)", // Deep green
+  "linear-gradient(to bottom, #f57c00 0%, #e65100 100%)", // Deep orange
+  "linear-gradient(to bottom, #5d4037 0%, #3e2723 100%)", // Deep brown
+  "linear-gradient(to bottom, #455a64 0%, #263238 100%)", // Deep blue grey
+  "linear-gradient(to bottom, #7b1fa2 0%, #4a148c 100%)", // Deep violet
+  "linear-gradient(to bottom, #0277bd 0%, #01579b 100%)", // Deep light blue
+  "linear-gradient(to bottom, #00695c 0%, #004d40 100%)", // Deep cyan
+  "linear-gradient(to bottom, #c62828 0%, #b71c1c 100%)", // Deep crimson
+  "linear-gradient(to bottom, #1565c0 0%, #0d47a1 100%)", // Deep indigo
+  "linear-gradient(to bottom, #558b2f 0%, #33691e 100%)", // Deep lime green
 ]
 
 export function BackgroundPicker({ open, onClose, onSelect, defaultSearchQuery }: BackgroundPickerProps) {

@@ -97,12 +97,21 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
               <motion.div
                 key="color"
                 className="absolute inset-0"
-                style={{ backgroundColor: selectedColor }}
+                style={{ 
+                  background: selectedColor.startsWith('linear-gradient') 
+                    ? selectedColor 
+                    : undefined,
+                  backgroundColor: selectedColor.startsWith('linear-gradient') 
+                    ? undefined 
+                    : selectedColor 
+                }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
+                {!selectedColor.startsWith('linear-gradient') && (
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
+                )}
               </motion.div>
             ) : (
               <motion.div
@@ -121,7 +130,12 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
         </div>
 
         <div className="relative z-10 px-6 pt-12 flex items-center justify-between">
-          <button onClick={onBack} className="text-[#ff6b6b] text-lg font-medium" disabled={saving}>
+          <button 
+            onClick={onBack} 
+            className="px-4 py-2 rounded-full text-[#ff6b6b] text-lg font-medium backdrop-blur-md border border-white/20 disabled:opacity-50"
+            style={{ background: "rgba(0,0,0,0.3)" }}
+            disabled={saving}
+          >
             {t('trips.cancel')}
           </button>
           <button 

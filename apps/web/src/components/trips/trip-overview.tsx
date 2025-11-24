@@ -83,6 +83,12 @@ export default function TripOverview({
     endDate: trip.end_date ? formatTripDate(trip.end_date) : "TBD",
   }), [trip.start_date, trip.end_date])
 
+  // Check if trip.color is a gradient
+  const isGradient = trip.color ? trip.color.startsWith('linear-gradient') : false
+  const backgroundColor = trip.image_url 
+    ? 'transparent' 
+    : (dominantColor || trip.color || '#ff6b6b')
+
   // Throttled scroll handler using requestAnimationFrame for smooth performance
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = e.currentTarget.scrollTop
@@ -157,64 +163,70 @@ export default function TripOverview({
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Fixed background image at the top */}
-      <div 
-        className="fixed top-0 left-0 w-full h-[45vh] z-[1]" 
-        style={{ 
-          background: trip.image_url ? 'transparent' : (dominantColor || trip.color || '#ff6b6b'),
-        }}
-      >
-        {trip.image_url ? (
-          <img
-            src={trip.image_url}
-            alt={trip.destination || "Trip destination"}
-            className="w-full h-full object-cover"
-            style={{
-              maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+      {/* Fixed background image at the top - show for images and solid colors, but not gradients */}
+      {(!isGradient || trip.image_url) && (
+        <>
+          <div 
+            className="fixed top-0 left-0 w-full h-[45vh] z-[1]" 
+            style={{ 
+              background: trip.image_url ? 'transparent' : (isGradient ? 'transparent' : backgroundColor),
             }}
-            onError={(e) => {
-              // Fallback to color if image fails to load
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              target.parentElement!.style.background = dominantColor || trip.color || '#ff6b6b';
+          >
+            {trip.image_url ? (
+              <img
+                src={trip.image_url}
+                alt={trip.destination || "Trip destination"}
+                className="w-full h-full object-cover"
+                style={{
+                  maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+                }}
+                onError={(e) => {
+                  // Fallback to color if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.style.background = dominantColor || trip.color || '#ff6b6b';
+                }}
+              />
+            ) : null}
+            {/* Dark overlay for text readability */}
+            <div 
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%)',
+              }}
+            />
+          </div>
+
+          {/* Gradient fade from image to background - only for image/solid color (not gradients) */}
+          {!isGradient && (
+            <div 
+              className="fixed left-0 w-full pointer-events-none z-[2]"
+              style={{
+                top: '45vh',
+                height: '20vh',
+                background: `linear-gradient(to bottom, transparent 0%, var(--color-background) 100%)`,
+              }}
+            />
+          )}
+
+          {/* Gradient overlay that stretches up as you scroll - color to transparent going up */}
+          <div 
+            className="fixed left-0 w-full pointer-events-none z-[3]"
+            style={{
+              bottom: 0,
+              height: `calc(90vh + ${scrollY * 1.5}px)`,
+              background: `linear-gradient(to top, 
+                ${dominantColor || trip.color || '#ff6b6b'} 0%,
+                ${dominantColor || trip.color || '#ff6b6b'} 50%,
+                ${dominantColor || trip.color || '#ff6b6b'}dd 70%,
+                ${dominantColor || trip.color || '#ff6b6b'}99 85%,
+                transparent 100%)`,
+              willChange: 'height',
             }}
           />
-        ) : null}
-        {/* Dark overlay for text readability */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%)',
-          }}
-        />
-      </div>
-
-      {/* Gradient fade from image to background - positioned between layers */}
-      <div 
-        className="fixed left-0 w-full pointer-events-none z-[2]"
-        style={{
-          top: '45vh',
-          height: '20vh',
-          background: `linear-gradient(to bottom, transparent 0%, var(--color-background) 100%)`,
-        }}
-      />
-
-      {/* Gradient overlay that stretches up as you scroll - ABOVE the image */}
-      <div 
-        className="fixed left-0 w-full pointer-events-none z-[3]"
-        style={{
-          bottom: 0,
-          height: `calc(90vh + ${scrollY * 1.5}px)`,
-          background: `linear-gradient(to top, 
-            ${dominantColor || trip.color || '#ff6b6b'} 0%,
-            ${dominantColor || trip.color || '#ff6b6b'} 50%,
-            ${dominantColor || trip.color || '#ff6b6b'}dd 70%,
-            ${dominantColor || trip.color || '#ff6b6b'}99 85%,
-            transparent 100%)`,
-          willChange: 'height',
-        }}
-      />
+        </>
+      )}
 
       {/* Sticky header with collapsing title */}
       <div className="fixed top-0 left-0 right-0 z-30">
@@ -371,7 +383,11 @@ export default function TripOverview({
       {/* Scrollable content */}
       <div
         className="relative h-screen overflow-y-auto scrollbar-hide z-[10]"
-        style={{ background: 'transparent' }}
+        style={{ 
+          background: isGradient && !trip.image_url && trip.color 
+            ? trip.color 
+            : 'transparent' 
+        }}
         onScroll={handleScroll}
       >
         <motion.div
@@ -433,23 +449,21 @@ export default function TripOverview({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
         >
-          <motion.button
-            onClick={() => onNavigate("activity")}
-            className="w-16 h-16 rounded-full flex items-center justify-center shadow-2xl"
-            style={{
-              background: "#ff6b6b",
-              boxShadow: "0 8px 32px rgba(255, 107, 107, 0.4)",
-            }}
-            whileHover={{
-              scale: 1.1,
-              boxShadow: "0 12px 40px rgba(255, 107, 107, 0.6)",
-              rotate: 90,
-            }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-          >
-            <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
-          </motion.button>
+           <motion.button
+             onClick={() => onNavigate("activity")}
+             className="w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl"
+             style={{
+               background: "rgba(0, 0, 0, 0.3)",
+             }}
+             whileHover={{
+               scale: 1.1,
+               rotate: 90,
+             }}
+             whileTap={{ scale: 0.95 }}
+             transition={{ type: "spring", stiffness: 400, damping: 17 }}
+           >
+             <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
+           </motion.button>
           <span className="text-white/80 text-sm">{t('trip_overview.add_first_activity')}</span>
         </motion.div>
 
