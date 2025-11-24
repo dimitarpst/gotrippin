@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import {
   Plus,
   MoreHorizontal,
@@ -73,18 +73,40 @@ export default function TripOverview({
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
   const [scrollY, setScrollY] = useState(0)
+  const rafRef = useRef<number | null>(null)
 
-  // Calculate trip details
-  const daysUntil = trip.start_date ? calculateDaysUntil(trip.start_date) : 0
-  const duration = trip.start_date && trip.end_date ? calculateDuration(trip.start_date, trip.end_date) : 0
-  const startDate = trip.start_date ? formatTripDate(trip.start_date) : "TBD"
-  const endDate = trip.end_date ? formatTripDate(trip.end_date) : "TBD"
+  // Calculate trip details - memoize to prevent recalculation on every render
+  const { daysUntil, duration, startDate, endDate } = useMemo(() => ({
+    daysUntil: trip.start_date ? calculateDaysUntil(trip.start_date) : 0,
+    duration: trip.start_date && trip.end_date ? calculateDuration(trip.start_date, trip.end_date) : 0,
+    startDate: trip.start_date ? formatTripDate(trip.start_date) : "TBD",
+    endDate: trip.end_date ? formatTripDate(trip.end_date) : "TBD",
+  }), [trip.start_date, trip.end_date])
 
-  // Parallax scroll handler
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  // Throttled scroll handler using requestAnimationFrame for smooth performance
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = e.currentTarget.scrollTop
-    setScrollY(scrollTop)
-  }
+    
+    // Cancel previous RAF if it exists
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current)
+    }
+    
+    // Schedule update on next frame
+    rafRef.current = requestAnimationFrame(() => {
+      setScrollY(scrollTop)
+      rafRef.current = null
+    })
+  }, [])
+
+  // Cleanup RAF on unmount
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     // Reset dominant color when image_url changes or is removed

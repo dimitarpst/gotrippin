@@ -21,16 +21,28 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
   const [searchQuery, setSearchQuery] = useState("")
   const hasTrips = trips.length > 0
 
+  // Transform trips to include calculated fields - do this once and reuse
+  const tripsWithCalculations = useMemo(() => {
+    return trips.map(trip => {
+      const daysUntil = trip.start_date ? calculateDaysUntil(trip.start_date) : 0
+      return {
+        ...trip,
+        startDate: trip.start_date ? formatTripDate(trip.start_date) : "TBD",
+        endDate: trip.end_date ? formatTripDate(trip.end_date) : "TBD",
+        daysUntil,
+        duration: trip.start_date && trip.end_date ? calculateDuration(trip.start_date, trip.end_date) : 0,
+      }
+    })
+  }, [trips])
+
+  // Filter trips using pre-calculated daysUntil
   const filteredTrips = useMemo(() => {
-    return trips.filter((trip) => {
+    return tripsWithCalculations.filter((trip) => {
       // Filter by status
       let matchesFilter = true
       if (activeFilter === "all") matchesFilter = true
-      else {
-        const daysUntil = trip.start_date ? calculateDaysUntil(trip.start_date) : 0
-        if (activeFilter === "upcoming") matchesFilter = daysUntil > 0
-        else if (activeFilter === "past") matchesFilter = daysUntil < 0
-      }
+      else if (activeFilter === "upcoming") matchesFilter = trip.daysUntil > 0
+      else if (activeFilter === "past") matchesFilter = trip.daysUntil < 0
 
       // Filter by search query
       let matchesSearch = true
@@ -45,18 +57,7 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
 
       return matchesFilter && matchesSearch
     })
-  }, [activeFilter, searchQuery, trips])
-
-  // Transform trips to include calculated fields
-  const tripsWithCalculations = useMemo(() => {
-    return filteredTrips.map(trip => ({
-      ...trip,
-      startDate: trip.start_date ? formatTripDate(trip.start_date) : "TBD",
-      endDate: trip.end_date ? formatTripDate(trip.end_date) : "TBD",
-      daysUntil: trip.start_date ? calculateDaysUntil(trip.start_date) : 0,
-      duration: trip.start_date && trip.end_date ? calculateDuration(trip.start_date, trip.end_date) : 0,
-    }))
-  }, [filteredTrips])
+  }, [activeFilter, searchQuery, tripsWithCalculations])
 
   return (
     <div className="min-h-screen relative pb-32 overflow-y-auto scrollbar-hide">
@@ -76,7 +77,7 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
           <TripSkeletonGrid />
         ) : hasTrips ? (
           <TripGrid
-            trips={tripsWithCalculations}
+            trips={filteredTrips}
             activeFilter={activeFilter}
             onSelectTrip={onSelectTrip}
           />
