@@ -28,7 +28,6 @@ import {
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import GlowCard from "./glow-card"
 import type { Trip } from "@gotrippin/core"
 import { formatTripDate, calculateDaysUntil, calculateDuration } from "@/lib/api/trips"
 import { useTranslation } from "react-i18next"
@@ -148,6 +147,10 @@ export default function TripOverview({
             src={trip.image_url}
             alt={trip.destination || "Trip destination"}
             className="w-full h-full object-cover"
+            style={{
+              maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+            }}
             onError={(e) => {
               // Fallback to color if image fails to load
               const target = e.target as HTMLImageElement;
@@ -165,10 +168,19 @@ export default function TripOverview({
         />
       </div>
 
+      {/* Gradient fade from image to background - positioned between layers */}
+      <div 
+        className="fixed left-0 w-full pointer-events-none z-[2]"
+        style={{
+          top: '45vh',
+          height: '20vh',
+          background: `linear-gradient(to bottom, transparent 0%, var(--color-background) 100%)`,
+        }}
+      />
 
       {/* Gradient overlay that stretches up as you scroll - ABOVE the image */}
       <div 
-        className="fixed left-0 w-full pointer-events-none z-[2]"
+        className="fixed left-0 w-full pointer-events-none z-[3]"
         style={{
           bottom: 0,
           height: `calc(90vh + ${scrollY * 1.5}px)`,
@@ -337,6 +349,7 @@ export default function TripOverview({
       {/* Scrollable content */}
       <div
         className="relative h-screen overflow-y-auto scrollbar-hide z-[10]"
+        style={{ background: 'transparent' }}
         onScroll={handleScroll}
       >
         <motion.div
@@ -421,181 +434,91 @@ export default function TripOverview({
         <div className="relative z-10 px-6 pb-8 space-y-4">
           {/* Itinerary Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-            <GlowCard>
-               <Card
-                className="border-white/[0.08] rounded-2xl p-5 overflow-hidden relative"
-                style={{
-                  background: "rgba(26, 26, 26, 0.95)",
-                  backdropFilter: "blur(10px)",
-                  boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.6)",
-                  isolation: "isolate",
-                }}
-              >
-                {dominantColor && (
-                  <div
-                    className="absolute inset-0 pointer-events-none rounded-2xl"
-                    style={{
-                      background: `radial-gradient(circle at bottom right, ${dominantColor}95 0%, ${dominantColor}50 40%, transparent 75%)`,
-                      zIndex: 1,
-                    }}
-                  />
-                )}
+            <Card
+              className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)]"
+            >
+              <div className="flex items-center gap-3 mb-3">
                 <div
-                  className="absolute inset-0 pointer-events-none backdrop-blur-[3px] rounded-2xl"
-                  style={{
-                    background: "rgba(255, 255, 255, 0.05)",
-                    zIndex: 2,
-                    WebkitBackdropFilter: "blur(3px)",
-                    maskImage: "radial-gradient(white, white)",
-                    WebkitMaskImage: "-webkit-radial-gradient(white, white)",
-                  }}
-                />
-
-                <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{ background: "#ff6b6b" }}
-                    >
-                      <Calendar className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h2 className="text-base font-semibold text-white">{t('trip_overview.itinerary')}</h2>
-                      <span className="text-xs text-[var(--muted)]">{startDate}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm mb-3">
-                    <Plus className="w-4 h-4" style={{ color: "#ff6b6b" }} />
-                    <span className="text-[var(--muted)]">{t('trip_overview.start_organizing')}</span>
-                  </div>
-                  <button className="font-semibold text-sm" style={{ color: "#ff6b6b" }}>
-                    {t('trip_overview.view_all_days')}
-                  </button>
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: "#ff6b6b" }}
+                >
+                  <Calendar className="w-5 h-5 text-white" />
                 </div>
-              </Card>
-            </GlowCard>
+                <div className="flex-1">
+                  <h2 className="text-base font-semibold text-white">{t('trip_overview.itinerary')}</h2>
+                  <span className="text-xs text-[var(--muted)]">{startDate}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm mb-3">
+                <Plus className="w-4 h-4" style={{ color: "#ff6b6b" }} />
+                <span className="text-[var(--muted)]">{t('trip_overview.start_organizing')}</span>
+              </div>
+              <button className="font-semibold text-sm" style={{ color: "#ff6b6b" }}>
+                {t('trip_overview.view_all_days')}
+              </button>
+            </Card>
           </motion.div>
 
           {/* Documents Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-            <GlowCard>
-               <Card
-                className="border-white/[0.08] rounded-2xl p-5 overflow-hidden relative"
-                style={{
-                  background: "rgba(26, 26, 26, 0.95)",
-                  backdropFilter: "blur(10px)",
-                  boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.6)",
-                  isolation: "isolate",
-                }}
-              >
-                {dominantColor && (
-                  <div
-                    className="absolute inset-0 pointer-events-none rounded-2xl"
-                    style={{
-                      background: `radial-gradient(circle at top left, ${dominantColor}90 0%, ${dominantColor}45 40%, transparent 75%)`,
-                      zIndex: 1,
-                    }}
-                  />
-                )}
-                <div
-                  className="absolute inset-0 pointer-events-none backdrop-blur-[3px] rounded-2xl"
-                  style={{
-                    background: "rgba(255, 255, 255, 0.05)",
-                    zIndex: 2,
-                    WebkitBackdropFilter: "blur(3px)",
-                    maskImage: "radial-gradient(white, white)",
-                    WebkitMaskImage: "-webkit-radial-gradient(white, white)",
-                  }}
-                />
-
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-white" />
-                      </div>
-                      <h2 className="text-base font-semibold text-white">{t('trip_overview.documents')}</h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        className="text-xs font-bold px-2 py-1 rounded border-0"
-                        style={{ background: "#ff6b6b", color: "white" }}
-                      >
-                        {t('trip_overview.pro_badge')}
-                      </Badge>
-                      <Lock className="w-4 h-4 text-white/40" />
-                    </div>
+            <Card
+              className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)]"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-white" />
                   </div>
-
-                  <div className="flex justify-center gap-6 mb-4 py-4">
-                    <Mail className="w-6 h-6 text-white/40" />
-                    <ImageIcon className="w-6 h-6 text-white/40" />
-                    <FileType className="w-6 h-6 text-white/40" />
-                    <LinkIcon className="w-6 h-6 text-white/40" />
-                  </div>
-
-                  <p className="text-[var(--muted)] text-sm text-center mb-4">
-                    {t('trip_overview.add_documents_description')}
-                  </p>
-
-                  <button className="w-full font-semibold text-sm" style={{ color: "#ff6b6b" }}>
-                    {t('trip_overview.add_document')}
-                  </button>
+                  <h2 className="text-base font-semibold text-white">{t('trip_overview.documents')}</h2>
                 </div>
-              </Card>
-            </GlowCard>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    className="text-xs font-bold px-2 py-1 rounded border-0"
+                    style={{ background: "#ff6b6b", color: "white" }}
+                  >
+                    {t('trip_overview.pro_badge')}
+                  </Badge>
+                  <Lock className="w-4 h-4 text-white/40" />
+                </div>
+              </div>
+
+              <div className="flex justify-center gap-6 mb-4 py-4">
+                <Mail className="w-6 h-6 text-white/40" />
+                <ImageIcon className="w-6 h-6 text-white/40" />
+                <FileType className="w-6 h-6 text-white/40" />
+                <LinkIcon className="w-6 h-6 text-white/40" />
+              </div>
+
+              <p className="text-[var(--muted)] text-sm text-center mb-4">
+                {t('trip_overview.add_documents_description')}
+              </p>
+
+              <button className="w-full font-semibold text-sm" style={{ color: "#ff6b6b" }}>
+                {t('trip_overview.add_document')}
+              </button>
+            </Card>
           </motion.div>
 
           {/* Invite Guests Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
-            <GlowCard>
-               <Card
-                className="border-white/[0.08] rounded-2xl p-5 overflow-hidden relative"
-                style={{
-                  background: "rgba(26, 26, 26, 0.95)",
-                  backdropFilter: "blur(10px)",
-                  boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.6)",
-                  isolation: "isolate",
-                }}
-              >
-                {dominantColor && (
-                  <div
-                    className="absolute inset-0 pointer-events-none rounded-2xl"
-                    style={{
-                      background: `radial-gradient(circle at top right, ${dominantColor}85 0%, ${dominantColor}47 40%, transparent 75%)`,
-                      zIndex: 1,
-                    }}
-                  />
-                )}
-                <div
-                  className="absolute inset-0 pointer-events-none backdrop-blur-[3px] rounded-2xl"
-                  style={{
-                    background: "rgba(255, 255, 255, 0.05)",
-                    zIndex: 2,
-                    WebkitBackdropFilter: "blur(3px)",
-                    maskImage: "radial-gradient(white, white)",
-                    WebkitMaskImage: "-webkit-radial-gradient(white, white)",
-                  }}
-                />
-
-                <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-white" />
-                    </div>
-                    <h2 className="text-base font-semibold text-white">{t('trip_overview.invite_guests')}</h2>
-                  </div>
-
-                  <p className="text-[var(--muted)] text-sm mb-4">
-                    {t('trip_overview.invite_guests_description')}
-                  </p>
-
-                  <button className="w-full font-semibold text-sm" style={{ color: "#ff6b6b" }}>
-                    {t('trip_overview.share_trip')}
-                  </button>
+            <Card
+              className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)]"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-white" />
                 </div>
-              </Card>
-            </GlowCard>
+                <h2 className="text-base font-semibold text-white">{t('trip_overview.invite_guests')}</h2>
+              </div>
+
+              <p className="text-[var(--muted)] text-sm mb-4">
+                {t('trip_overview.invite_guests_description')}
+              </p>
+
+              <button className="w-full font-semibold text-sm" style={{ color: "#ff6b6b" }}>
+                {t('trip_overview.share_trip')}
+              </button>
+            </Card>
           </motion.div>
 
           <motion.div
