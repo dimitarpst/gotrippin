@@ -52,5 +52,15 @@ export type {
   Expense,
 } from './types';
 
+export type {
+  TomorrowTimelineResponse,
+  WeatherData,
+} from './types/weather';
+
+export {
+  WEATHER_CODE_DESCRIPTIONS,
+  getWeatherDescription,
+} from './types/weather';
+
 // Export utility functions
 export { generateShareCode, isValidShareCode } from './utils/share-code';

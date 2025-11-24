@@ -6,6 +6,7 @@ import { TripsModule } from './trips/trips.module';
 import { AiModule } from './ai/ai.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { ImagesModule } from './images/images.module';
+import { WeatherModule } from './weather/weather.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ImagesModule } from './images/images.module';
     TripsModule,
     AiModule,
     ImagesModule,
+    WeatherModule,
   ],
 })
 export class AppModule {}
