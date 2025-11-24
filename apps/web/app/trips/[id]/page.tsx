@@ -54,6 +54,8 @@ export default function TripPage({ params }: TripPageProps) {
       router.push(`/trips/${shareCode}/activity`)
     } else if (screen === "flight") {
       router.push(`/trips/${shareCode}/activity/flight`)
+    } else if (screen === "weather") {
+      router.push(`/trips/${shareCode}/weather`)
     }
   }
 

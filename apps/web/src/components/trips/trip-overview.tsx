@@ -40,7 +40,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { DatePicker } from "./date-picker"
 import { BackgroundPicker } from "./background-picker"
+import WeatherWidget from "./weather-widget"
 import type { DateRange } from "react-day-picker"
+import type { WeatherData } from "@gotrippin/core"
 
 interface TripOverviewProps {
   trip: Trip
@@ -55,11 +57,11 @@ interface TripOverviewProps {
   onChangeBackground?: (type: "image" | "color", value: string) => void
 }
 
-export default function TripOverview({ 
-  trip, 
-  onNavigate, 
-  onBack, 
-  onEdit, 
+export default function TripOverview({
+  trip,
+  onNavigate,
+  onBack,
+  onEdit,
   onDelete,
   onShare,
   onManageGuests,
@@ -85,19 +87,19 @@ export default function TripOverview({
 
   // Check if trip.color is a gradient
   const isGradient = trip.color ? trip.color.startsWith('linear-gradient') : false
-  const backgroundColor = trip.image_url 
-    ? 'transparent' 
+  const backgroundColor = trip.image_url
+    ? 'transparent'
     : (dominantColor || trip.color || '#ff6b6b')
 
   // Throttled scroll handler using requestAnimationFrame for smooth performance
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const scrollTop = e.currentTarget.scrollTop
-    
+
     // Cancel previous RAF if it exists
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current)
     }
-    
+
     // Schedule update on next frame
     rafRef.current = requestAnimationFrame(() => {
       setScrollY(scrollTop)
@@ -166,9 +168,9 @@ export default function TripOverview({
       {/* Fixed background image at the top - show for images and solid colors, but not gradients */}
       {(!isGradient || trip.image_url) && (
         <>
-          <div 
-            className="fixed top-0 left-0 w-full h-[45vh] z-[1]" 
-            style={{ 
+          <div
+            className="fixed top-0 left-0 w-full h-[45vh] z-[1]"
+            style={{
               background: trip.image_url ? 'transparent' : (isGradient ? 'transparent' : backgroundColor),
             }}
           >
@@ -190,7 +192,7 @@ export default function TripOverview({
               />
             ) : null}
             {/* Dark overlay for text readability */}
-            <div 
+            <div
               className="absolute inset-0 pointer-events-none"
               style={{
                 background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%)',
@@ -200,7 +202,7 @@ export default function TripOverview({
 
           {/* Gradient fade from image to background - only for image/solid color (not gradients) */}
           {!isGradient && (
-            <div 
+            <div
               className="fixed left-0 w-full pointer-events-none z-[2]"
               style={{
                 top: '45vh',
@@ -211,7 +213,7 @@ export default function TripOverview({
           )}
 
           {/* Gradient overlay that stretches up as you scroll - color to transparent going up */}
-          <div 
+          <div
             className="fixed left-0 w-full pointer-events-none z-[3]"
             style={{
               bottom: 0,
@@ -233,14 +235,14 @@ export default function TripOverview({
         {/* Header background - fades in when scrolling */}
         <motion.div
           className="absolute inset-0 backdrop-blur-xl"
-          style={{ 
+          style={{
             background: `${dominantColor || trip.color || '#ff6b6b'}f0`,
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: scrollY > 200 ? 1 : 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
         />
-        
+
         <div className="relative p-4 flex items-center justify-between">
           {/* Left: Menu button */}
           <DropdownMenu>
@@ -327,20 +329,20 @@ export default function TripOverview({
                   <span className="text-sm font-medium">{t('trip_overview.menu_remove_trip')}</span>
                 </DropdownMenuItem>
               )}
-             </DropdownMenuContent>
+            </DropdownMenuContent>
           </DropdownMenu>
 
           {/* Center: Collapsed title - morphs in when scrolling */}
           <motion.div
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ 
+            animate={{
               opacity: scrollY > 200 ? 1 : 0,
               scale: scrollY > 200 ? 1 : 0.8,
               y: scrollY > 200 ? 0 : 20
             }}
-            transition={{ 
-              duration: 0.4, 
+            transition={{
+              duration: 0.4,
               ease: [0.4, 0.0, 0.2, 1], // Custom easing for smooth morph
               opacity: { duration: 0.3 },
               scale: { duration: 0.4 },
@@ -383,10 +385,10 @@ export default function TripOverview({
       {/* Scrollable content */}
       <div
         className="relative h-screen overflow-y-auto scrollbar-hide z-[10]"
-        style={{ 
-          background: isGradient && !trip.image_url && trip.color 
-            ? trip.color 
-            : 'transparent' 
+        style={{
+          background: isGradient && !trip.image_url && trip.color
+            ? trip.color
+            : 'transparent'
         }}
         onScroll={handleScroll}
       >
@@ -395,16 +397,16 @@ export default function TripOverview({
           initial="hidden"
           animate={scrollY > 200 ? "hidden" : "visible"}
           variants={{
-            hidden: { 
-              opacity: 0, 
+            hidden: {
+              opacity: 0,
               y: -20,
               transition: {
                 duration: 0.4,
                 ease: [0.4, 0.0, 0.2, 1],
               }
             },
-            visible: { 
-              opacity: 1, 
+            visible: {
+              opacity: 1,
               y: 0,
               transition: {
                 staggerChildren: 0.1,
@@ -443,27 +445,29 @@ export default function TripOverview({
           </motion.p>
         </motion.div>
 
+
+
         <motion.div
           className="relative z-10 flex flex-col items-center gap-2 pt-8 pb-12"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
         >
-           <motion.button
-             onClick={() => onNavigate("activity")}
-             className="w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl"
-             style={{
-               background: "rgba(0, 0, 0, 0.3)",
-             }}
-             whileHover={{
-               scale: 1.1,
-               rotate: 90,
-             }}
-             whileTap={{ scale: 0.95 }}
-             transition={{ type: "spring", stiffness: 400, damping: 17 }}
-           >
-             <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
-           </motion.button>
+          <motion.button
+            onClick={() => onNavigate("activity")}
+            className="w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl"
+            style={{
+              background: "rgba(0, 0, 0, 0.3)",
+            }}
+            whileHover={{
+              scale: 1.1,
+              rotate: 90,
+            }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          >
+            <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
+          </motion.button>
           <span className="text-white/80 text-sm">{t('trip_overview.add_first_activity')}</span>
         </motion.div>
 
@@ -493,6 +497,30 @@ export default function TripOverview({
                 {t('trip_overview.view_all_days')}
               </button>
             </Card>
+          </motion.div>
+
+          {/* Weather Widget */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+            <div onClick={() => onNavigate("weather" as any)}>
+              <WeatherWidget
+                color={dominantColor || trip.color || '#ff6b6b'}
+                weather={{
+                  location: trip.destination || "Tokyo",
+                  current: {
+                    temperature: 15,
+                    temperatureApparent: 14,
+                    humidity: 65,
+                    weatherCode: 1000,
+                    description: "Clear, Sunny",
+                    windSpeed: 10,
+                    windDirection: 180,
+                    cloudCover: 20,
+                    uvIndex: 5,
+                  },
+                  forecast: [], // Forecast not needed for summary card
+                }}
+              />
+            </div>
           </motion.div>
 
           {/* Documents Card */}
@@ -637,15 +665,15 @@ export default function TripOverview({
           selectedDateRange={
             trip.start_date && trip.end_date
               ? {
-                  from: new Date(trip.start_date),
-                  to: new Date(trip.end_date),
-                }
+                from: new Date(trip.start_date),
+                to: new Date(trip.end_date),
+              }
               : trip.start_date
-              ? {
+                ? {
                   from: new Date(trip.start_date),
                   to: undefined,
                 }
-              : undefined
+                : undefined
           }
         />
       )}
