@@ -8,11 +8,13 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useEffect, useState } from "react"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
+import { addLocation } from "@/lib/api/trip-locations"
+import type { RouteLocation } from "@/components/trips/route/route-builder"
 
 export default function CreateTripPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, accessToken } = useAuth()
   const { create } = useCreateTrip()
   const { refetch } = useTrips()
   const [mounted, setMounted] = useState(false)
@@ -27,7 +29,13 @@ export default function CreateTripPage() {
     }
   }, [authLoading, user, router])
 
-  const handleSave = async (data: { title: string; imageUrl?: string; color?: string; dateRange?: DateRange }) => {
+  const handleSave = async (data: { 
+    title: string; 
+    imageUrl?: string; 
+    color?: string; 
+    dateRange?: DateRange;
+    locations?: RouteLocation[];
+  }) => {
     try {
       // Build trip data, filtering out undefined values
       const tripData: any = {
@@ -45,9 +53,40 @@ export default function CreateTripPage() {
 
       console.log("Created trip:", newTrip)
 
+      if (newTrip && newTrip.id && data.locations && data.locations.length > 0) {
+        // Add locations (best-effort, don't block trip creation on failure)
+        console.log("Adding locations:", data.locations)
+        
+        try {
+          for (let i = 0; i < data.locations.length; i++) {
+            const loc = data.locations[i]
+            if (!loc.name) continue
+
+            await addLocation(
+              newTrip.id,
+              {
+                location_name: loc.name,
+                order_index: i + 1,
+                arrival_date: loc.arrivalDate || undefined,
+                departure_date: loc.departureDate || undefined,
+              },
+              accessToken
+            )
+          }
+        } catch (locError) {
+          console.error("Failed to add one or more locations:", locError)
+          // Continue without blocking the main trip creation flow
+        }
+      }
+
       if (newTrip) {
         await refetch()
-        router.push('/')
+        // Use share code for navigation if available
+        if (newTrip.share_code) {
+          router.push(`/trips/${newTrip.share_code}`)
+        } else {
+          router.push('/')
+        }
       }
     } catch (error) {
       console.error("Failed to create trip:", error)

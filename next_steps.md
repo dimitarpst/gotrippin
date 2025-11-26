@@ -17,7 +17,39 @@ It should be stored in the project root and treated as a **live synchronization 
 | **Backend – API (NestJS)**    | ✅ Complete    | 100 %    | Full CRUD API with Auth, Profiles, Trips & Images modules        |
 | **Shared – Core Library**     | ✅ Complete    | 100 %    | Zod schemas, TypeScript types, validation utilities              |
 | **Database – Supabase**       | ✅ Complete    | 100 %    | Tables, RLS, & storage buckets configured for many-to-many trips |
+| **Route System (Backend)**    | ✅ Complete    | 100 %    | trip_locations + activities tables, full CRUD API                |
 | **AI Layer**                  | ❌ Not started | 0 %      | Placeholder only                                                 |
+| **Maps & Routes (Frontend)**  | 📋 Planned     | 0 %      | See `MAPS_IMPLEMENTATION.md` for complete plan                    |
+
+---
+
+## 🗺️ Maps & Routes Implementation
+
+**📋 Status:** Phase 1 (Backend) Complete, Phase 2 (Frontend) Ready  
+**📄 Documentation:** See [`MAPS_IMPLEMENTATION.md`](./MAPS_IMPLEMENTATION.md) for complete implementation guide
+**🕒 Timeline UX:** See "Timeline Experience Specification" in [`route-based-trip-planning-architecture.md`](./docs/route-based-trip-planning-architecture.md)
+
+**Quick Summary:**
+- **Web**: Mapbox GL JS (`react-map-gl`) - modern, customizable
+- **Mobile**: `react-native-maps` - mature, free, works with Expo
+- **POI Search**: Google Places API (works with any map provider)
+- **Data Sync**: Supabase (routes, waypoints, markers)
+- **Cost**: ~$0-50/month for typical usage
+
+**Phase 1 Complete (Nov 25, 2025):**
+- ✅ `trip_locations` table created with RLS
+- ✅ `activities` table created with `location_id` FK
+- ✅ `trip-locations` NestJS module (full CRUD + reorder)
+- ✅ `activities` NestJS module (full CRUD + grouped by location)
+- ✅ Shared types/schemas in `@gotrippin/core`
+
+**Phase 2 Complete (Nov 26, 2025):**
+- ✅ **Route Builder UI** implemented with drag-and-drop (`dnd-kit`)
+- ✅ Glassmorphism aesthetic (`LocationCard`) matching design inspiration
+- ✅ Integration into `CreateTrip` flow (multi-step wizard)
+- ✅ Frontend API wiring for saving locations sequentially
+
+**Next: Phase 3 - Activity-Location Linking & Timeline**
 
 ---
 
@@ -143,6 +175,66 @@ It should be stored in the project root and treated as a **live synchronization 
 
 1.  **Forgot Password Flow is Broken**: The password reset page (`/auth/reset-password`) gets stuck on "Verifying..." and never completes. This is due to a suspected deadlock/race-condition with the Supabase client library's automatic session recovery.
 2.  **Google Account Linking is Unreliable**: Linking a Google account to an existing email account doesn't always behave as expected. It can sometimes link the wrong Google account if the user is already logged into Google in their browser.
+
+---
+
+## ✅ Recent Updates (Nov 25, 2025 - Route System Phase 1)
+
+### 🛣️ **Route-Based Trip Planning - Phase 1 Backend COMPLETE**
+
+#### 🎯 **Implementation Overview**
+
+Phase 1 of the route-based trip planning system is complete. This provides the database and backend foundation for trip routes and activities.
+
+**Database Changes (via Supabase MCP):**
+- ✅ `trip_locations` table: stores ordered route waypoints per trip
+  - Fields: id, trip_id, location_name, latitude, longitude, order_index, arrival_date, departure_date
+  - Constraints: unique order per trip, order_index > 0, departure >= arrival
+  - RLS: Members can CRUD locations on their trips
+- ✅ `activities` table: stores activities linked to locations
+  - Fields: id, trip_id, location_id (FK), type, title, notes, start_time, end_time, all_day, icon, color, created_by
+  - RLS: Members can CRUD activities on their trips
+
+**Backend Modules Created:**
+
+`apps/backend/src/trip-locations/`:
+- `trip-locations.module.ts` - NestJS module
+- `trip-locations.service.ts` - Business logic (CRUD + reorder)
+- `trip-locations.controller.ts` - REST endpoints
+- `dto/` - CreateTripLocationDto, UpdateTripLocationDto, ReorderLocationsDto
+
+`apps/backend/src/activities/`:
+- `activities.module.ts` - NestJS module
+- `activities.service.ts` - Business logic (CRUD + grouped)
+- `activities.controller.ts` - REST endpoints
+- `dto/` - CreateActivityDto, UpdateActivityDto
+
+**Shared Types (`packages/core`):**
+- ✅ TripLocationSchema, CreateTripLocationSchema, UpdateTripLocationSchema, ReorderLocationsSchema
+- ✅ ActivitySchema, CreateActivitySchema, UpdateActivitySchema
+- ✅ ActivityTypeEnum with 16 activity types
+
+**API Endpoints:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/trips/:tripId/locations` | Get all locations (route) |
+| POST | `/trips/:tripId/locations` | Add location to route |
+| GET | `/trips/:tripId/locations/:locationId` | Get single location |
+| PUT | `/trips/:tripId/locations/:locationId` | Update location |
+| DELETE | `/trips/:tripId/locations/:locationId` | Delete location |
+| POST | `/trips/:tripId/locations/reorder` | Reorder all locations |
+| GET | `/trips/:tripId/activities` | Get all activities |
+| GET | `/trips/:tripId/activities/grouped` | Get activities by location |
+| POST | `/trips/:tripId/activities` | Create activity |
+| GET | `/trips/:tripId/activities/:activityId` | Get single activity |
+| PUT | `/trips/:tripId/activities/:activityId` | Update activity |
+| DELETE | `/trips/:tripId/activities/:activityId` | Delete activity |
+
+**Next Steps:**
+- Phase 2: Route Builder UI (create `route-builder.tsx`, integrate into trip creation)
+- Phase 3: Activity-Location Linking (timeline view, activity forms)
+- Phase 4: Weather per location
+- Phase 5: Maps visualization (Mapbox)
 
 ---
 

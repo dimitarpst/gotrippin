@@ -16,6 +16,14 @@ export type {
   UpdateTrip,
   TripUpdateData,
   TripCreateData,
+  TripLocation,
+  CreateTripLocation,
+  UpdateTripLocation,
+  ReorderLocations,
+  Activity,
+  CreateActivity,
+  UpdateActivity,
+  ActivityType,
 } from '../schemas/trip';
 
 /**
@@ -53,26 +61,7 @@ export type Language = 'en' | 'bg';
  */
 export type ThemeColor = 'light' | 'dark';
 
-/**
- * Future: Activity types for trip planning
- */
-export type ActivityType =
-  | 'flight'
-  | 'accommodation'
-  | 'restaurant'
-  | 'attraction'
-  | 'transport'
-  | 'other';
-
-export interface Activity {
-  id: string;
-  trip_id: string;
-  type: ActivityType;
-  title: string;
-  notes?: string;
-  timestamp?: string;
-  created_at: string;
-}
+// Activity and ActivityType are now exported from ../schemas/trip
 
 /**
  * Future: Expense tracking

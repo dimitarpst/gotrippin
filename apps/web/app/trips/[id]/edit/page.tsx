@@ -8,6 +8,7 @@ import { useUpdateTrip, useTrip } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
+import type { RouteLocation } from "@/components/trips/route/route-builder"
 
 interface EditTripPageProps {
   params: Promise<{
@@ -35,7 +36,13 @@ export default function EditTripPage({ params }: EditTripPageProps) {
     }
   }, [authLoading, user, router])
 
-  const handleSave = async (data: { title: string; imageUrl?: string; color?: string; dateRange?: DateRange }) => {
+  const handleSave = async (data: { 
+    title: string; 
+    imageUrl?: string; 
+    color?: string; 
+    dateRange?: DateRange;
+    locations?: RouteLocation[];
+  }) => {
     try {
       // Build trip data, filtering out undefined values
       const tripData: any = {}

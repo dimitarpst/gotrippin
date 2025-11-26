@@ -145,4 +145,211 @@ export type TripCreateData = z.infer<typeof TripCreateDataSchema>;
 export type AddTripMember = z.infer<typeof AddTripMemberSchema>;
 export type RemoveTripMember = z.infer<typeof RemoveTripMemberSchema>;
 
+// ============================================
+// Trip Location Schemas (Route waypoints)
+// ============================================
+
+/**
+ * Activity type enum values
+ */
+export const ActivityTypeEnum = z.enum([
+  'flight',
+  'accommodation',
+  'restaurant',
+  'attraction',
+  'transport',
+  'custom',
+  'car_rental',
+  'train',
+  'bus',
+  'ferry',
+  'museum',
+  'concert',
+  'shopping',
+  'beach',
+  'hiking',
+  'other',
+]);
+
+/**
+ * Zod schema for a trip location (route waypoint)
+ * Matches the `public.trip_locations` table in Supabase
+ */
+export const TripLocationSchema = z.object({
+  id: z.string().uuid('Invalid location ID format'),
+  trip_id: z.string().uuid('Invalid trip ID format'),
+  location_name: z
+    .string()
+    .min(1, 'Location name is required')
+    .max(200, 'Location name must be less than 200 characters'),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  order_index: z.number().int().positive('Order index must be positive'),
+  arrival_date: z.string().datetime({ message: 'Invalid arrival date format' }).nullable().optional(),
+  departure_date: z.string().datetime({ message: 'Invalid departure date format' }).nullable().optional(),
+  created_at: z.string().datetime({ message: 'Invalid creation date format' }),
+  updated_at: z.string().datetime({ message: 'Invalid update date format' }),
+}).refine(
+  (data) => {
+    if (data.arrival_date && data.departure_date) {
+      return new Date(data.departure_date) >= new Date(data.arrival_date);
+    }
+    return true;
+  },
+  {
+    message: 'Departure date must be after or equal to arrival date',
+    path: ['departure_date'],
+  }
+);
+
+/**
+ * Schema for creating a new trip location
+ */
+export const CreateTripLocationSchema = z.object({
+  trip_id: z.string().uuid('Invalid trip ID format'),
+  location_name: z
+    .string()
+    .min(1, 'Location name is required')
+    .max(200, 'Location name must be less than 200 characters'),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  order_index: z.number().int().positive('Order index must be positive').optional(),
+  arrival_date: z.string().datetime({ message: 'Invalid arrival date format' }).nullable().optional(),
+  departure_date: z.string().datetime({ message: 'Invalid departure date format' }).nullable().optional(),
+}).refine(
+  (data) => {
+    if (data.arrival_date && data.departure_date) {
+      return new Date(data.departure_date) >= new Date(data.arrival_date);
+    }
+    return true;
+  },
+  {
+    message: 'Departure date must be after or equal to arrival date',
+    path: ['departure_date'],
+  }
+);
+
+/**
+ * Schema for updating an existing trip location
+ */
+export const UpdateTripLocationSchema = z.object({
+  location_name: z
+    .string()
+    .min(1, 'Location name is required')
+    .max(200, 'Location name must be less than 200 characters')
+    .optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  order_index: z.number().int().positive('Order index must be positive').optional(),
+  arrival_date: z.string().datetime({ message: 'Invalid arrival date format' }).nullable().optional(),
+  departure_date: z.string().datetime({ message: 'Invalid departure date format' }).nullable().optional(),
+});
+
+/**
+ * Schema for reordering trip locations
+ */
+export const ReorderLocationsSchema = z.object({
+  location_ids: z.array(z.string().uuid('Invalid location ID format')).min(1, 'At least one location ID required'),
+});
+
+// ============================================
+// Activity Schemas
+// ============================================
+
+/**
+ * Zod schema for an activity
+ * Matches the `public.activities` table in Supabase
+ */
+export const ActivitySchema = z.object({
+  id: z.string().uuid('Invalid activity ID format'),
+  trip_id: z.string().uuid('Invalid trip ID format'),
+  location_id: z.string().uuid('Invalid location ID format').nullable().optional(),
+  type: ActivityTypeEnum.default('custom'),
+  title: z
+    .string()
+    .min(1, 'Title is required')
+    .max(255, 'Title must be less than 255 characters'),
+  notes: z.string().max(5000, 'Notes must be less than 5000 characters').nullable().optional(),
+  start_time: z.string().datetime({ message: 'Invalid start time format' }).nullable().optional(),
+  end_time: z.string().datetime({ message: 'Invalid end time format' }).nullable().optional(),
+  all_day: z.boolean().default(false),
+  icon: z.string().max(50).nullable().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').nullable().optional(),
+  created_by: z.string().uuid('Invalid user ID format').nullable().optional(),
+  created_at: z.string().datetime({ message: 'Invalid creation date format' }),
+  updated_at: z.string().datetime({ message: 'Invalid update date format' }),
+}).refine(
+  (data) => {
+    if (data.start_time && data.end_time) {
+      return new Date(data.end_time) >= new Date(data.start_time);
+    }
+    return true;
+  },
+  {
+    message: 'End time must be after or equal to start time',
+    path: ['end_time'],
+  }
+);
+
+/**
+ * Schema for creating a new activity
+ */
+export const CreateActivitySchema = z.object({
+  trip_id: z.string().uuid('Invalid trip ID format'),
+  location_id: z.string().uuid('Invalid location ID format').nullable().optional(),
+  type: ActivityTypeEnum.default('custom'),
+  title: z
+    .string()
+    .min(1, 'Title is required')
+    .max(255, 'Title must be less than 255 characters'),
+  notes: z.string().max(5000, 'Notes must be less than 5000 characters').nullable().optional(),
+  start_time: z.string().datetime({ message: 'Invalid start time format' }).nullable().optional(),
+  end_time: z.string().datetime({ message: 'Invalid end time format' }).nullable().optional(),
+  all_day: z.boolean().default(false),
+  icon: z.string().max(50).nullable().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').nullable().optional(),
+}).refine(
+  (data) => {
+    if (data.start_time && data.end_time) {
+      return new Date(data.end_time) >= new Date(data.start_time);
+    }
+    return true;
+  },
+  {
+    message: 'End time must be after or equal to start time',
+    path: ['end_time'],
+  }
+);
+
+/**
+ * Schema for updating an existing activity
+ */
+export const UpdateActivitySchema = z.object({
+  location_id: z.string().uuid('Invalid location ID format').nullable().optional(),
+  type: ActivityTypeEnum.optional(),
+  title: z
+    .string()
+    .min(1, 'Title is required')
+    .max(255, 'Title must be less than 255 characters')
+    .optional(),
+  notes: z.string().max(5000, 'Notes must be less than 5000 characters').nullable().optional(),
+  start_time: z.string().datetime({ message: 'Invalid start time format' }).nullable().optional(),
+  end_time: z.string().datetime({ message: 'Invalid end time format' }).nullable().optional(),
+  all_day: z.boolean().optional(),
+  icon: z.string().max(50).nullable().optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').nullable().optional(),
+});
+
+// Trip Location Types
+export type TripLocation = z.infer<typeof TripLocationSchema>;
+export type CreateTripLocation = z.infer<typeof CreateTripLocationSchema>;
+export type UpdateTripLocation = z.infer<typeof UpdateTripLocationSchema>;
+export type ReorderLocations = z.infer<typeof ReorderLocationsSchema>;
+
+// Activity Types
+export type ActivityType = z.infer<typeof ActivityTypeEnum>;
+export type Activity = z.infer<typeof ActivitySchema>;
+export type CreateActivity = z.infer<typeof CreateActivitySchema>;
+export type UpdateActivity = z.infer<typeof UpdateActivitySchema>;
+
 

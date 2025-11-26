@@ -20,6 +20,16 @@ export {
   TripCreateDataSchema,
   AddTripMemberSchema,
   RemoveTripMemberSchema,
+  // Trip Location schemas
+  TripLocationSchema,
+  CreateTripLocationSchema,
+  UpdateTripLocationSchema,
+  ReorderLocationsSchema,
+  // Activity schemas
+  ActivityTypeEnum,
+  ActivitySchema,
+  CreateActivitySchema,
+  UpdateActivitySchema,
 } from './schemas/trip';
 
 // Export TypeScript types
@@ -39,6 +49,16 @@ export type {
   TripCreateData,
   AddTripMember,
   RemoveTripMember,
+  // Trip Location types
+  TripLocation,
+  CreateTripLocation,
+  UpdateTripLocation,
+  ReorderLocations,
+  // Activity types
+  ActivityType,
+  Activity,
+  CreateActivity,
+  UpdateActivity,
 } from './schemas/trip';
 
 export type {
@@ -47,8 +67,6 @@ export type {
   AuthUser,
   Language,
   ThemeColor,
-  ActivityType,
-  Activity,
   Expense,
 } from './types';
 
