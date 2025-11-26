@@ -19,6 +19,10 @@ interface LocationCardProps {
   onRemove: () => void
   onUpdateDates: (range: DateRange | undefined) => void
   onUpdateName: (name: string) => void
+  /**
+   * If true, this card is rendered inside a DragOverlay and should not handle interactions
+   */
+  isOverlay?: boolean
 }
 
 export function LocationCard({ 
@@ -29,7 +33,8 @@ export function LocationCard({
   departureDate, 
   onRemove, 
   onUpdateDates,
-  onUpdateName 
+  onUpdateName,
+  isOverlay = false,
 }: LocationCardProps) {
   const {
     attributes,
@@ -62,8 +67,8 @@ export function LocationCard({
   return (
     <>
       <motion.div
-        ref={setNodeRef}
-        style={style}
+        ref={isOverlay ? undefined : setNodeRef}
+        style={isOverlay ? undefined : style}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
@@ -73,17 +78,25 @@ export function LocationCard({
           "group relative flex items-center gap-4 p-4 rounded-2xl mb-3 select-none",
           "bg-white/5 backdrop-blur-md border border-white/10",
           "transition-all duration-200 hover:bg-white/10 hover:border-white/20",
-          isDragging && "shadow-2xl scale-105 border-[#ff6b6b]/50 bg-[#1c1c1e]"
+          isDragging && !isOverlay && "shadow-2xl scale-105 border-[#ff6b6b]/50 bg-[#1c1c1e]",
+          isDragging && !isOverlay && "opacity-0" // hide original card while overlay is active
         )}
       >
         {/* Drag Handle */}
-        <div 
-          {...attributes} 
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-2 -ml-2 text-white/20 hover:text-white/60 transition-colors"
-        >
-          <GripVertical className="w-5 h-5" />
-        </div>
+        {!isOverlay && (
+          <div 
+            {...attributes} 
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-2 -ml-2 text-white/20 hover:text-white/60 transition-colors"
+          >
+            <GripVertical className="w-5 h-5" />
+          </div>
+        )}
+        {isOverlay && (
+          <div className="p-2 -ml-2 text-white/30">
+            <GripVertical className="w-5 h-5 opacity-0" />
+          </div>
+        )}
 
         {/* Order Badge */}
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-xs font-medium text-white/60 border border-white/5">
@@ -109,28 +122,32 @@ export function LocationCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onRemove}
-            className={cn(
-              "p-2 rounded-full text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-all",
-              "opacity-0 group-hover:opacity-100 focus:opacity-100"
-            )}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        {!isOverlay && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRemove}
+              className={cn(
+                "p-2 rounded-full text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-all",
+                "opacity-0 group-hover:opacity-100 focus:opacity-100"
+              )}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Connecting Line (visual decoration) */}
         <div className="absolute left-[2.85rem] top-full w-[2px] h-4 bg-white/5 -translate-x-1/2 z-0 last:hidden" />
       </motion.div>
 
-      <DatePicker
-        open={showDatePicker}
-        onClose={() => setShowDatePicker(false)}
-        onSelect={onUpdateDates}
-        selectedDateRange={selectedRange}
-      />
+      {!isOverlay && (
+        <DatePicker
+          open={showDatePicker}
+          onClose={() => setShowDatePicker(false)}
+          onSelect={onUpdateDates}
+          selectedDateRange={selectedRange}
+        />
+      )}
     </>
   )
 }

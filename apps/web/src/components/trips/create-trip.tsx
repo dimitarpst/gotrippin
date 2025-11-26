@@ -48,6 +48,12 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
   const [saving, setSaving] = useState(false)
 
   const handleContinue = () => {
+    if (isEditing) {
+      // In edit mode we only use the details view
+      handleSave()
+      return
+    }
+
     if (step === "details") {
       if (!tripName.trim()) return
       setStep("route")
@@ -57,6 +63,11 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
   }
 
   const handleBackStep = () => {
+    if (isEditing) {
+      onBack()
+      return
+    }
+
     if (step === "route") {
       setStep("details")
     } else {
@@ -67,7 +78,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
   const handleSave = async () => {
     // Basic validation
     if (!tripName.trim()) return
-    if (locations.length < 2) return // Should be handled by UI, but double check
+    if (!isEditing && locations.length < 2) return // Should be handled by UI, but double check
 
     setSaving(true)
     try {
@@ -162,6 +173,8 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
           />
         )}
       </AnimatePresence>
+      {/* Global dark overlay to ensure content is always readable over backgrounds */}
+      <div className="absolute inset-0 bg-black/55" />
     </div>
   )
 
@@ -176,7 +189,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
             className="px-4 py-2 rounded-full text-[#ff6b6b] text-lg font-medium backdrop-blur-md border border-white/20 disabled:opacity-50 hover:bg-white/5 transition-colors"
             disabled={saving}
           >
-            {step === "route" ? (
+            {!isEditing && step === "route" ? (
               <div className="flex items-center gap-2">
                 <ArrowLeft className="w-5 h-5" />
                 Back
@@ -186,20 +199,23 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
             )}
           </button>
           
-          <div className="flex gap-2">
-            <div className={`w-2 h-2 rounded-full ${step === 'details' ? 'bg-white' : 'bg-white/20'}`} />
-            <div className={`w-2 h-2 rounded-full ${step === 'route' ? 'bg-white' : 'bg-white/20'}`} />
-          </div>
+          {!isEditing && (
+            <div className="flex gap-2">
+              <div className={`w-2 h-2 rounded-full ${step === 'details' ? 'bg-white' : 'bg-white/20'}`} />
+              <div className={`w-2 h-2 rounded-full ${step === 'route' ? 'bg-white' : 'bg-white/20'}`} />
+            </div>
+          )}
 
           <button 
             onClick={handleContinue} 
             className="px-6 py-2 rounded-full bg-white text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/90 transition-colors flex items-center gap-2"
             disabled={
-              (step === "details" && !tripName.trim()) || 
-              (step === "route" && (locations.length < 2 || saving))
+              (!tripName.trim()) || 
+              (!isEditing && step === "route" && (locations.length < 2 || saving)) ||
+              saving
             }
           >
-            {step === "details" ? (
+            {(!isEditing && step === "details") ? (
               <>
                 Next <ArrowRight className="w-4 h-4" />
               </>
@@ -210,7 +226,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
         </div>
 
         <AnimatePresence mode="wait">
-          {step === "details" ? (
+          {step === "details" || isEditing ? (
             <motion.div 
               key="details"
               initial={{ opacity: 0, x: -20 }}
@@ -251,7 +267,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
                 </button>
               </div>
             </motion.div>
-          ) : (
+          ) : !isEditing && step === "route" ? (
             <motion.div
               key="route"
               initial={{ opacity: 0, x: 20 }}
@@ -266,15 +282,17 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
                 />
               </div>
             </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
       </div>
 
-      <BackgroundPicker
-        open={showBackgroundPicker}
-        onClose={() => setShowBackgroundPicker(false)}
-        onSelect={handleBackgroundSelect}
-      />
+      {!isEditing && (
+        <BackgroundPicker
+          open={showBackgroundPicker}
+          onClose={() => setShowBackgroundPicker(false)}
+          onSelect={handleBackgroundSelect}
+        />
+      )}
       
       <DatePicker
         open={showDatePicker}

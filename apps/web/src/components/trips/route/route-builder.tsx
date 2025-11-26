@@ -8,7 +8,10 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent
+  DragEndEvent,
+  DragStartEvent,
+  DragCancelEvent,
+  DragOverlay,
 } from "@dnd-kit/core"
 import {
   arrayMove,
@@ -17,10 +20,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { LocationCard } from "./location-card"
-import { Plus, MapPin } from "lucide-react"
+import { Plus } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { DateRange } from "react-day-picker"
-import { v4 as uuidv4 } from 'uuid'
+import { v4 as uuidv4 } from "uuid"
 
 export interface RouteLocation {
   id: string
@@ -36,12 +39,18 @@ interface RouteBuilderProps {
 }
 
 export function RouteBuilder({ locations, onChange, className }: RouteBuilderProps) {
+  const [activeId, setActiveId] = useState<string | null>(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -51,6 +60,12 @@ export function RouteBuilder({ locations, onChange, className }: RouteBuilderPro
       const newIndex = locations.findIndex((item) => item.id === over.id)
       onChange(arrayMove(locations, oldIndex, newIndex))
     }
+
+    setActiveId(null)
+  }
+
+  const handleDragCancel = (_event: DragCancelEvent) => {
+    setActiveId(null)
   }
 
   const addLocation = () => {
@@ -86,7 +101,9 @@ export function RouteBuilder({ locations, onChange, className }: RouteBuilderPro
       <DndContext 
         sensors={sensors} 
         collisionDetection={closestCenter} 
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <SortableContext 
           items={locations.map(l => l.id)}
@@ -115,6 +132,29 @@ export function RouteBuilder({ locations, onChange, className }: RouteBuilderPro
             </AnimatePresence>
           </div>
         </SortableContext>
+
+        <DragOverlay>
+          {activeId ? (
+            (() => {
+              const activeLocation = locations.find((l) => l.id === activeId)
+              if (!activeLocation) return null
+
+              return (
+                <LocationCard
+                  id={activeLocation.id}
+                  index={locations.findIndex((l) => l.id === activeLocation.id)}
+                  name={activeLocation.name}
+                  arrivalDate={activeLocation.arrivalDate}
+                  departureDate={activeLocation.departureDate}
+                  onRemove={() => {}}
+                  onUpdateName={() => {}}
+                  onUpdateDates={() => {}}
+                  isOverlay
+                />
+              )
+            })()
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       <motion.button
