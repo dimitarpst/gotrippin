@@ -1,0 +1,55 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import type { Activity, TripLocation } from "@gotrippin/core";
+import {
+  getGroupedActivities,
+  normalizeTimelineData,
+  type TimelineData,
+} from "@/lib/api/activities";
+
+interface UseTripTimelineResult extends TimelineData {
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+export function useTripTimeline(tripId?: string | null): UseTripTimelineResult {
+  const [data, setData] = useState<TimelineData>({
+    locations: [],
+    activitiesByLocation: {},
+    unassigned: [],
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!tripId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const raw = await getGroupedActivities(tripId);
+      const normalized = normalizeTimelineData(raw);
+      setData(normalized);
+    } catch (err) {
+      console.error("Failed to fetch trip timeline:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch timeline");
+    } finally {
+      setLoading(false);
+    }
+  }, [tripId]);
+
+  useEffect(() => {
+    fetchData().catch(() => {});
+  }, [fetchData]);
+
+  return {
+    ...data,
+    loading,
+    error,
+    refetch: fetchData,
+  };
+}
+
+

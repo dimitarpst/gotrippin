@@ -35,7 +35,7 @@ export class ActivitiesController {
     @Query('location_id') locationId: string,
     @Request() req: any,
   ) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     return this.activitiesService.getActivities(tripId, userId, locationId);
   }
 
@@ -48,7 +48,7 @@ export class ActivitiesController {
     @Param('tripId') tripId: string,
     @Request() req: any,
   ) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     return this.activitiesService.getActivitiesGroupedByLocation(tripId, userId);
   }
 
@@ -63,7 +63,7 @@ export class ActivitiesController {
     @Body() dto: CreateActivityDto,
     @Request() req: any,
   ) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     return this.activitiesService.createActivity(tripId, userId, dto);
   }
 
@@ -79,7 +79,7 @@ export class ActivitiesController {
     @Param('activityId') activityId: string,
     @Request() req: any,
   ) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     return this.activitiesService.getActivity(activityId, userId);
   }
 
@@ -97,7 +97,7 @@ export class ActivitiesController {
     @Body() dto: UpdateActivityDto,
     @Request() req: any,
   ) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     return this.activitiesService.updateActivity(activityId, userId, dto);
   }
 
@@ -114,7 +114,7 @@ export class ActivitiesController {
     @Param('activityId') activityId: string,
     @Request() req: any,
   ) {
-    const userId = req.user.sub;
+    const userId = req.user.id;
     return this.activitiesService.deleteActivity(activityId, userId);
   }
 }

@@ -1,0 +1,87 @@
+import type { Activity, TripLocation } from "@gotrippin/core";
+import { ApiError } from "./trips";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+async function getAuthToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const { supabase } = await import("@/lib/supabaseClient");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token) return session.access_token;
+    return null;
+  } catch (error) {
+    console.error("Failed to get auth token:", error);
+    return null;
+  }
+}
+
+export interface GroupedActivitiesResponse {
+  locations: (TripLocation & { activities?: Activity[] | null })[];
+  unassigned: Activity[];
+}
+
+export interface TimelineData {
+  locations: TripLocation[];
+  activitiesByLocation: Record<string, Activity[]>;
+  unassigned: Activity[];
+}
+
+export async function getGroupedActivities(
+  tripId: string,
+  token?: string | null
+): Promise<GroupedActivitiesResponse> {
+  const authToken = token ?? (await getAuthToken());
+
+  if (!authToken) {
+    throw new ApiError("Authentication required", 401);
+  }
+
+  const res = await fetch(`${API_BASE_URL}/trips/${tripId}/activities/grouped`, {
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: "Request failed" }));
+    throw new ApiError(error.message || "Request failed", res.status);
+  }
+
+  return res.json();
+}
+
+export function normalizeTimelineData(
+  payload: GroupedActivitiesResponse
+): TimelineData {
+  const activitiesByLocation: Record<string, Activity[]> = {};
+  const locations: TripLocation[] = [];
+
+  for (const loc of payload.locations || []) {
+    locations.push({
+      ...loc,
+      // strip nested activities if present, TS will ignore extra fields on assign
+    } as TripLocation);
+
+    if (loc.activities && loc.activities.length > 0) {
+      activitiesByLocation[loc.id] = [...loc.activities].sort((a, b) => {
+        if (!a.start_time && !b.start_time) return 0;
+        if (!a.start_time) return 1;
+        if (!b.start_time) return -1;
+        return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+      });
+    }
+  }
+
+  return {
+    locations,
+    activitiesByLocation,
+    unassigned: payload.unassigned || [],
+  };
+}
+
+
