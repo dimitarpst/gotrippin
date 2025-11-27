@@ -6,6 +6,7 @@ import AuroraBackground from "@/components/effects/aurora-background"
 import TripOverview from "@/components/trips/trip-overview"
 import TripOverviewSkeleton from "@/components/trips/trip-overview-skeleton"
 import { useTrip, useDeleteTrip, useUpdateTrip } from "@/hooks/useTrips"
+import { useTripLocations } from "@/hooks/useTripLocations"
 import { useAuth } from "@/contexts/AuthContext"
 import { useTranslation } from "react-i18next"
 import type { DateRange } from "react-day-picker"
@@ -36,6 +37,11 @@ export default function TripPage({ params }: TripPageProps) {
   }, [fetchedTrip])
 
   const trip = localTrip || fetchedTrip
+  const {
+    locations: routeLocations,
+    loading: routeLocationsLoading,
+    refetch: refetchLocations,
+  } = useTripLocations(trip?.id)
 
   useEffect(() => {
     setMounted(true)
@@ -216,6 +222,8 @@ export default function TripPage({ params }: TripPageProps) {
             onEditName={handleEditName}
             onChangeDates={handleChangeDates}
             onChangeBackground={handleChangeBackground}
+            routeLocations={routeLocations}
+            routeLoading={routeLocationsLoading}
           />
         ) : (
           <TripOverviewSkeleton onBack={handleBack} />

@@ -1,120 +1,123 @@
 "use client"
 
-import { Calendar, X } from "lucide-react"
+import { GripVertical, Calendar, X } from "lucide-react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import { useState, type ReactNode } from "react"
+import { useState, forwardRef } from "react"
 import { DatePicker } from "../date-picker"
 import { DateRange } from "react-day-picker"
 
-interface LocationCardProps {
-  index: number
+interface LocationCardProps extends React.HTMLAttributes<HTMLDivElement> {
   name: string
+  index: number
   arrivalDate?: string | null
   departureDate?: string | null
-  onRemove?: () => void
-  onUpdateDates?: (range: DateRange | undefined) => void
-  onUpdateName?: (name: string) => void
-  dragHandle?: ReactNode
-  isOverlay?: boolean
+  onRemove: () => void
+  onUpdateDates: (range: DateRange | undefined) => void
+  onUpdateName: (name: string) => void
 }
 
-export function LocationCard({
-  index,
-  name,
-  arrivalDate,
-  departureDate,
-  onRemove,
-  onUpdateDates,
-  onUpdateName,
-  dragHandle,
-  isOverlay = false,
-}: LocationCardProps) {
-  const [showDatePicker, setShowDatePicker] = useState(false)
+export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
+  (
+    {
+      name,
+      index,
+      arrivalDate,
+      departureDate,
+      onRemove,
+      onUpdateDates,
+      onUpdateName,
+      className,
+      ...rest
+    },
+    ref
+  ) => {
+    const [showDatePicker, setShowDatePicker] = useState(false)
 
-  const selectedRange: DateRange | undefined = arrivalDate
-    ? {
-        from: new Date(arrivalDate),
-        to: departureDate ? new Date(departureDate) : undefined,
-      }
-    : undefined
+    const selectedRange: DateRange | undefined = arrivalDate
+      ? {
+          from: new Date(arrivalDate),
+          to: departureDate ? new Date(departureDate) : undefined,
+        }
+      : undefined
 
-  const dateText = selectedRange?.from
-    ? `${format(selectedRange.from, "MMM d")}${
-        selectedRange.to ? ` - ${format(selectedRange.to, "MMM d")}` : ""
-      }`
-    : "Set dates"
+    const dateText = selectedRange?.from
+      ? `${format(selectedRange.from, "MMM d")}${
+          selectedRange.to ? ` - ${format(selectedRange.to, "MMM d")}` : ""
+        }`
+      : "Set dates"
 
-  const handleNameChange = (value: string) => {
-    if (isOverlay || !onUpdateName) return
-    onUpdateName(value)
-  }
+    return (
+      <>
+        <motion.div
+          ref={ref}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className={cn(
+            "group relative flex items-center gap-4 p-4 rounded-2xl mb-3 select-none",
+            "bg-white/5 backdrop-blur-md border border-white/10",
+            "transition-all duration-200 hover:bg-white/10 hover:border-white/20",
+            className
+          )}
+          {...rest}
+        >
+          {/* Drag handle icon (visual only, drag listeners come from Sortable.Item) */}
+          <div className="p-2 -ml-2 text-white/30">
+            <GripVertical className="w-5 h-5" />
+          </div>
 
-  const handleDateOpen = () => {
-    if (isOverlay) return
-    setShowDatePicker(true)
-  }
+          {/* Order Badge */}
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-xs font-medium text-white/60 border border-white/5">
+            {index + 1}
+          </div>
 
-  return (
-    <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className={cn(
-          "group relative mb-3 flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all duration-200 hover:border-white/20 hover:bg-white/10",
-          isOverlay && "pointer-events-none opacity-90",
-        )}
-      >
-        {dragHandle}
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <input
+              value={name}
+              onChange={(e) => onUpdateName(e.target.value)}
+              placeholder="Enter location name"
+              className="w-full bg-transparent text-lg font-semibold text-white placeholder:text-white/20 outline-none border-none p-0 focus:ring-0"
+            />
 
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/5 bg-white/5 text-xs font-medium text-white/60">
-          {index + 1}
-        </div>
+            <button
+              type="button"
+              onClick={() => setShowDatePicker(true)}
+              className="flex items-center gap-2 mt-1 text-xs font-medium text-[#ff6b6b] hover:text-[#ff8585] transition-colors"
+            >
+              <Calendar className="w-3 h-3" />
+              {dateText}
+            </button>
+          </div>
 
-        <div className="min-w-0 flex-1">
-          <input
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="Enter location name"
-            className="w-full border-none bg-transparent p-0 text-lg font-semibold text-white outline-none placeholder:text-white/20"
-            readOnly={isOverlay}
-          />
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onRemove}
+              className={cn(
+                "p-2 rounded-full text-white/40 hover:text-red-400 hover:bg-red-400/10 transition-all",
+                "opacity-0 group-hover:opacity-100 focus:opacity-100"
+              )}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={handleDateOpen}
-            className="mt-1 flex items-center gap-2 text-xs font-medium text-[#ff6b6b] transition-colors hover:text-[#ff8585]"
-            disabled={isOverlay}
-          >
-            <Calendar className="h-3 w-3" />
-            {dateText}
-          </button>
-        </div>
+          {/* Connecting Line (visual decoration) */}
+          <div className="absolute left-[2.85rem] top-full w-[2px] h-4 bg-white/5 -translate-x-1/2 z-0 last:hidden" />
+        </motion.div>
 
-        {!isOverlay && onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="rounded-full p-2 text-white/40 opacity-0 transition-all group-hover:opacity-100 hover:bg-red-400/10 hover:text-red-400 focus:opacity-100"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-
-        <div className="absolute left-[2.85rem] top-full h-4 w-px -translate-x-1/2 bg-white/5 last:hidden" />
-      </motion.div>
-
-      {!isOverlay && (
         <DatePicker
           open={showDatePicker}
           onClose={() => setShowDatePicker(false)}
           onSelect={onUpdateDates}
           selectedDateRange={selectedRange}
         />
-      )}
-    </>
-  )
-}
+      </>
+    )
+  }
+)
 

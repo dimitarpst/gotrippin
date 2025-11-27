@@ -28,7 +28,7 @@ import {
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { Trip } from "@gotrippin/core"
+import type { Trip, TripLocation } from "@gotrippin/core"
 import { formatTripDate, calculateDaysUntil, calculateDuration } from "@/lib/api/trips"
 import { useTranslation } from "react-i18next"
 import {
@@ -43,6 +43,7 @@ import { BackgroundPicker } from "./background-picker"
 import WeatherWidget from "./weather-widget"
 import type { DateRange } from "react-day-picker"
 import type { WeatherData } from "@gotrippin/core"
+import { format } from "date-fns"
 
 interface TripOverviewProps {
   trip: Trip
@@ -55,6 +56,8 @@ interface TripOverviewProps {
   onEditName?: () => void
   onChangeDates?: (dateRange: DateRange | undefined) => void
   onChangeBackground?: (type: "image" | "color", value: string) => void
+  routeLocations?: TripLocation[]
+  routeLoading?: boolean
 }
 
 export default function TripOverview({
@@ -68,6 +71,8 @@ export default function TripOverview({
   onEditName,
   onChangeDates,
   onChangeBackground,
+  routeLocations = [],
+  routeLoading = false,
 }: TripOverviewProps) {
   const { t } = useTranslation()
   const [dominantColor, setDominantColor] = useState<string | null>(null)
@@ -84,6 +89,24 @@ export default function TripOverview({
     startDate: trip.start_date ? formatTripDate(trip.start_date) : "TBD",
     endDate: trip.end_date ? formatTripDate(trip.end_date) : "TBD",
   }), [trip.start_date, trip.end_date])
+
+  const hasRoute = routeLocations.length > 0
+  const todayLabel = useMemo(() => {
+    const todayFormatted = format(new Date(), "EEEE, d MMM")
+    return t("trip_overview.route_today", { date: todayFormatted })
+  }, [t])
+
+  const getLocationDateLabel = (location: TripLocation) => {
+    const arrival = location.arrival_date ? new Date(location.arrival_date) : null
+    const departure = location.departure_date ? new Date(location.departure_date) : null
+
+    if (arrival && departure) {
+      return `${format(arrival, "MMM d")} → ${format(departure, "MMM d")}`
+    }
+    if (arrival) return format(arrival, "MMM d")
+    if (departure) return format(departure, "MMM d")
+    return null
+  }
 
   // Check if trip.color is a gradient
   const isGradient = trip.color ? trip.color.startsWith('linear-gradient') : false
@@ -477,22 +500,87 @@ export default function TripOverview({
             <Card
               className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)]"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: "#ff6b6b" }}
-                >
-                  <Calendar className="w-5 h-5 text-white" />
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: "#ff6b6b" }}
+                  >
+                    <Calendar className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs uppercase tracking-wide text-white/60">
+                      {t('trip_overview.route_title')}
+                    </span>
+                    <span className="text-sm font-semibold text-white">
+                      {trip.destination || trip.title || t('trips.untitled_trip')}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-base font-semibold text-white">{t('trip_overview.itinerary')}</h2>
-                  <span className="text-xs text-[var(--muted)]">{startDate}</span>
+                <span className="text-xs text-white/70 whitespace-nowrap">
+                  {hasRoute ? todayLabel : startDate}
+                </span>
+              </div>
+
+              {routeLoading && (
+                <div className="space-y-4 mb-4">
+                  {[0, 1, 2].map((idx) => (
+                    <div key={idx} className="flex gap-4">
+                      <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+                      <div className="flex-1 h-14 rounded-2xl bg-white/5 border border-white/10 animate-pulse" />
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm mb-3">
-                <Plus className="w-4 h-4" style={{ color: "#ff6b6b" }} />
-                <span className="text-[var(--muted)]">{t('trip_overview.start_organizing')}</span>
-              </div>
+              )}
+
+              {!routeLoading && hasRoute && (
+                <div className="space-y-3 mb-4">
+                  {routeLocations.map((location, index) => {
+                    const dateLabel = getLocationDateLabel(location)
+                    return (
+                      <div key={location.id} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-2 h-2 rounded-full bg-[#ff6b6b] mt-1" />
+                          {index < routeLocations.length - 1 && <span className="flex-1 w-px bg-white/15 mt-1" />}
+                        </div>
+                        <div className="flex-1 bg-white/[0.04] rounded-2xl border border-white/[0.08] px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
+                          <div className="flex items-center justify-between gap-3 mb-1">
+                            <span className="text-[11px] uppercase tracking-wide text-white/50">
+                              {(index + 1).toString().padStart(2, "0")}
+                            </span>
+                            {dateLabel && (
+                              <span className="text-xs text-white/60 whitespace-nowrap">
+                                {dateLabel}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-white font-semibold truncate">
+                            {location.location_name || t('trips.untitled_trip')}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {!routeLoading && !hasRoute && (
+                <div className="flex items-center justify-between gap-3 border border-dashed border-white/15 rounded-2xl px-4 py-3 mb-3 bg-white/[0.02]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                      <Plus className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold text-sm">{t('trip_overview.route_empty_title')}</p>
+                      <p className="text-xs text-white/60">{t('trip_overview.route_empty')}</p>
+                    </div>
+                  </div>
+                  <button className="text-xs font-semibold uppercase tracking-wide text-[#ff6b6b]">
+                    {t('trip_overview.route_add_stop')}
+                  </button>
+                </div>
+              )}
+
               <button className="font-semibold text-sm" style={{ color: "#ff6b6b" }}>
                 {t('trip_overview.view_all_days')}
               </button>
