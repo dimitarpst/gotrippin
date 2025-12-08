@@ -4,6 +4,7 @@ import { useRouter, useParams } from "next/navigation"
 import { use } from "react"
 import AuroraBackground from "@/components/effects/aurora-background"
 import FlightSearch from "@/components/trips/flight-search"
+import { useTrip } from "@/hooks/useTrips"
 
 interface FlightSearchPageProps {
   params: Promise<{
@@ -14,17 +15,22 @@ interface FlightSearchPageProps {
 export default function FlightSearchPage({ params }: FlightSearchPageProps) {
   const router = useRouter()
   const resolvedParams = use(params)
-  const tripId = resolvedParams.id
+  const shareCode = resolvedParams.id
+  const { trip, loading } = useTrip(shareCode)
+  const tripId = trip?.id
 
   const handleBack = () => {
-    router.push(`/trips/${tripId}/activity`)
+    router.push(`/trips/${shareCode}/activity`)
   }
 
   return (
     <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
       <AuroraBackground />
       <div className="flex-1 relative z-10">
-        <FlightSearch tripId={tripId} onBack={handleBack} />
+        <FlightSearch tripId={tripId ?? ""} onBack={handleBack} />
+        {loading && !tripId && (
+          <div className="absolute inset-0 flex items-center justify-center text-white/70 text-sm">Loading trip…</div>
+        )}
       </div>
     </main>
   )

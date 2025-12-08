@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 
 interface ActivitySelectorProps {
   tripId: string
+  shareCode: string
   onBack: () => void
 }
 
@@ -48,18 +49,18 @@ const activities = [
   },
 ]
 
-export default function ActivitySelector({ tripId, onBack }: ActivitySelectorProps) {
+export default function ActivitySelector({ tripId, shareCode, onBack }: ActivitySelectorProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
 
   const handleActivityClick = (activityLabel: string) => {
     // Map activity labels to routes
     const activityRoutes: Record<string, string> = {
-      "Flight": `/trips/${tripId}/activity/flight`,
-      "Lodging": `/trips/${tripId}/activity/lodging`,
-      "Route": `/trips/${tripId}/activity/route`,
-      "Train": `/trips/${tripId}/activity/route`,
-      "Car Rental": `/trips/${tripId}/activity/route`,
+      "Flight": `/trips/${shareCode}/activity/flight`,
+      "Lodging": `/trips/${shareCode}/activity/lodging`,
+      "Route": `/trips/${shareCode}/activity/route`,
+      "Train": `/trips/${shareCode}/activity/route`,
+      "Car Rental": `/trips/${shareCode}/activity/route`,
       // Add more mappings as needed
     }
 
@@ -74,9 +75,9 @@ export default function ActivitySelector({ tripId, onBack }: ActivitySelectorPro
 
   const handleCategoryClick = (categoryLabel: string) => {
     const categoryRoutes: Record<string, string> = {
-      "Flights": `/trips/${tripId}/activity/flight`,
-      "Lodging": `/trips/${tripId}/activity/lodging`,
-      "Routes": `/trips/${tripId}/activity/route`,
+      "Flights": `/trips/${shareCode}/activity/flight`,
+      "Lodging": `/trips/${shareCode}/activity/lodging`,
+      "Routes": `/trips/${shareCode}/activity/route`,
     }
 
     const route = categoryRoutes[categoryLabel]

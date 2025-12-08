@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Hotel, Calendar, Clock, DollarSign, FileText, LinkIcon, StickyNote } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ImageIcon, Camera } from "lucide-react"
+import { useTripLocations } from "@/hooks/useTripLocations"
+import { createActivity } from "@/lib/api/activities"
 
 interface LodgingFormProps {
   tripId: string
@@ -16,6 +18,11 @@ interface LodgingFormProps {
 
 export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
   const [showDocumentModal, setShowDocumentModal] = useState(false)
+  const { locations, loading: locationsLoading, error: locationsError, refetch } = useTripLocations(tripId)
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   
   // Hardcoded data for visual tweaking
   const [formData, setFormData] = useState({
@@ -29,6 +36,42 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
     roomType: "Suite",
     roomNumber: "104",
   })
+
+  useEffect(() => {
+    if (!selectedLocationId && locations.length > 0) {
+      setSelectedLocationId(locations[0].id)
+    }
+  }, [locations, selectedLocationId])
+
+  const handleSave = async () => {
+    setStatusMessage(null)
+    setErrorMessage(null)
+
+    if (!selectedLocationId) {
+      setErrorMessage("Select a route stop before saving.")
+      return
+    }
+
+    try {
+      setSaving(true)
+      await createActivity(tripId, {
+        title: formData.name || "Lodging",
+        type: "accommodation",
+        location_id: selectedLocationId,
+        notes: formData.reservationCode ? `Reservation: ${formData.reservationCode}` : undefined,
+        start_time: null,
+        end_time: null,
+        all_day: true,
+      })
+      setStatusMessage("Saved to timeline for this stop.")
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Failed to save activity")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const noRoute = !locationsLoading && locations.length === 0
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
@@ -45,13 +88,96 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
             Cancel
           </button>
           <h1 className="text-lg font-semibold text-white">Lodging</h1>
-          <button className="text-sm font-medium px-4 py-2 rounded-lg" style={{ backgroundColor: "var(--accent)", color: "white" }}>
-            Save
+          <button
+            className="text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-60"
+            style={{ backgroundColor: "var(--accent)", color: "white" }}
+            onClick={handleSave}
+            disabled={saving || locationsLoading || !tripId || noRoute}
+          >
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
+        {!tripId && (
+          <p className="mt-2 text-xs text-yellow-200/80">Waiting for trip to load…</p>
+        )}
+        {locationsError && (
+          <div className="mt-2 text-xs text-red-300 flex items-center gap-2">
+            <span>Failed to load stops: {locationsError}</span>
+            <button
+              onClick={() => refetch().catch(() => {})}
+              className="underline decoration-dotted text-white/80"
+              type="button"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {errorMessage && <p className="mt-2 text-xs text-red-300">{errorMessage}</p>}
+        {statusMessage && <p className="mt-2 text-xs text-emerald-300">{statusMessage}</p>}
       </motion.div>
 
       <div className="px-6 py-6 space-y-4">
+        {noRoute && (
+          <Card
+            className="rounded-2xl p-5 shadow-card border-white/[0.08] space-y-3"
+            style={{ backgroundColor: "var(--surface)" }}
+          >
+            <p className="text-sm font-semibold text-white">No route yet</p>
+            <p className="text-sm text-white/70">
+              Add at least one stop to your trip before creating lodging entries.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={onBack}
+                className="text-sm font-medium px-4 py-2 rounded-lg border border-white/20 text-white hover:border-white/40 transition"
+              >
+                Go to route
+              </button>
+              <button
+                onClick={() => refetch().catch(() => {})}
+                className="text-sm font-medium px-4 py-2 rounded-lg text-white/80 underline decoration-dotted"
+              >
+                Retry
+              </button>
+            </div>
+          </Card>
+        )}
+        {!noRoute && (
+        {/* Stop selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+        >
+          <Card
+            className="rounded-2xl p-5 shadow-card border-white/[0.08] space-y-3"
+            style={{ backgroundColor: "var(--surface)" }}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-white">Attach to stop</p>
+              {locationsLoading && (
+                <span className="text-xs text-white/60">Loading stops...</span>
+              )}
+            </div>
+            {locations.length === 0 && !locationsLoading && (
+              <div className="text-sm text-white/70">
+                Add a route first to place this activity. Go back and add stops.
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {locations.map((loc) => (
+                <button
+                  key={loc.id}
+                  onClick={() => setSelectedLocationId(loc.id)}
+                  className={`px-3 py-2 rounded-xl text-sm border transition-colors ${selectedLocationId === loc.id ? "border-[#ff6b6b] bg-[#ff6b6b]/15 text-white" : "border-white/10 text-white/80 hover:border-white/30"}`}
+                >
+                  {loc.location_name || "Stop"}
+                </button>
+              ))}
+            </div>
+          </Card>
+        </motion.div>
+
         {/* Name Field */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -162,6 +288,7 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
             onClick={() => setShowDocumentModal(true)}
           />
         </motion.div>
+        )}
       </div>
 
       {/* Add Document Modal */}

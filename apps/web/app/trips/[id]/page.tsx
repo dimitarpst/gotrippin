@@ -7,6 +7,7 @@ import TripOverview from "@/components/trips/trip-overview"
 import TripOverviewSkeleton from "@/components/trips/trip-overview-skeleton"
 import { useTrip, useDeleteTrip, useUpdateTrip } from "@/hooks/useTrips"
 import { useTripLocations } from "@/hooks/useTripLocations"
+import { useTripTimeline } from "@/hooks/useTripTimeline"
 import { useAuth } from "@/contexts/AuthContext"
 import { useTranslation } from "react-i18next"
 import type { DateRange } from "react-day-picker"
@@ -42,6 +43,14 @@ export default function TripPage({ params }: TripPageProps) {
     loading: routeLocationsLoading,
     refetch: refetchLocations,
   } = useTripLocations(trip?.id)
+  const {
+    locations: timelineLocations,
+    activitiesByLocation,
+    unassigned,
+    loading: timelineLoading,
+    error: timelineError,
+    refetch: refetchTimeline,
+  } = useTripTimeline(trip?.id)
 
   useEffect(() => {
     setMounted(true)
@@ -60,6 +69,8 @@ export default function TripPage({ params }: TripPageProps) {
       router.push(`/trips/${shareCode}/activity`)
     } else if (screen === "flight") {
       router.push(`/trips/${shareCode}/activity/flight`)
+    } else if (screen === "timeline") {
+      router.push(`/trips/${shareCode}/timeline`)
     } else if (screen === "weather") {
       router.push(`/trips/${shareCode}/weather`)
     }
@@ -224,6 +235,12 @@ export default function TripPage({ params }: TripPageProps) {
             onChangeBackground={handleChangeBackground}
             routeLocations={routeLocations}
             routeLoading={routeLocationsLoading}
+            timelineLocations={timelineLocations}
+            activitiesByLocation={activitiesByLocation}
+            timelineLoading={timelineLoading}
+            timelineError={timelineError}
+            unassignedActivities={unassigned}
+            onRefetchTimeline={refetchTimeline}
           />
         ) : (
           <TripOverviewSkeleton onBack={handleBack} />

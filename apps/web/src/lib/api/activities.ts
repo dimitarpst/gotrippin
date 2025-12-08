@@ -31,6 +31,42 @@ export interface TimelineData {
   unassigned: Activity[];
 }
 
+export type CreateActivityPayload = Pick<
+  Activity,
+  "title" | "notes" | "start_time" | "end_time" | "all_day" | "icon" | "color"
+> & {
+  type?: Activity["type"];
+  location_id?: string | null;
+};
+
+export async function createActivity(
+  tripId: string,
+  payload: CreateActivityPayload,
+  token?: string | null
+): Promise<Activity> {
+  const authToken = token ?? (await getAuthToken());
+
+  if (!authToken) {
+    throw new ApiError("Authentication required", 401);
+  }
+
+  const res = await fetch(`${API_BASE_URL}/trips/${tripId}/activities`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: "Request failed" }));
+    throw new ApiError(error.message || "Request failed", res.status);
+  }
+
+  return res.json();
+}
+
 export async function getGroupedActivities(
   tripId: string,
   token?: string | null

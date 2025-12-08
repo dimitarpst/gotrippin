@@ -28,7 +28,7 @@ import {
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { Trip, TripLocation } from "@gotrippin/core"
+import type { Trip, TripLocation, Activity } from "@gotrippin/core"
 import { formatTripDate, calculateDaysUntil, calculateDuration } from "@/lib/api/trips"
 import { useTranslation } from "react-i18next"
 import {
@@ -47,7 +47,7 @@ import { format } from "date-fns"
 
 interface TripOverviewProps {
   trip: Trip
-  onNavigate: (screen: "activity" | "flight") => void
+  onNavigate: (screen: "activity" | "flight" | "timeline" | "weather") => void
   onBack: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -58,6 +58,12 @@ interface TripOverviewProps {
   onChangeBackground?: (type: "image" | "color", value: string) => void
   routeLocations?: TripLocation[]
   routeLoading?: boolean
+  timelineLocations?: TripLocation[]
+  activitiesByLocation?: Record<string, Activity[]>
+  timelineLoading?: boolean
+  timelineError?: string | null
+  unassignedActivities?: Activity[]
+  onRefetchTimeline?: () => Promise<void>
 }
 
 export default function TripOverview({
@@ -73,6 +79,12 @@ export default function TripOverview({
   onChangeBackground,
   routeLocations = [],
   routeLoading = false,
+  timelineLocations = [],
+  activitiesByLocation = {},
+  timelineLoading = false,
+  timelineError = null,
+  unassignedActivities = [],
+  onRefetchTimeline,
 }: TripOverviewProps) {
   const { t } = useTranslation()
   const [dominantColor, setDominantColor] = useState<string | null>(null)
@@ -90,7 +102,9 @@ export default function TripOverview({
     endDate: trip.end_date ? formatTripDate(trip.end_date) : "TBD",
   }), [trip.start_date, trip.end_date])
 
-  const hasRoute = routeLocations.length > 0
+  const derivedLocations = timelineLocations.length ? timelineLocations : routeLocations
+  const loadingRoute = timelineLoading || routeLoading
+  const hasRoute = derivedLocations.length > 0
   const todayLabel = useMemo(() => {
     const todayFormatted = format(new Date(), "EEEE, d MMM")
     return t("trip_overview.route_today", { date: todayFormatted })
@@ -502,12 +516,12 @@ export default function TripOverview({
             >
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: "#ff6b6b" }}
-                  >
-                    <Calendar className="w-5 h-5 text-white" />
-                  </div>
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: "#ff6b6b" }}
+                >
+                  <Calendar className="w-5 h-5 text-white" />
+                </div>
                   <div className="flex flex-col">
                     <span className="text-xs uppercase tracking-wide text-white/60">
                       {t('trip_overview.route_title')}
@@ -522,7 +536,7 @@ export default function TripOverview({
                 </span>
               </div>
 
-              {routeLoading && (
+              {loadingRoute && (
                 <div className="space-y-4 mb-4">
                   {[0, 1, 2].map((idx) => (
                     <div key={idx} className="flex gap-4">
@@ -533,15 +547,15 @@ export default function TripOverview({
                 </div>
               )}
 
-              {!routeLoading && hasRoute && (
+              {!loadingRoute && hasRoute && (
                 <div className="space-y-3 mb-4">
-                  {routeLocations.map((location, index) => {
+                  {derivedLocations.map((location, index) => {
                     const dateLabel = getLocationDateLabel(location)
                     return (
                       <div key={location.id} className="flex gap-3">
                         <div className="flex flex-col items-center">
                           <div className="w-2 h-2 rounded-full bg-[#ff6b6b] mt-1" />
-                          {index < routeLocations.length - 1 && <span className="flex-1 w-px bg-white/15 mt-1" />}
+                          {index < derivedLocations.length - 1 && <span className="flex-1 w-px bg-white/15 mt-1" />}
                         </div>
                         <div className="flex-1 bg-white/[0.04] rounded-2xl border border-white/[0.08] px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
                           <div className="flex items-center justify-between gap-3 mb-1">
@@ -578,10 +592,14 @@ export default function TripOverview({
                   <button className="text-xs font-semibold uppercase tracking-wide text-[#ff6b6b]">
                     {t('trip_overview.route_add_stop')}
                   </button>
-                </div>
+              </div>
               )}
 
-              <button className="font-semibold text-sm" style={{ color: "#ff6b6b" }}>
+              <button
+                className="font-semibold text-sm"
+                style={{ color: "#ff6b6b" }}
+                onClick={() => onNavigate("timeline")}
+              >
                 {t('trip_overview.view_all_days')}
               </button>
             </Card>
