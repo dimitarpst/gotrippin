@@ -11,6 +11,8 @@ import { DateRange } from "react-day-picker"
 interface LocationCardProps extends React.HTMLAttributes<HTMLDivElement> {
   name: string
   index: number
+  badgeLabel?: string
+  helperText?: string
   arrivalDate?: string | null
   departureDate?: string | null
   onRemove: () => void
@@ -23,6 +25,8 @@ export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
     {
       name,
       index,
+      badgeLabel,
+      helperText,
       arrivalDate,
       departureDate,
       onRemove,
@@ -69,8 +73,13 @@ export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
           </div>
 
           {/* Order Badge */}
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-xs font-medium text-white/60 border border-white/5">
-            {index + 1}
+          <div className="flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-semibold text-white/70 border border-white/5">
+              {badgeLabel ?? (index + 1)}
+            </div>
+            {helperText && (
+              <div className="text-[10px] text-white/50 text-center mt-1 leading-none">{helperText}</div>
+            )}
           </div>
 
           {/* Content */}

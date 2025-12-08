@@ -8,6 +8,7 @@ import TripOverviewSkeleton from "@/components/trips/trip-overview-skeleton"
 import { useTrip, useDeleteTrip, useUpdateTrip } from "@/hooks/useTrips"
 import { useTripLocations } from "@/hooks/useTripLocations"
 import { useTripTimeline } from "@/hooks/useTripTimeline"
+import { useTripWeather } from "@/hooks/useWeather"
 import { useAuth } from "@/contexts/AuthContext"
 import { useTranslation } from "react-i18next"
 import type { DateRange } from "react-day-picker"
@@ -51,6 +52,12 @@ export default function TripPage({ params }: TripPageProps) {
     error: timelineError,
     refetch: refetchTimeline,
   } = useTripTimeline(trip?.id)
+  const {
+    byLocation: weatherByLocation,
+    loading: weatherLoading,
+    error: weatherError,
+    refetch: refetchWeather,
+  } = useTripWeather(trip?.id, 5)
 
   useEffect(() => {
     setMounted(true)
@@ -241,6 +248,10 @@ export default function TripPage({ params }: TripPageProps) {
             timelineError={timelineError}
             unassignedActivities={unassigned}
             onRefetchTimeline={refetchTimeline}
+            weatherByLocation={weatherByLocation}
+            weatherLoading={weatherLoading}
+            weatherError={weatherError}
+            onRefetchWeather={refetchWeather}
           />
         ) : (
           <TripOverviewSkeleton onBack={handleBack} />

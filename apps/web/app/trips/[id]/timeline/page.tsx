@@ -4,6 +4,8 @@ import { use } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTripTimeline } from "@/hooks/useTripTimeline";
+import { useTrip } from "@/hooks/useTrips";
+import { useTripWeather } from "@/hooks/useWeather";
 import AuroraBackground from "@/components/effects/aurora-background";
 import { Card } from "@/components/ui/card";
 import { Calendar, ArrowLeft } from "lucide-react";
@@ -28,11 +30,38 @@ function dateLabel(location: TripLocation) {
 
 export default function TimelinePage({ params }: TimelinePageProps) {
   const resolved = use(params);
-  const tripId = resolved.id;
+  const shareCode = resolved.id;
   const router = useRouter();
   const { t } = useTranslation();
 
+  const { trip, loading: tripLoading } = useTrip(shareCode);
+  const tripId = trip?.id;
   const { locations, activitiesByLocation, unassigned, loading, error } = useTripTimeline(tripId);
+  const {
+    byLocation: weatherByLocation,
+    loading: weatherLoading,
+    error: weatherError,
+  } = useTripWeather(tripId, 5);
+
+  const isLoading = loading || tripLoading;
+
+  const getWeatherLabel = (locationId: string) => {
+    const entry = weatherByLocation[locationId];
+    const forecast = entry?.weather?.forecast?.[0];
+    if (forecast) {
+      const temp =
+        forecast.temperatureMax ??
+        forecast.temperature ??
+        forecast.temperatureMin ??
+        null;
+      const tempText = typeof temp === "number" ? `${Math.round(temp)}°` : "";
+      return [tempText, forecast.description].filter(Boolean).join(" · ");
+    }
+    if (entry?.error) {
+      return t("weather_unavailable", { defaultValue: "Weather unavailable" });
+    }
+    return null;
+  };
 
   return (
     <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
@@ -40,7 +69,7 @@ export default function TimelinePage({ params }: TimelinePageProps) {
       <div className="flex-1 relative z-10 px-4 py-4 sm:px-6">
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={() => router.push(`/trips/${tripId}`)}
+            onClick={() => router.push(`/trips/${shareCode}`)}
             className="inline-flex items-center gap-2 text-sm font-semibold text-white/80 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -52,7 +81,7 @@ export default function TimelinePage({ params }: TimelinePageProps) {
           </div>
         </div>
 
-        {loading && (
+        {isLoading && (
           <div className="space-y-3">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-24 rounded-2xl bg-white/5 border border-white/10 animate-pulse" />
@@ -60,13 +89,19 @@ export default function TimelinePage({ params }: TimelinePageProps) {
           </div>
         )}
 
-        {!loading && error && (
+        {!isLoading && error && (
           <Card className="p-4 border-white/10 bg-white/5 text-sm text-red-200">
             {error}
           </Card>
         )}
 
-        {!loading && !error && (
+        {!isLoading && !error && weatherError && (
+          <Card className="p-3 border-white/10 bg-white/5 text-xs text-red-200">
+            {weatherError}
+          </Card>
+        )}
+
+        {!isLoading && !error && (
           <div className="space-y-4">
             {locations.length === 0 && (
               <Card className="p-5 border-dashed border-white/15 bg-white/5 text-sm text-white/80">
@@ -77,6 +112,7 @@ export default function TimelinePage({ params }: TimelinePageProps) {
             {locations.map((loc, idx) => {
               const acts = activitiesByLocation[loc.id] || [];
               const label = dateLabel(loc);
+              const weatherLabel = getWeatherLabel(loc.id);
               return (
                 <Card
                   key={loc.id}
@@ -92,7 +128,15 @@ export default function TimelinePage({ params }: TimelinePageProps) {
                         {label && <p className="text-xs text-white/60">{label}</p>}
                       </div>
                     </div>
-                    <div className="w-2 h-2 rounded-full bg-[#ff6b6b]" />
+                    <div className="flex items-center gap-2 text-xs text-white/60">
+                      {weatherLoading && (
+                        <span>{t("weather_loading", { defaultValue: "Loading weather..." })}</span>
+                      )}
+                      {!weatherLoading && weatherLabel && (
+                        <span className="text-white/70 whitespace-nowrap">{weatherLabel}</span>
+                      )}
+                      <div className="w-2 h-2 rounded-full bg-[#ff6b6b]" />
+                    </div>
                   </div>
 
                   {acts.length === 0 ? (

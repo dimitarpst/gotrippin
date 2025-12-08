@@ -97,3 +97,26 @@ export function getWeatherDescription(code: number): string {
   return WEATHER_CODE_DESCRIPTIONS[code] || 'Unknown';
 }
 
+/**
+ * Weather data mapped to a specific trip location
+ */
+export interface TripLocationWeather {
+  locationId: string;
+  locationName: string;
+  orderIndex?: number;
+  arrivalDate?: string | null;
+  departureDate?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  weather?: WeatherData | null;
+  error?: string | null;
+}
+
+/**
+ * Weather response for an entire trip
+ */
+export interface TripWeatherResponse {
+  tripId: string;
+  locations: TripLocationWeather[];
+}
+

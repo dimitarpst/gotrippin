@@ -116,8 +116,8 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
               type="button"
             >
               Retry
-            </button>
-          </div>
+          </button>
+        </div>
         )}
         {errorMessage && (
           <p className="mt-2 text-xs text-red-300">{errorMessage}</p>

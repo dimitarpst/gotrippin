@@ -28,7 +28,7 @@ import {
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import type { Trip, TripLocation, Activity } from "@gotrippin/core"
+import type { Trip, TripLocation, Activity, TripLocationWeather } from "@gotrippin/core"
 import { formatTripDate, calculateDaysUntil, calculateDuration } from "@/lib/api/trips"
 import { useTranslation } from "react-i18next"
 import {
@@ -64,6 +64,10 @@ interface TripOverviewProps {
   timelineError?: string | null
   unassignedActivities?: Activity[]
   onRefetchTimeline?: () => Promise<void>
+  weatherByLocation?: Record<string, TripLocationWeather>
+  weatherLoading?: boolean
+  weatherError?: string | null
+  onRefetchWeather?: () => Promise<void>
 }
 
 export default function TripOverview({
@@ -85,6 +89,10 @@ export default function TripOverview({
   timelineError = null,
   unassignedActivities = [],
   onRefetchTimeline,
+  weatherByLocation = {},
+  weatherLoading = false,
+  weatherError = null,
+  onRefetchWeather,
 }: TripOverviewProps) {
   const { t } = useTranslation()
   const [dominantColor, setDominantColor] = useState<string | null>(null)
@@ -105,6 +113,8 @@ export default function TripOverview({
   const derivedLocations = timelineLocations.length ? timelineLocations : routeLocations
   const loadingRoute = timelineLoading || routeLoading
   const hasRoute = derivedLocations.length > 0
+  const primaryWeatherEntry = hasRoute ? weatherByLocation[derivedLocations[0].id] : undefined
+  const primaryWeather = primaryWeatherEntry?.weather
   const todayLabel = useMemo(() => {
     const todayFormatted = format(new Date(), "EEEE, d MMM")
     return t("trip_overview.route_today", { date: todayFormatted })
@@ -119,6 +129,28 @@ export default function TripOverview({
     }
     if (arrival) return format(arrival, "MMM d")
     if (departure) return format(departure, "MMM d")
+    return null
+  }
+
+  const getLocationWeatherLabel = (locationId: string) => {
+    const entry = weatherByLocation[locationId]
+    const forecast = entry?.weather?.forecast?.[0]
+
+    if (forecast) {
+      const temp =
+        forecast.temperatureMax ??
+        forecast.temperature ??
+        forecast.temperatureMin ??
+        null
+      const tempText = typeof temp === "number" ? `${Math.round(temp)}°` : ""
+      const desc = forecast.description
+      return [tempText, desc].filter(Boolean).join(" · ")
+    }
+
+    if (entry?.error) {
+      return t("weather_unavailable", { defaultValue: "Weather unavailable" })
+    }
+
     return null
   }
 
@@ -562,11 +594,21 @@ export default function TripOverview({
                             <span className="text-[11px] uppercase tracking-wide text-white/50">
                               {(index + 1).toString().padStart(2, "0")}
                             </span>
-                            {dateLabel && (
-                              <span className="text-xs text-white/60 whitespace-nowrap">
-                                {dateLabel}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-2 text-xs text-white/60">
+                              {dateLabel && (
+                                <span className="whitespace-nowrap">{dateLabel}</span>
+                              )}
+                              {weatherLoading && (
+                                <span className="text-white/40">
+                                  {t("weather_loading", { defaultValue: "Loading weather..." })}
+                                </span>
+                              )}
+                              {!weatherLoading && getLocationWeatherLabel(location.id) && (
+                                <span className="whitespace-nowrap text-white/70">
+                                  {getLocationWeatherLabel(location.id)}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <p className="text-white font-semibold truncate">
                             {location.location_name || t('trips.untitled_trip')}
@@ -610,22 +652,43 @@ export default function TripOverview({
             <div onClick={() => onNavigate("weather" as any)}>
               <WeatherWidget
                 color={dominantColor || trip.color || '#ff6b6b'}
-                weather={{
-                  location: trip.destination || "Tokyo",
-                  current: {
-                    temperature: 15,
-                    temperatureApparent: 14,
-                    humidity: 65,
-                    weatherCode: 1000,
-                    description: "Clear, Sunny",
-                    windSpeed: 10,
-                    windDirection: 180,
-                    cloudCover: 20,
-                    uvIndex: 5,
-                  },
-                  forecast: [], // Forecast not needed for summary card
-                }}
+                weather={
+                  primaryWeather || {
+                    location: derivedLocations[0]?.location_name || trip.destination || trip.title || "—",
+                    current: {
+                      temperature: 15,
+                      temperatureApparent: 14,
+                      humidity: 65,
+                      weatherCode: 1000,
+                      description: "Clear, Sunny",
+                      windSpeed: 10,
+                      windDirection: 180,
+                      cloudCover: 20,
+                      uvIndex: 5,
+                    },
+                    forecast: [],
+                  }
+                }
               />
+              {weatherLoading && (
+                <p className="text-xs text-white/60 mt-2">
+                  {t("weather_loading", { defaultValue: "Loading weather..." })}
+                </p>
+              )}
+              {!weatherLoading && weatherError && (
+                <div className="text-xs text-red-200/80 mt-2">
+                  {weatherError}{" "}
+                  {onRefetchWeather && (
+                    <button
+                      type="button"
+                      className="underline decoration-dotted text-white/80"
+                      onClick={() => onRefetchWeather().catch(() => {})}
+                    >
+                      {t("weather_refresh", { defaultValue: "Retry" })}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
 

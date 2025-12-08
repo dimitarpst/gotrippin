@@ -5,8 +5,11 @@ import { firstValueFrom } from 'rxjs';
 import type {
   TomorrowTimelineResponse,
   WeatherData,
+  TripWeatherResponse,
+  TripLocationWeather,
 } from '@gotrippin/core';
 import { getWeatherDescription } from '@gotrippin/core';
+import { TripLocationsService } from '../trip-locations/trip-locations.service';
 
 interface CacheEntry {
   data: WeatherData;
@@ -20,10 +23,12 @@ export class WeatherService {
   private readonly baseUrl = 'https://api.tomorrow.io/v4';
   private readonly cache = new Map<string, CacheEntry>();
   private readonly cacheTTL = 10 * 60 * 1000; // 10 minutes
+  private readonly maxForecastDays = 14;
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly tripLocationsService: TripLocationsService,
   ) {
     this.apiKey = this.configService.get<string>('TOMORROW_IO_API_KEY');
     if (!this.apiKey) {
@@ -35,6 +40,80 @@ export class WeatherService {
         `Tomorrow.io API key loaded (length: ${this.apiKey.length})`,
       );
     }
+  }
+
+  /**
+   * Get weather for all trip locations
+   */
+  async getTripWeather(
+    tripId: string,
+    userId: string,
+    options?: { days?: number },
+  ): Promise<TripWeatherResponse> {
+    const locations = await this.tripLocationsService.getRoute(tripId, userId);
+    const limitDays =
+      options?.days && Number.isFinite(options.days) && options.days > 0
+        ? Math.min(options.days, this.maxForecastDays)
+        : undefined;
+
+    const results: TripLocationWeather[] = await Promise.all(
+      locations.map(async (loc) => {
+        const target =
+          loc.latitude !== null && loc.latitude !== undefined && loc.longitude !== null && loc.longitude !== undefined
+            ? `${loc.latitude},${loc.longitude}`
+            : loc.location_name;
+
+        const normalizedStart = this.normalizeStartDate(loc.arrival_date);
+        const normalizedEnd = this.normalizeEndDate(loc.departure_date, normalizedStart);
+
+        try {
+          const weather = await this.getWeatherTimeline(
+            target,
+            normalizedStart,
+            normalizedEnd,
+          );
+
+          const trimmedForecast =
+            limitDays && weather.forecast
+              ? weather.forecast.slice(0, limitDays)
+              : weather.forecast;
+
+          return {
+            locationId: loc.id,
+            locationName: loc.location_name,
+            orderIndex: loc.order_index,
+            arrivalDate: loc.arrival_date,
+            departureDate: loc.departure_date,
+            latitude: loc.latitude ?? null,
+            longitude: loc.longitude ?? null,
+            weather: { ...weather, forecast: trimmedForecast },
+            error: null,
+          };
+        } catch (error: any) {
+          this.logger.warn(`Weather fetch failed for location ${loc.id}`, {
+            message: error?.message,
+          });
+          return {
+            locationId: loc.id,
+            locationName: loc.location_name,
+            orderIndex: loc.order_index,
+            arrivalDate: loc.arrival_date,
+            departureDate: loc.departure_date,
+            latitude: loc.latitude ?? null,
+            longitude: loc.longitude ?? null,
+            weather: null,
+            error:
+              error?.message ||
+              'Failed to fetch weather for this stop',
+          };
+        }
+      }),
+    );
+
+    return {
+      tripId,
+      locations: results,
+    };
   }
 
   /**
@@ -100,6 +179,27 @@ export class WeatherService {
         requestBody.endTime = endDate;
       }
 
+      // Adjust timesteps based on window length to avoid Tomorrow.io rule violations
+      if (requestBody.startTime && requestBody.endTime) {
+        const start = new Date(requestBody.startTime).getTime();
+        const end = new Date(requestBody.endTime).getTime();
+        const windowMs = end - start;
+
+        // If window invalid or <=0, drop endTime and keep default timesteps
+        if (windowMs <= 0) {
+          delete requestBody.endTime;
+        } else if (windowMs < 24 * 60 * 60 * 1000) {
+          // For windows < 24h use only hourly
+          requestBody.timesteps = ['1h'];
+        } else {
+          // For >=24h use hourly + daily
+          requestBody.timesteps = ['1h', '1d'];
+        }
+      } else {
+        // When no range provided, default to hourly + daily
+        requestBody.timesteps = ['1h', '1d'];
+      }
+
       const url = `${this.baseUrl}/timelines`;
       const response = await firstValueFrom(
         this.httpService.post<TomorrowTimelineResponse>(
@@ -123,6 +223,11 @@ export class WeatherService {
       
       return weatherData;
     } catch (error: any) {
+      // Preserve intentionally thrown HttpExceptions (e.g., date validation)
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       this.logger.error('Error fetching weather timeline', {
         message: error.message,
         status: error.response?.status,
@@ -442,6 +547,35 @@ export class WeatherService {
       data,
       timestamp: Date.now(),
     });
+  }
+
+  /**
+   * Normalize start date to avoid free-tier past-date restrictions
+   */
+  private normalizeStartDate(date?: string | null): string | undefined {
+    if (!date) return undefined;
+    const parsed = new Date(date);
+    if (isNaN(parsed.getTime())) return undefined;
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+    if (parsed.getTime() < twentyFourHoursAgo) return undefined;
+    return parsed.toISOString();
+  }
+
+  /**
+   * Normalize end date; ensure it's after start if provided
+   */
+  private normalizeEndDate(
+    date?: string | null,
+    start?: string | undefined,
+  ): string | undefined {
+    if (!date) return undefined;
+    const parsed = new Date(date);
+    if (isNaN(parsed.getTime())) return undefined;
+    if (start) {
+      const startDate = new Date(start);
+      if (parsed.getTime() < startDate.getTime()) return undefined;
+    }
+    return parsed.toISOString();
   }
 }
 

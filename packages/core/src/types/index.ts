@@ -26,6 +26,13 @@ export type {
   ActivityType,
 } from '../schemas/trip';
 
+export type {
+  WeatherData,
+  TomorrowTimelineResponse,
+  TripLocationWeather,
+  TripWeatherResponse,
+} from './weather';
+
 /**
  * Common API response types
  */

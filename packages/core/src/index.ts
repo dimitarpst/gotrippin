@@ -73,6 +73,8 @@ export type {
 export type {
   TomorrowTimelineResponse,
   WeatherData,
+  TripLocationWeather,
+  TripWeatherResponse,
 } from './types/weather';
 
 export {

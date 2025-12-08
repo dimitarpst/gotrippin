@@ -22,7 +22,6 @@ interface RouteBuilderProps {
 }
 
 export function RouteBuilder({ locations, onChange, className }: RouteBuilderProps) {
-
   const addLocation = () => {
     const newLocation: RouteLocation = {
       id: uuidv4(),
@@ -41,15 +40,22 @@ export function RouteBuilder({ locations, onChange, className }: RouteBuilderPro
     ))
   }
 
+  const stopCountLabel = locations.length === 1 ? "1 stop" : `${locations.length} stops`
+  const primaryCtaLabel = locations.length === 0 ? "Set starting point" : "Add destination"
+
   return (
     <div className={className}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white">Your route</h2>
-          <p className="text-sm text-white/60">Add the key stops for this trip</p>
+          <p className="text-sm text-white/60">
+            {locations.length === 0
+              ? "Set your first stop, then add destinations in order."
+              : "Stop 1 is your first stop. Add destinations in travel order."}
+          </p>
         </div>
         <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-white/60">
-          {locations.length} stops
+          {stopCountLabel}
         </div>
       </div>
 
@@ -66,6 +72,8 @@ export function RouteBuilder({ locations, onChange, className }: RouteBuilderPro
                 <LocationCard
                   index={index}
                   name={location.name}
+                  badgeLabel={index === 0 ? "1" : undefined}
+                  helperText={index === 0 ? "Trip start" : undefined}
                   arrivalDate={location.arrivalDate}
                   departureDate={location.departureDate}
                   onRemove={() => removeLocation(location.id)}
@@ -95,12 +103,12 @@ export function RouteBuilder({ locations, onChange, className }: RouteBuilderPro
         <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-[#ff6b6b] flex items-center justify-center transition-colors">
           <Plus className="w-4 h-4 text-current group-hover:text-white" />
         </div>
-        <span className="font-medium">Add Destination</span>
+        <span className="font-medium">{primaryCtaLabel}</span>
       </motion.button>
       
-      {locations.length < 2 && (
-        <p className="text-center text-xs text-red-400/80 mt-4 bg-red-500/5 py-2 rounded-lg">
-          Please add at least 2 stops to create a route
+      {locations.length === 1 && (
+        <p className="text-center text-xs text-white/70 mt-3">
+          Add your next destination to build the route order.
         </p>
       )}
     </div>
