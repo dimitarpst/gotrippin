@@ -7,7 +7,7 @@ This document outlines the architecture for implementing route-based trip planni
 ## Core Concept
 
 **Route-First Planning:**
-- Users must define a route before adding activities
+- Users must define a route (at least a starting stop) before adding activities
 - Route consists of ordered locations: A → B → C → D
 - Activities are attached to specific locations in the route
 - Weather is fetched per location, not per trip
@@ -15,7 +15,7 @@ This document outlines the architecture for implementing route-based trip planni
 
 **Example Flow:**
 1. User creates trip "Spain Adventure"
-2. **Required:** Define route: Sofia (Bulgaria) → Madrid (Spain) → Barcelona (Spain) → Sofia
+2. Define route: Sofia (Bulgaria) → Madrid (Spain) → Barcelona (Spain) → Sofia (start with one stop, then add destinations)
 3. Add activities to each location:
    - Sofia: Packing, Flight booking
    - Madrid: Hotel check-in, Museum visit, Restaurant
@@ -352,46 +352,57 @@ POST   /api/trips/:tripId/locations/reorder  - Reorder locations (bulk update)
 - `GET /trips/:tripId/activities/:activityId` - Get single activity
 - `PUT /trips/:tripId/activities/:activityId` - Update activity
 - `DELETE /trips/:tripId/activities/:activityId` - Delete activity
+- `GET /trips/:tripId/weather?days=5` - Get per-stop forecasts for a trip (auth required; uses trip route)
 
-### Phase 2: Route Builder UI
+### Phase 2: Route Builder UI ✅ COMPLETED
+
+**Status:** Completed (Dice UI sortable route builder + trip creation wizard)
+
+**Notes:**
+- Route builder uses Dice UI Sortable (dnd-kit) with ordered stops.
+- Trip creation flow includes route step; allows starting with a single stop and encourages adding destinations.
+- Inline date picker per stop; copy clarified for “first stop” vs destinations.
+
+**Files touched:**
+- `apps/web/src/components/trips/route/route-builder.tsx`
+- `apps/web/src/components/trips/route/location-card.tsx`
+- `apps/web/src/components/trips/create-trip.tsx`
+
+### Phase 3: Activity-Location Linking & Timeline Surface ✅ COMPLETED
+
+**Status:** Completed (activities now attach to route stops; timeline implemented)
+
+**Notes:**
+- Activity forms require `location_id`; stop selector surfaces route stops.
+- Grouped activities endpoint consumed via `useTripTimeline`; timeline page `/trips/[share]/timeline` live.
+- Overview itinerary card uses timeline data and “View All Days” navigates to timeline.
+
+**Files touched (high level):**
+- `apps/web/src/lib/api/activities.ts`, `apps/web/src/hooks/useTripTimeline.ts`
+- Activity forms and selector (`activity-selector`, lodging/train/flight forms)
+- Timeline page/components and trip overview integration
+
+### Phase 4: Weather Per Location (In Progress)
+
+**Status:** Backend per-trip weather endpoint live; frontend integration in progress.
+
+**Notes:**
+- Endpoint: `GET /trips/:tripId/weather?days=5` (auth required), returns per-stop forecasts using the trip route.
+- Uses Tomorrow.io via backend-only calls; falls back to location name when coords missing.
+- Forecast capped at requested days (max 14) and cached server-side.
+- Env: `TOMORROW_IO_API_KEY` required on backend.
 
 **Tasks:**
-1. Create route builder component
-2. Integrate into trip creation flow
-3. Make route required (validation)
-4. Add location management (add/remove/reorder)
-5. Date picker for arrival/departure per location
-
-**Files to create:**
-- `apps/web/src/components/trips/route-builder.tsx`
-- Update `apps/web/src/components/trips/create-trip.tsx`
-
-### Phase 3: Activity-Location Linking
-
-**Tasks:**
-1. Update activity creation to require location selection
-2. Update activity display to show location
-3. Group activities by location in timeline view
-4. Update activity queries to include location data
-
-**Files to update:**
-- `apps/web/src/components/trips/activity-selector.tsx`
-- Activity creation forms
-- Activity timeline/calendar views
-
-### Phase 4: Weather Per Location
-
-**Tasks:**
-1. Update weather API to accept `location_id` or `location_name`
-2. Update weather widget to show weather per location
-3. Weather detail page shows forecast per location
-4. Weather cards in trip overview per location
+1. Update weather API to accept route locations and return per-stop forecasts ✅
+2. Update weather widget to show weather per location (timeline/overview) ⏳
+3. Weather detail page shows forecast per location (upcoming)
+4. Weather cards in trip overview per location (in progress)
 
 **Files to update:**
 - `apps/web/src/components/trips/weather-widget.tsx`
 - `apps/web/app/trips/[id]/weather/page.tsx`
-- `apps/web/src/hooks/useWeather.ts` (when created)
-- Backend weather service (accept location from route)
+- `apps/web/src/hooks/useWeather.ts`
+- Backend weather service (accepts trip route) ✅
 
 ## Technical Considerations
 
@@ -610,7 +621,7 @@ GET /api/weather/timeline?location=Madrid&startDate=2024-11-16&endDate=2024-11-2
 ## Validation Rules
 
 ### Route Validation
-- Minimum 2 locations required (start + end)
+- Minimum 1 location required (trip start); recommend 2+ to form a route
 - `order_index` must be sequential (1, 2, 3, ...)
 - No gaps in order_index
 - Location names required (non-empty)
@@ -682,16 +693,17 @@ For trips created before route system:
 
 ## Next Steps
 
-1. Review and approve this architecture
-2. Create database migrations
-3. Implement backend API
-4. Build route builder UI
-5. Update activity system
-6. Integrate weather per location
-7. Test end-to-end flow
+1. Integrate weather per location (Phase 4)
+   - Backend weather service accepting route locations ✅
+   - Frontend weather widgets/cards per stop and in timeline (in progress)
+2. Maps + route visualization (Phase 5)
+   - Polyline for ordered stops; per-leg summary in overview/timeline
+3. UX polish & QA
+   - Empty/single-stop states, per-stop helpers, loading/error paths
+   - E2E: create trip → add stops → add activities → timeline/weather
 
 ---
 
-**Last Updated:** 2024-11-24
-**Status:** Planning Phase
+**Last Updated:** 2025-12-08
+**Status:** Phases 1–3 completed; Phase 4 (weather) in progress; maps next
 

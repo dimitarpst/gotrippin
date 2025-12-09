@@ -116,7 +116,16 @@ export default function TimelinePage({ params }: TimelinePageProps) {
               return (
                 <Card
                   key={loc.id}
-                  className="p-5 border-white/10 bg-white/5 backdrop-blur"
+                  className="p-5 border-white/10 bg-white/5 backdrop-blur cursor-pointer transition-colors hover:border-white/20"
+                  onClick={() => router.push(`/trips/${shareCode}/timeline/${loc.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      router.push(`/trips/${shareCode}/timeline/${loc.id}`)
+                    }
+                  }}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">

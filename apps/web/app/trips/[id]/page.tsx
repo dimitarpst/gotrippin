@@ -194,6 +194,10 @@ export default function TripPage({ params }: TripPageProps) {
     }
   }
 
+  const handleOpenLocation = (locationId: string) => {
+    router.push(`/trips/${shareCode}/timeline/${locationId}`)
+  }
+
   if (!mounted || authLoading) {
     return (
       <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
@@ -232,6 +236,7 @@ export default function TripPage({ params }: TripPageProps) {
             key={`${trip.id}-${trip.image_url || trip.color || 'default'}-${trip.start_date || ''}-${trip.end_date || ''}`}
             trip={trip}
             onNavigate={handleNavigate}
+            onOpenLocation={handleOpenLocation}
             onBack={handleBack}
             onEdit={handleEdit}
             onDelete={handleDelete}

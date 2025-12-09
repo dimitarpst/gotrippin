@@ -10,6 +10,7 @@ interface WeatherWidgetProps {
   compact?: boolean
   onClick?: () => void
   color?: string
+  variant?: "full" | "inline" | "compact"
 }
 
 /**
@@ -41,10 +42,45 @@ function formatTemp(temp: number): string {
  * Weather Widget Component
  * Displays current weather and forecast with Aurora theme styling
  */
-export default function WeatherWidget({ weather, compact = false, onClick, color = "#ff6b6b" }: WeatherWidgetProps) {
+export default function WeatherWidget({
+  weather,
+  compact = false,
+  onClick,
+  color = "#ff6b6b",
+  variant,
+}: WeatherWidgetProps) {
+  const activeVariant = variant || (compact ? "compact" : "full")
   const WeatherIcon = weather.current ? getWeatherIcon(weather.current.weatherCode) : Sun
 
-  if (compact) {
+  if (activeVariant === "inline") {
+    const temperature = weather.current?.temperature
+    const description = weather.current?.description
+    const locationLabel = weather.location
+
+    return (
+      <motion.div
+        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm text-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={onClick}
+      >
+        <WeatherIcon className="w-4 h-4 text-white" />
+        <div className="flex items-center gap-2">
+          {typeof temperature === "number" && (
+            <span className="text-sm font-semibold text-white">{formatTemp(temperature)}</span>
+          )}
+          {description && <span className="text-xs text-white/80">{description}</span>}
+        </div>
+        {locationLabel && (
+          <span className="text-[11px] uppercase tracking-wide text-white/60 whitespace-nowrap">
+            {locationLabel}
+          </span>
+        )}
+      </motion.div>
+    )
+  }
+
+  if (activeVariant === "compact") {
     // Compact version for trip cards
     if (!weather.current) {
       // Fallback for testing

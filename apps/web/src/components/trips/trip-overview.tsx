@@ -48,6 +48,7 @@ import { format } from "date-fns"
 interface TripOverviewProps {
   trip: Trip
   onNavigate: (screen: "activity" | "flight" | "timeline" | "weather") => void
+  onOpenLocation?: (locationId: string) => void
   onBack: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -79,6 +80,7 @@ export default function TripOverview({
   onShare,
   onManageGuests,
   onEditName,
+  onOpenLocation,
   onChangeDates,
   onChangeBackground,
   routeLocations = [],
@@ -132,23 +134,36 @@ export default function TripOverview({
     return null
   }
 
-  const getLocationWeatherLabel = (locationId: string) => {
-    const entry = weatherByLocation[locationId]
-    const forecast = entry?.weather?.forecast?.[0]
+  const renderLocationWeather = (location: TripLocation) => {
+    const entry = weatherByLocation[location.id]
+    const weather = entry?.weather
 
-    if (forecast) {
-      const temp =
-        forecast.temperatureMax ??
-        forecast.temperature ??
-        forecast.temperatureMin ??
-        null
-      const tempText = typeof temp === "number" ? `${Math.round(temp)}°` : ""
-      const desc = forecast.description
-      return [tempText, desc].filter(Boolean).join(" · ")
+    if (weatherLoading) {
+      return (
+        <span className="text-white/50 text-xs">
+          {t("weather_loading", { defaultValue: "Loading weather..." })}
+        </span>
+      )
+    }
+
+    if (weather?.current) {
+      return (
+        <WeatherWidget
+          variant="inline"
+          weather={{
+            ...weather,
+            location: location.location_name || trip.destination || weather.location,
+          }}
+        />
+      )
     }
 
     if (entry?.error) {
-      return t("weather_unavailable", { defaultValue: "Weather unavailable" })
+      return (
+        <span className="text-xs text-white/60">
+          {t("weather_unavailable", { defaultValue: "Weather unavailable" })}
+        </span>
+      )
     }
 
     return null
@@ -584,35 +599,42 @@ export default function TripOverview({
                   {derivedLocations.map((location, index) => {
                     const dateLabel = getLocationDateLabel(location)
                     return (
-                      <div key={location.id} className="flex gap-3">
+                      <div
+                        key={location.id}
+                        className="flex gap-3 group cursor-pointer"
+                        onClick={() => onOpenLocation?.(location.id)}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            onOpenLocation?.(location.id)
+                          }
+                        }}
+                      >
                         <div className="flex flex-col items-center">
                           <div className="w-2 h-2 rounded-full bg-[#ff6b6b] mt-1" />
                           {index < derivedLocations.length - 1 && <span className="flex-1 w-px bg-white/15 mt-1" />}
                         </div>
-                        <div className="flex-1 bg-white/[0.04] rounded-2xl border border-white/[0.08] px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
-                          <div className="flex items-center justify-between gap-3 mb-1">
-                            <span className="text-[11px] uppercase tracking-wide text-white/50">
-                              {(index + 1).toString().padStart(2, "0")}
-                            </span>
-                            <div className="flex items-center gap-2 text-xs text-white/60">
+                        <div className="flex-1 bg-white/[0.04] rounded-2xl border border-white/[0.08] px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.25)] transition-colors group-hover:border-white/[0.15]">
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[11px] uppercase tracking-wide text-white/50">
+                                {(index + 1).toString().padStart(2, "0")}
+                              </span>
                               {dateLabel && (
-                                <span className="whitespace-nowrap">{dateLabel}</span>
-                              )}
-                              {weatherLoading && (
-                                <span className="text-white/40">
-                                  {t("weather_loading", { defaultValue: "Loading weather..." })}
-                                </span>
-                              )}
-                              {!weatherLoading && getLocationWeatherLabel(location.id) && (
-                                <span className="whitespace-nowrap text-white/70">
-                                  {getLocationWeatherLabel(location.id)}
-                                </span>
+                                <span className="whitespace-nowrap text-xs text-white/70">{dateLabel}</span>
                               )}
                             </div>
+                            {renderLocationWeather(location)}
                           </div>
-                          <p className="text-white font-semibold truncate">
-                            {location.location_name || t('trips.untitled_trip')}
-                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-white font-semibold truncate">
+                              {location.location_name || t('trips.untitled_trip')}
+                            </p>
+                            <span className="text-[11px] uppercase tracking-wide text-white/40 group-hover:text-white/60 transition-colors">
+                              {t('trip_overview.view_all_days')}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     )
