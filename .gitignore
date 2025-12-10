@@ -43,7 +43,6 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildin*
-package-lock.json
 
 # IDE Settings
 .vscode/
