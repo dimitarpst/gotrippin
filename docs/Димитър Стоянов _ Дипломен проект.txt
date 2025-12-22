@@ -1,0 +1,110 @@
+﻿Цел и задачи на дипломния проект
+Основната цел на настоящия дипломен проект е разработването на съвременна уеб-базирана платформа за съвместно планиране и организиране на пътувания и почивки. Платформата е насочена към хора на възраст между 18 и 60 години, които активно пътуват самостоятелно или в група с приятели, семейство или колеги.
+За постигането на целта бяха поставени следните задачи:
+1. Разработване на система за автентикация и управление на потребителски профили
+2. Създаване на функционалност за управление на пътувания (CRUD операции) със споделяне чрез 8-символен share code
+3. Имплементиране на система за съвместна работа чрез many-to-many релация
+4. Интеграция с облачно хранилище за изображения (Supabase Storage)
+5. Изграждане на модерен адаптивен потребителски интерфейс с тъмна тема и анимации
+6. Осигуряване на многоезичност (английски и български) с автоматично разпознаване
+7. Разработване на RESTful API backend с JWT authentication
+8. Интеграция на Unsplash API за quality снимки
+Нефункционални изисквания
+* Производителност: Зареждане под 2 секунди, оптимизация чрез Next.js 16
+* Сигурност: Row-Level Security (RLS), JWT автентикация, Zod валидация, CORS protection
+* Достъпност: Responsive дизайн за mobile (320px+), tablet (768px+) и desktop (1024px+)
+* UX/UI: Интуитивен интерфейс, гладки анимации, тъмна тема с aurora ефекти
+* Мащабируемост: Модулна монорепо архитектура за лесно добавяне на features
+* Поддръжка: TypeScript strict mode[a], добра структура и документация
+Проектиране на архитектурата
+Системата е изградена върху трислойна архитектура:
+1. Презентационен слой – Next.js 16 + React 19 (UI rendering)
+2. Логически слой – NestJS 10 (бизнес логика)
+3. Слой за данни – Supabase (PostgreSQL + Storage)
+Компоненти на системата
+* Frontend: Next.js SPA с TypeScript, организирано в /app/ (pages), /src/components/ (UI), /src/hooks/ (custom hooks), /src/i18n/ (локализация)
+* Backend: NestJS API с модули за auth, trips, profiles, images. Комуникира със Supabase чрез Admin SDK
+* Database: PostgreSQL с таблици auth.users, public.profiles, public.trips, public.trip_members. Row-Level Security (RLS) за сигурност
+* Storage: Supabase Storage с bucket-и avatars (private) и trip-images (public read)
+* Shared Package: @gotrippin/core с Zod схеми, TypeScript типове и utility функции
+Комуникация
+* Клиент ↔ Backend: REST API с JWT токени в Authorization header
+* Backend ↔ Database: Supabase Admin Client SDK за elevated permissions
+* Клиент ↔ Database: Директни read заявки спазващи RLS policies
+* Клиент ↔ Storage: Директно upload/download чрез Supabase Storage API
+* Backend ↔ Unsplash: Proxy с in-memory кеш (1-час TTL)
+Ограничения
+* Устройства: Модерни браузъри (Chrome 120+, Firefox 121+, Safari 17+, Edge 120+)
+* Интернет: Изисква активна връзка (няма offline режим)
+* Данни: Supabase Free tier (500MB DB, 1GB storage, 50MB max file)
+* Потребители: Connection pool до 1,000 concurrent users
+* API Limits: Unsplash 50 req/час → 5,000 след Production approval
+Модели на комуникация
+* Client-Server: Frontend изпраща HTTP заявки, Backend обработва и връща резултати
+* REST API: GET, POST, PUT, DELETE endpoints за ресурси
+* MVC Pattern: Controllers (routing), Services (бизнес логика), Models (Zod схеми)
+* SSR + CSR Hybrid: Next.js App Router за Server-Side и Client-Side rendering
+
+
+
+
+Технологични решения
+Frontend
+Технология
+	Защо
+	Next.js 16 + React 19
+	Водещ React framework, App Router, SSR, code splitting, SEO
+	TypeScript
+	Типова безопасност, autocomplete, лесен refactoring
+	Tailwind CSS v4
+	Utility-first, малък bundle, CSS Variables, OKLCH цветове
+	shadcn/ui + Radix
+	Accessible компоненти, пълен контрол върху styles
+	Framer Motion 12
+	Декларативни spring-based анимации
+	i18next
+	Стандарт за i18n, автоматично language detection
+	Backend
+Технология
+	Защо
+	NestJS 10
+	Модулна архитектура, Dependency Injection, TypeScript first
+	Supabase
+	PostgreSQL + Auth + Storage в един, RLS за access control
+	Zod
+	TypeScript-first validation, automatic type inference
+	База данни
+PostgreSQL (чрез Supabase)
+* ACID compliance за data integrity
+* Row-Level Security (RLS) за multi-tenant security
+* Таблици: auth.users, public.profiles, public.trips, public.trip_members
+ER модел:
+* User ↔ Trip: Many-to-Many чрез trip_members bridge table
+* При DELETE на Trip → CASCADE delete на members
+* RLS policies филтрират данни според auth.uid()
+
+
+CREATE TABLE public.trips (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  destination TEXT,
+  start_date DATE,
+  end_date DATE CHECK (end_date >= start_date),
+  share_code VARCHAR(8) UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE public.trip_members (
+  trip_id UUID REFERENCES trips(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  PRIMARY KEY (trip_id, user_id)
+);
+Deployment
+* SuperHosting: Български хостинг, GDPR compliance, SSL сертификати, cPanel
+* Монорепо: npm workspaces за споделяне на код между frontend/backend
+* CI/CD: GitHub Actions за lint, typecheck, build, deployment
+API интеграции
+* Unsplash API: Stock photos за trip covers, backend proxy с кеширане, photographer attribution
+
+
+[a]...
