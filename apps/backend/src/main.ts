@@ -7,7 +7,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS for frontend communication
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'http://localhost:3000',
+      'https://gotrippin.app',
+      'https://gotrippin.maxprogress.bg', // if you still use this
+    ],
+    credentials: true,
+  });
 
   // Global validation pipe with Zod integration
   app.useGlobalPipes(
