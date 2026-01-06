@@ -143,12 +143,13 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
           </Card>
         )}
         {!noRoute && (
-        {/* Stop selector */}
+        <>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.05 }}
         >
+          {/* Stop selector */}
           <Card
             className="rounded-2xl p-5 shadow-card border-white/[0.08] space-y-3"
             style={{ backgroundColor: "var(--surface)" }}
@@ -178,12 +179,12 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
           </Card>
         </motion.div>
 
-        {/* Name Field */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
+          {/* Name Field */}
           <Card
             className="rounded-2xl p-5 shadow-card border-white/[0.08] space-y-4"
             style={{ backgroundColor: "var(--surface)" }}
@@ -213,12 +214,12 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
           </Card>
         </motion.div>
 
-        {/* Check-in */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
+          {/* Check-in */}
           <Card
             className="rounded-2xl p-5 shadow-card border-white/[0.08]"
             style={{ backgroundColor: "var(--surface)" }}
@@ -250,12 +251,12 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
           </Card>
         </motion.div>
 
-        {/* Contact & Booking Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.3 }}
         >
+          {/* Contact & Booking Info */}
           <Card
             className="rounded-2xl p-5 shadow-card space-y-4 border-white/[0.08]"
             style={{ backgroundColor: "var(--surface)" }}
@@ -272,13 +273,13 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
           </Card>
         </motion.div>
 
-        {/* Action Buttons */}
         <motion.div
           className="space-y-3"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
         >
+          {/* Action Buttons */}
           <ActionButton icon={DollarSign} label="Total Cost" iconColor="#FFD93D" />
           <ActionButton icon={FileText} label="Write a note" iconColor="#95E1D3" />
           <ActionButton
@@ -288,6 +289,7 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
             onClick={() => setShowDocumentModal(true)}
           />
         </motion.div>
+        </>
         )}
       </div>
 

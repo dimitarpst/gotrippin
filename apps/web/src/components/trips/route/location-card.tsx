@@ -1,14 +1,14 @@
 "use client"
 
 import { GripVertical, Calendar, X } from "lucide-react"
-import { motion } from "framer-motion"
+import { motion, HTMLMotionProps } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { useState, forwardRef } from "react"
 import { DatePicker } from "../date-picker"
 import { DateRange } from "react-day-picker"
 
-interface LocationCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface LocationCardProps extends HTMLMotionProps<"div"> {
   name: string
   index: number
   badgeLabel?: string

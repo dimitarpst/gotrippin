@@ -15,9 +15,8 @@ function setRef<T>(ref: PossibleRef<T>, value: T) {
     return ref(value);
   }
 
-  if (ref !== null && ref !== undefined) {
-    // @ts-expect-error - mutable ref
-    ref.current = value;
+  if (ref !== null && ref !== undefined && typeof ref === "object" && "current" in ref) {
+    (ref as React.MutableRefObject<T>).current = value;
   }
 }
 

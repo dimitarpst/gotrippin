@@ -162,7 +162,13 @@ export default function EditTripPage({ params }: EditTripPageProps) {
         <CreateTrip
           onBack={handleBack}
           onSave={handleSave}
-          initialData={initialData}
+          initialData={{
+            ...initialData,
+            imageUrl: initialData.imageUrl ?? undefined,
+            color: initialData.color ?? undefined,
+            // if dateRange can be null, coerce that too:
+            dateRange: initialData.dateRange ?? undefined,
+          }}
           isEditing={true}
         />
       </div>
