@@ -9,6 +9,9 @@
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:backend\"",
     "dev:web": "npm --workspace apps/web run dev",
     "dev:backend": "npm run --workspace=backend start:dev",
+    "deploy": "bash ./deploy.sh",
+    "sync": "npm run deploy",
+    "deploy:win": "wsl bash -lc \"cd /mnt/d/Coding/gotrippin && ./deploy.sh\"",
     "postinstall": "npm run build --workspace=@gotrippin/core",
     "build:core": "npm run build --workspace=@gotrippin/core"
   },

@@ -47,3 +47,6 @@ Thumbs.db
 # IDE Settings
 .vscode/
 .idea/
+
+docs/
+docs/**
