@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ImageIcon, Camera } from "lucide-react"
 import { useTripLocations } from "@/hooks/useTripLocations"
 import { createActivity } from "@/lib/api/activities"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface TrainRouteFormProps {
   tripId: string
@@ -23,6 +24,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
   const [saving, setSaving] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const { accessToken } = useAuth()
   
   // Hardcoded data for visual tweaking
   const [formData, setFormData] = useState({
@@ -58,6 +60,10 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
       setErrorMessage("Select a route stop before saving.")
       return
     }
+    if (!accessToken) {
+      setErrorMessage("Authentication required. Please refresh or sign in again.")
+      return
+    }
 
     try {
       setSaving(true)
@@ -69,7 +75,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
         start_time: null,
         end_time: null,
         all_day: false,
-      })
+      }, accessToken)
       setStatusMessage("Saved to timeline for this stop.")
     } catch (err: any) {
       setErrorMessage(err?.message || "Failed to save activity")

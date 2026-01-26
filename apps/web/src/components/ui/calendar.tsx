@@ -206,8 +206,8 @@ function CalendarDayButton({
         "flex aspect-square h-auto w-full min-w-[--cell-size] flex-col gap-1 font-medium leading-none",
         "text-white transition-all duration-150",
         "hover:scale-105 hover:bg-[#ff6b6b]/10",
-        // Today's date - ring only
-        isToday && "ring-2 ring-[#ff6b6b]/40 ring-inset",
+        // Today's date - subtle fill + ring (when not selected / not in range)
+        isToday && "bg-[#ff6b6b]/20 ring-2 ring-[#ff6b6b]/45 ring-inset",
         // Selected single
         "data-[selected-single=true]:bg-[#ff6b6b] data-[selected-single=true]:text-white data-[selected-single=true]:font-semibold data-[selected-single=true]:hover:bg-[#ff5252]",
         // Range start/end

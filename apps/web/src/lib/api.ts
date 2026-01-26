@@ -1,4 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+function normalizeApiBaseUrl(url: string | undefined): string {
+  const trimmed = url?.trim();
+  if (!trimmed) return "http://localhost:3001";
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  return `http://${trimmed}`;
+}
+
+const API_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 export interface UnsplashImage {
   id: string;

@@ -6,8 +6,16 @@
 import type { Trip, TripCreateData, TripUpdateData } from "@gotrippin/core";
 import { validateTripCreate, validateTripUpdate } from "@/lib/validation";
 
-// API base URL - will be configured via environment variables
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+function normalizeApiBaseUrl(url: string | undefined): string {
+  const trimmed = url?.trim();
+  if (!trimmed) return "http://localhost:3001";
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
+  // Allow "localhost:3001" / "127.0.0.1:3001" style values in envs
+  return `http://${trimmed}`;
+}
+
+// API base URL - configured via environment variables
+const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 /**
  * API Error with structured response
@@ -98,7 +106,7 @@ async function apiRequest<T>(
     return response.json();
   } catch (error) {
     // Handle network errors (backend not running, CORS, etc.)
-    if (error instanceof TypeError && error.message === "Failed to fetch") {
+    if (error instanceof TypeError) {
       const isLocalhost = API_BASE_URL.includes("localhost") || API_BASE_URL.includes("127.0.0.1");
       const message = isLocalhost
         ? `Backend server is not running. Please start it with 'npm run dev:backend' or 'npm run dev' to start both frontend and backend.`

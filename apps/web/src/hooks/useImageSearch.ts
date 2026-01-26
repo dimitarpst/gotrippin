@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { searchImages, trackImageDownload, type UnsplashImage } from '@/lib/api';
-import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useImageSearch() {
-  const [token, setToken] = useState<string | null>(null);
-  const [tokenReady, setTokenReady] = useState(false); // Stable boolean for "auth is ready"
+  const { accessToken, loading: authLoading } = useAuth();
+  const [authReady, setAuthReady] = useState(false); // stable: flips true once after initial auth load
   const [query, setQuery] = useState<string>('');
   const [images, setImages] = useState<UnsplashImage[]>([]);
   const [page, setPage] = useState(1);
@@ -13,34 +13,14 @@ export function useImageSearch() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get session token on mount and auth changes
   useEffect(() => {
-    const getToken = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setToken(session?.access_token || null);
-      // Set tokenReady to true once, never goes back to false during refresh
-      if (session?.access_token) {
-        setTokenReady(true);
-      }
-    };
-
-    getToken();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setToken(session?.access_token || null);
-      // Set tokenReady to true once, stays true even during token refresh
-      if (session?.access_token) {
-        setTokenReady(true);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    if (!authLoading) setAuthReady(true);
+  }, [authLoading]);
 
   const performSearch = useCallback(
     async (searchQuery: string, pageNum: number, isLoadingMore: boolean = false) => {
-      if (!token) {
-        // If we have a query but no token yet, wait for token to become available
+      if (!accessToken) {
+        // Auth not ready yet (or user is logged out); don't attempt requests.
         return;
       }
 
@@ -53,7 +33,7 @@ export function useImageSearch() {
         setError(null);
 
         const perPage = pageNum === 1 ? 9 : 12; // 9 for first page, 12 for subsequent
-        const data = await searchImages(searchQuery, pageNum, perPage, token);
+        const data = await searchImages(searchQuery, pageNum, perPage, accessToken);
 
         if (isLoadingMore) {
           // Filter out duplicates when loading more
@@ -74,17 +54,27 @@ export function useImageSearch() {
         setLoadingMore(false);
       }
     },
-    [token],
+    [accessToken],
   );
 
-  // Search when query changes OR when token first becomes available
-  // tokenReady is stable (doesn't change on token refresh), preventing unnecessary re-searches
+  // Search when query changes OR when auth first becomes ready
+  // authReady is stable, preventing unnecessary re-searches on token refresh
   useEffect(() => {
-    if (query && query.trim() && tokenReady) {
+    if (!query || !query.trim()) return;
+
+    // While auth is loading, keep UI neutral (no failed requests / no spurious errors)
+    if (!authReady) return;
+
+    if (!accessToken) {
+      setError("Authentication required");
+      return;
+    }
+
+    if (query && query.trim()) {
       setPage(1);
       performSearch(query, 1, false);
     }
-  }, [query, performSearch, tokenReady]);
+  }, [query, performSearch, authReady, accessToken]);
 
   // Load more
   const loadMore = useCallback(() => {
@@ -98,11 +88,11 @@ export function useImageSearch() {
   // Track download when user selects image
   const selectImage = useCallback(
     async (image: UnsplashImage) => {
-      if (token) {
-        await trackImageDownload(image.links.download_location, token);
+      if (accessToken) {
+        await trackImageDownload(image.links.download_location, accessToken);
       }
     },
-    [token],
+    [accessToken],
   );
 
   return {

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ImageIcon, Camera } from "lucide-react"
 import { useTripLocations } from "@/hooks/useTripLocations"
 import { createActivity } from "@/lib/api/activities"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface LodgingFormProps {
   tripId: string
@@ -23,6 +24,7 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
   const [saving, setSaving] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const { accessToken } = useAuth()
   
   // Hardcoded data for visual tweaking
   const [formData, setFormData] = useState({
@@ -51,6 +53,10 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
       setErrorMessage("Select a route stop before saving.")
       return
     }
+    if (!accessToken) {
+      setErrorMessage("Authentication required. Please refresh or sign in again.")
+      return
+    }
 
     try {
       setSaving(true)
@@ -62,7 +68,7 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
         start_time: null,
         end_time: null,
         all_day: true,
-      })
+      }, accessToken)
       setStatusMessage("Saved to timeline for this stop.")
     } catch (err: any) {
       setErrorMessage(err?.message || "Failed to save activity")

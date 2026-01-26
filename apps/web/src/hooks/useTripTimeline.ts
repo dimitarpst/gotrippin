@@ -7,6 +7,7 @@ import {
   normalizeTimelineData,
   type TimelineData,
 } from "@/lib/api/activities";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface UseTripTimelineResult extends TimelineData {
   loading: boolean;
@@ -22,14 +23,26 @@ export function useTripTimeline(tripId?: string | null): UseTripTimelineResult {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading, accessToken } = useAuth();
 
   const fetchData = useCallback(async () => {
     if (!tripId) return;
 
+    // Don't fetch if user is not authenticated or auth is still loading
+    if (!user && !authLoading) {
+      setLoading(false);
+      setError("Authentication required");
+      return;
+    }
+
+    if (authLoading || !accessToken) {
+      return; // Still loading auth, don't fetch yet
+    }
+
     try {
       setLoading(true);
       setError(null);
-      const raw = await getGroupedActivities(tripId);
+      const raw = await getGroupedActivities(tripId, accessToken);
       const normalized = normalizeTimelineData(raw);
       setData(normalized);
     } catch (err) {
@@ -38,7 +51,7 @@ export function useTripTimeline(tripId?: string | null): UseTripTimelineResult {
     } finally {
       setLoading(false);
     }
-  }, [tripId]);
+  }, [tripId, user, authLoading, accessToken]);
 
   useEffect(() => {
     fetchData().catch(() => {});
@@ -46,7 +59,7 @@ export function useTripTimeline(tripId?: string | null): UseTripTimelineResult {
 
   return {
     ...data,
-    loading,
+    loading: loading || authLoading,
     error,
     refetch: fetchData,
   };

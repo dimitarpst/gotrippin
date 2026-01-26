@@ -143,13 +143,15 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
           <motion.div
             key="color"
             className="absolute inset-0"
-            style={{ 
-              background: selectedColor.startsWith('linear-gradient') 
-                ? selectedColor 
+            style={{
+              // Avoid mixing `background` shorthand with `backgroundColor` across renders.
+              // Use stable `backgroundColor` + `backgroundImage` only.
+              backgroundColor: selectedColor.startsWith("linear-gradient")
+                ? "#0a0a0a"
+                : selectedColor,
+              backgroundImage: selectedColor.startsWith("linear-gradient")
+                ? selectedColor
                 : undefined,
-              backgroundColor: selectedColor.startsWith('linear-gradient') 
-                ? undefined 
-                : selectedColor 
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -164,8 +166,9 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
             key="default"
             className="absolute inset-0"
             style={{
-              background:
-                "radial-gradient(circle at 20% 50%, rgba(255, 107, 107, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255, 107, 107, 0.1) 0%, transparent 50%), #0a0a0a",
+              backgroundColor: "#0a0a0a",
+              backgroundImage:
+                "radial-gradient(circle at 20% 50%, rgba(255, 107, 107, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255, 107, 107, 0.1) 0%, transparent 50%)",
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
