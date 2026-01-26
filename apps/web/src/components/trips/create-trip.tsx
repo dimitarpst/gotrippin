@@ -214,6 +214,8 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
             className="px-6 py-2 rounded-full bg-white text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/90 transition-colors flex items-center gap-2"
             disabled={
               (!tripName.trim()) || 
+              // Require a trip date range before proceeding (prevents route/stop date mistakes)
+              (!isEditing && step === "details" && (!dateRange?.from || !dateRange?.to)) ||
               (!isEditing && step === "route" && (locations.length < 2 || saving)) ||
               saving
             }
@@ -282,6 +284,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
                 <RouteBuilder 
                   locations={locations} 
                   onChange={setLocations} 
+                  tripDateRange={dateRange}
                 />
               </div>
             </motion.div>

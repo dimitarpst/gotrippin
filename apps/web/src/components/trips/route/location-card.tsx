@@ -7,14 +7,18 @@ import { format } from "date-fns"
 import { useState, forwardRef } from "react"
 import { DatePicker } from "../date-picker"
 import { DateRange } from "react-day-picker"
+import type { RouteLocation } from "./route-builder"
 
 interface LocationCardProps extends HTMLMotionProps<"div"> {
+  id: string
   name: string
   index: number
   badgeLabel?: string
   helperText?: string
   arrivalDate?: string | null
   departureDate?: string | null
+  tripDateRange?: DateRange
+  allLocations?: RouteLocation[]
   onRemove: () => void
   onUpdateDates: (range: DateRange | undefined) => void
   onUpdateName: (name: string) => void
@@ -23,12 +27,15 @@ interface LocationCardProps extends HTMLMotionProps<"div"> {
 export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
   (
     {
+      id,
       name,
       index,
       badgeLabel,
       helperText,
       arrivalDate,
       departureDate,
+      tripDateRange,
+      allLocations,
       onRemove,
       onUpdateDates,
       onUpdateName,
@@ -45,6 +52,21 @@ export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
           to: departureDate ? new Date(departureDate) : undefined,
         }
       : undefined
+
+    const minDate = tripDateRange?.from
+    const maxDate = tripDateRange?.to
+
+    const busyRanges =
+      (allLocations || [])
+        .filter((loc) => loc.id !== id)
+        .map((loc) => {
+          if (!loc.arrivalDate) return null
+          const from = new Date(loc.arrivalDate)
+          const to = new Date(loc.departureDate || loc.arrivalDate)
+          if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null
+          return { from, to }
+        })
+        .filter(Boolean) as { from: Date; to: Date }[]
 
     const dateText = selectedRange?.from
       ? `${format(selectedRange.from, "MMM d")}${
@@ -124,6 +146,13 @@ export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
           onClose={() => setShowDatePicker(false)}
           onSelect={onUpdateDates}
           selectedDateRange={selectedRange}
+          minDate={minDate}
+          maxDate={maxDate}
+          modifiers={{
+            ...(minDate ? { tripStart: minDate } : {}),
+            ...(maxDate ? { tripEnd: maxDate } : {}),
+            ...(busyRanges.length ? { busy: busyRanges } : {}),
+          }}
         />
       </>
     )

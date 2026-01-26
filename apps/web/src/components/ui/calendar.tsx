@@ -186,6 +186,19 @@ function CalendarDayButton({
   }, [modifiers.focused])
 
   const isToday = modifiers.today && !modifiers.range_start && !modifiers.range_end && !modifiers.range_middle
+  const isBusy =
+    (modifiers as any).busy &&
+    !modifiers.selected &&
+    !modifiers.range_start &&
+    !modifiers.range_end &&
+    !modifiers.range_middle
+
+  const isTripBoundary =
+    ((modifiers as any).tripStart || (modifiers as any).tripEnd) &&
+    !modifiers.selected &&
+    !modifiers.range_start &&
+    !modifiers.range_end &&
+    !modifiers.range_middle
   
   return (
     <Button
@@ -206,6 +219,10 @@ function CalendarDayButton({
         "flex aspect-square h-auto w-full min-w-[--cell-size] flex-col gap-1 font-medium leading-none",
         "text-white transition-all duration-150",
         "hover:scale-105 hover:bg-[#ff6b6b]/10",
+        // Dates used by other route stops (only when not selecting)
+        isBusy && "bg-white/8 text-white/80",
+        // Trip window boundary markers
+        isTripBoundary && "outline outline-1 outline-white/25 outline-offset-[-2px]",
         // Today's date - subtle fill + ring (when not selected / not in range)
         isToday && "bg-[#ff6b6b]/20 ring-2 ring-[#ff6b6b]/45 ring-inset",
         // Selected single

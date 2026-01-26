@@ -4,20 +4,38 @@ import { motion, AnimatePresence } from "framer-motion"
 import { type DateRange } from "react-day-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { useTranslation } from "react-i18next"
+import { format } from "date-fns"
+import type { Matcher } from "react-day-picker"
 
 interface DatePickerProps {
   open: boolean
   onClose: () => void
   onSelect: (dateRange: DateRange | undefined) => void
   selectedDateRange?: DateRange
+  minDate?: Date
+  maxDate?: Date
+  modifiers?: Record<string, Matcher | Matcher[]>
 }
 
-export function DatePicker({ open, onClose, onSelect, selectedDateRange }: DatePickerProps) {
+export function DatePicker({
+  open,
+  onClose,
+  onSelect,
+  selectedDateRange,
+  minDate,
+  maxDate,
+  modifiers,
+}: DatePickerProps) {
   const { t } = useTranslation()
   
   const handleDateSelect = (dateRange: DateRange | undefined) => {
     onSelect(dateRange)
   }
+
+  const tripWindowText =
+    minDate && maxDate
+      ? `${format(minDate, "MMM d")} – ${format(maxDate, "MMM d")}`
+      : null
 
   return (
     <AnimatePresence>
@@ -65,9 +83,35 @@ export function DatePicker({ open, onClose, onSelect, selectedDateRange }: DateP
                 defaultMonth={selectedDateRange?.from || new Date()}
                 selected={selectedDateRange}
                 onSelect={handleDateSelect}
+                fromDate={minDate}
+                toDate={maxDate}
+                disabled={
+                  minDate && maxDate ? [{ before: minDate }, { after: maxDate }] : undefined
+                }
+                modifiers={modifiers}
                 numberOfMonths={2}
                 className="w-full"
               />
+
+              {/* Context footer for constrained pickers */}
+              {(tripWindowText || (modifiers as any)?.busy) && (
+                <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70 space-y-1">
+                  {tripWindowText && (
+                    <div>
+                      <span className="text-white/50">Trip window:</span>{" "}
+                      <span className="text-white/80 font-medium">{tripWindowText}</span>
+                    </div>
+                  )}
+                  {(modifiers as any)?.busy && (
+                    <div>
+                      <span className="text-white/50">Tip:</span>{" "}
+                      <span className="text-white/80">
+                        Dates used by other stops are shaded.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         </>

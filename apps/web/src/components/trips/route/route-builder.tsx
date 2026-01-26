@@ -18,10 +18,11 @@ export interface RouteLocation {
 interface RouteBuilderProps {
   locations: RouteLocation[]
   onChange: (locations: RouteLocation[]) => void
+  tripDateRange?: DateRange
   className?: string
 }
 
-export function RouteBuilder({ locations, onChange, className }: RouteBuilderProps) {
+export function RouteBuilder({ locations, onChange, tripDateRange, className }: RouteBuilderProps) {
   const addLocation = () => {
     const newLocation: RouteLocation = {
       id: uuidv4(),
@@ -70,12 +71,15 @@ export function RouteBuilder({ locations, onChange, className }: RouteBuilderPro
             {locations.map((location, index) => (
               <Sortable.Item key={location.id} value={location.id} asChild>
                 <LocationCard
+                  id={location.id}
                   index={index}
                   name={location.name}
                   badgeLabel={index === 0 ? "1" : undefined}
                   helperText={index === 0 ? "Trip start" : undefined}
                   arrivalDate={location.arrivalDate}
                   departureDate={location.departureDate}
+                  tripDateRange={tripDateRange}
+                  allLocations={locations}
                   onRemove={() => removeLocation(location.id)}
                   onUpdateName={(name) => updateLocation(location.id, { name })}
                   onUpdateDates={(range: DateRange | undefined) => {
