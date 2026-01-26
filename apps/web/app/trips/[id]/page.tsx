@@ -54,6 +54,7 @@ export default function TripPage({ params }: TripPageProps) {
   } = useTripTimeline(trip?.id)
   const {
     byLocation: weatherByLocation,
+    fetchedAt: weatherFetchedAt,
     loading: weatherLoading,
     error: weatherError,
     refetch: refetchWeather,
@@ -254,6 +255,7 @@ export default function TripPage({ params }: TripPageProps) {
             unassignedActivities={unassigned}
             onRefetchTimeline={refetchTimeline}
             weatherByLocation={weatherByLocation}
+            weatherFetchedAt={weatherFetchedAt}
             weatherLoading={weatherLoading}
             weatherError={weatherError}
             onRefetchWeather={refetchWeather}

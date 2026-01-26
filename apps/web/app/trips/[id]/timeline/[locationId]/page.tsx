@@ -48,13 +48,16 @@ export default function RouteDetailPage({ params }: RouteDetailPageProps) {
   } = useTripTimeline(trip?.id)
   const {
     byLocation: weatherByLocation,
+    fetchedAt: weatherFetchedAt,
     loading: weatherLoading,
     error: weatherError,
+    refetch: refetchWeather,
   } = useTripWeather(trip?.id, 5)
 
   const location = locations.find((loc) => loc.id === locationId) || null
   const activities = activitiesByLocation[locationId] || []
   const locationWeather = weatherByLocation[locationId]?.weather
+  const locationWeatherError = weatherByLocation[locationId]?.error
   const dateLabel = formatDateRange(location)
 
   const handleBack = () => {
@@ -114,7 +117,7 @@ export default function RouteDetailPage({ params }: RouteDetailPageProps) {
               transition={{ type: "spring", stiffness: 320, damping: 26 }}
             >
               <div className="absolute inset-0" style={heroStyle} />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
               <div className="relative z-10 p-6 sm:p-8 flex flex-col gap-6">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -133,14 +136,37 @@ export default function RouteDetailPage({ params }: RouteDetailPageProps) {
                       )}
                     </div>
                   </div>
-                  {locationWeather && (
+                  {weatherLoading ? (
+                    <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm text-white/80">
+                      <div className="w-4 h-4 rounded bg-white/10 animate-pulse" />
+                      <div className="h-4 w-24 rounded bg-white/10 animate-pulse" />
+                    </div>
+                  ) : locationWeather?.current ? (
                     <WeatherWidget
                       weather={{
                         ...locationWeather,
                         location: location.location_name || locationWeather.location,
                       }}
                       variant="inline"
+                      updatedAt={weatherFetchedAt}
+                      showMeta
                     />
+                  ) : (
+                    <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm text-white/70 text-xs">
+                      {locationWeatherError
+                        ? t("weather.unavailable", { defaultValue: "Weather unavailable" })
+                        : t("weather.no_data", { defaultValue: "No data" })}
+                      <button
+                        type="button"
+                        className="underline decoration-dotted text-white/80"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          refetchWeather().catch(() => {})
+                        }}
+                      >
+                        {t("weather.retry", { defaultValue: "Retry" })}
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -195,7 +221,7 @@ export default function RouteDetailPage({ params }: RouteDetailPageProps) {
                   )}
                   {weatherLoading && (
                     <span className="px-3 py-1 rounded-full border border-white/10 text-xs text-white/60 bg-white/5">
-                      {t("weather_loading", { defaultValue: "Loading weather..." })}
+                      {t("weather.loading", { defaultValue: "Loading weather..." })}
                     </span>
                   )}
                   {!weatherLoading && weatherError && (
@@ -291,12 +317,25 @@ export default function RouteDetailPage({ params }: RouteDetailPageProps) {
                       location: location.location_name || locationWeather.location,
                     }}
                     color={trip?.color || "#ff6b6b"}
+                    updatedAt={weatherFetchedAt}
+                    showMeta
                   />
                 ) : (
                   <div className="text-sm text-white/70">
                     {weatherLoading
-                      ? t("weather_loading", { defaultValue: "Loading weather..." })
-                      : weatherError || t("weather_unavailable", { defaultValue: "Weather unavailable" })}
+                      ? t("weather.loading", { defaultValue: "Loading weather..." })
+                      : (locationWeatherError || weatherError || t("weather.unavailable", { defaultValue: "Weather unavailable" }))}
+                    {!weatherLoading && (
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold text-white"
+                          onClick={() => refetchWeather().catch(() => {})}
+                        >
+                          {t("weather.retry", { defaultValue: "Retry" })}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </motion.div>

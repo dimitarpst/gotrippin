@@ -63,8 +63,40 @@ export class WeatherService {
             ? `${loc.latitude},${loc.longitude}`
             : loc.location_name;
 
-        const normalizedStart = this.normalizeStartDate(loc.arrival_date);
-        const normalizedEnd = this.normalizeEndDate(loc.departure_date, normalizedStart);
+        // Date window rules:
+        // - Tomorrow.io rejects requests where endTime is earlier than startTime (or when endTime is in the past and startTime defaults to "now")
+        // - Free tier also rejects startTime > 24h in the past
+        const nowIso = new Date().toISOString();
+        let normalizedStart = this.normalizeStartDate(loc.arrival_date);
+        let normalizedEnd = this.normalizeEndDate(loc.departure_date, normalizedStart);
+
+        // If arrival is too far in the past, normalizeStartDate() returns undefined.
+        // In that case, never send an endTime in the past (Tomorrow will treat startTime as "now" and fail).
+        if (!normalizedStart && loc.departure_date) {
+          const endFromDeparture = this.normalizeEndDate(loc.departure_date, nowIso);
+          if (endFromDeparture) {
+            normalizedStart = nowIso;
+            normalizedEnd = endFromDeparture;
+          } else {
+            normalizedEnd = undefined;
+          }
+        } else if (!normalizedStart && normalizedEnd) {
+          normalizedEnd = undefined;
+        }
+
+        // Ensure endTime is strictly after startTime (and clamp to maxForecastDays window)
+        if (normalizedStart && normalizedEnd) {
+          const startMs = Date.parse(normalizedStart);
+          const endMs = Date.parse(normalizedEnd);
+          if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+            normalizedEnd = undefined;
+          } else {
+            const maxWindowMs = this.maxForecastDays * 24 * 60 * 60 * 1000;
+            if (endMs - startMs > maxWindowMs) {
+              normalizedEnd = new Date(startMs + maxWindowMs).toISOString();
+            }
+          }
+        }
 
         try {
           const weather = await this.getWeatherTimeline(
@@ -145,6 +177,8 @@ export class WeatherService {
         location,
         fields: [
           'temperature',
+          'temperatureMin',
+          'temperatureMax',
           'temperatureApparent',
           'humidity',
           'precipitationProbability',
@@ -156,7 +190,7 @@ export class WeatherService {
           'visibility',
           'uvIndex',
         ],
-        timesteps: ['1h', '1d'],
+        timesteps: ['current', '1h', '1d'],
         units: 'metric',
       };
 
@@ -189,15 +223,15 @@ export class WeatherService {
         if (windowMs <= 0) {
           delete requestBody.endTime;
         } else if (windowMs < 24 * 60 * 60 * 1000) {
-          // For windows < 24h use only hourly
-          requestBody.timesteps = ['1h'];
+          // For windows < 24h use current + hourly
+          requestBody.timesteps = ['current', '1h'];
         } else {
-          // For >=24h use hourly + daily
-          requestBody.timesteps = ['1h', '1d'];
+          // For >=24h use current + hourly + daily
+          requestBody.timesteps = ['current', '1h', '1d'];
         }
       } else {
-        // When no range provided, default to hourly + daily
-        requestBody.timesteps = ['1h', '1d'];
+        // When no range provided, default to current + hourly + daily
+        requestBody.timesteps = ['current', '1h', '1d'];
       }
 
       const url = `${this.baseUrl}/timelines`;
@@ -439,12 +473,18 @@ export class WeatherService {
 
     if (dailyTimeline && dailyTimeline.intervals) {
       weatherData.forecast = dailyTimeline.intervals.map((interval) => {
-        const values = interval.values;
+        const values = interval.values as typeof interval.values & {
+          temperatureMin?: number;
+          temperatureMax?: number;
+        };
+        const tempMin = values.temperatureMin ?? values.temperature;
+        const tempMax = values.temperatureMax ?? values.temperature;
+        const temp = values.temperature ?? tempMax ?? tempMin;
         return {
           date: interval.startTime,
-          temperatureMin: values.temperature,
-          temperatureMax: values.temperature,
-          temperature: values.temperature,
+          temperatureMin: tempMin,
+          temperatureMax: tempMax,
+          temperature: temp,
           humidity: values.humidity || 0,
           precipitationProbability: values.precipitationProbability || 0,
           precipitationIntensity: values.precipitationIntensity || 0,
@@ -456,7 +496,26 @@ export class WeatherService {
       });
     }
 
-    // Find hourly timeline for current weather (1h timestep, first interval)
+    // Prefer current timeline for "now" if present
+    const currentTimeline = response.data.timelines.find((t) => t.timestep === 'current');
+    if (currentTimeline && currentTimeline.intervals.length > 0) {
+      const interval = currentTimeline.intervals[0];
+      const values = interval.values;
+      weatherData.current = {
+        temperature: values.temperature || 0,
+        temperatureApparent: values.temperatureApparent || values.temperature || 0,
+        humidity: values.humidity || 0,
+        weatherCode: values.weatherCode || 1000,
+        description: getWeatherDescription(values.weatherCode || 1000),
+        windSpeed: values.windSpeed || 0,
+        windDirection: values.windDirection || 0,
+        cloudCover: values.cloudCover || 0,
+        uvIndex: values.uvIndex,
+      };
+      return weatherData;
+    }
+
+    // Fallback: Find hourly timeline for current weather (1h timestep, first interval)
     const hourlyTimeline = response.data.timelines.find(
       (t) => t.timestep === '1h',
     );

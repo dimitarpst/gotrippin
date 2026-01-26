@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { Cloud, Sun, CloudRain, CloudSnow, Wind, Droplets, MapPin } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import type { WeatherData } from "@gotrippin/core"
+import { useTranslation } from "react-i18next"
 
 interface WeatherWidgetProps {
   weather: WeatherData
@@ -11,6 +12,8 @@ interface WeatherWidgetProps {
   onClick?: () => void
   color?: string
   variant?: "full" | "inline" | "compact"
+  updatedAt?: number | null
+  showMeta?: boolean
 }
 
 /**
@@ -38,6 +41,18 @@ function formatTemp(temp: number): string {
   return `${Math.round(temp)}°`
 }
 
+function getUpdatedLabel(
+  t: (key: string, options?: any) => string,
+  updatedAt?: number | null
+): string | null {
+  if (typeof updatedAt !== "number" || !Number.isFinite(updatedAt)) return null
+  const diffMs = Date.now() - updatedAt
+  if (!Number.isFinite(diffMs) || diffMs < 0) return null
+  const minutes = Math.floor(diffMs / 60000)
+  if (minutes <= 0) return t("weather.updated_just_now", { defaultValue: "Updated just now" })
+  return t("weather.updated", { defaultValue: "Updated {{minutes}}m ago", minutes })
+}
+
 /**
  * Weather Widget Component
  * Displays current weather and forecast with Aurora theme styling
@@ -48,9 +63,17 @@ export default function WeatherWidget({
   onClick,
   color = "#ff6b6b",
   variant,
+  updatedAt,
+  showMeta = false,
 }: WeatherWidgetProps) {
+  const { t } = useTranslation()
   const activeVariant = variant || (compact ? "compact" : "full")
   const WeatherIcon = weather.current ? getWeatherIcon(weather.current.weatherCode) : Sun
+  const updatedLabel = showMeta ? getUpdatedLabel(t, updatedAt) : null
+  const precipChance =
+    typeof weather.forecast?.[0]?.precipitationProbability === "number"
+      ? Math.round(weather.forecast[0]!.precipitationProbability)
+      : null
 
   if (activeVariant === "inline") {
     const temperature = weather.current?.temperature
@@ -76,6 +99,11 @@ export default function WeatherWidget({
             {locationLabel}
           </span>
         )}
+        {updatedLabel && (
+          <span className="text-[11px] text-white/50 whitespace-nowrap">
+            {updatedLabel}
+          </span>
+        )}
       </motion.div>
     )
   }
@@ -83,16 +111,7 @@ export default function WeatherWidget({
   if (activeVariant === "compact") {
     // Compact version for trip cards
     if (!weather.current) {
-      // Fallback for testing
-      return (
-        <motion.div
-          className="absolute top-3 left-3 flex items-center gap-2 px-2.5 py-1.5 rounded-lg backdrop-blur-md border border-white/20"
-          style={{ background: "rgba(0,0,0,0.4)" }}
-        >
-          <Sun className="w-4 h-4 text-white" />
-          <span className="text-white text-xs font-semibold">20°</span>
-        </motion.div>
-      )
+      return null
     }
 
     return (
@@ -126,14 +145,21 @@ export default function WeatherWidget({
          }}
        >
          {/* Glass shine effect */}
-         <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+         <div className="absolute top-0 left-0 right-0 h-1/2 bg-linear-to-b from-white/10 to-transparent pointer-events-none" />
 
         {weather.current && (
           <div className="relative p-6 flex items-center justify-between z-10">
             <div>
-              <div className="flex items-center gap-2 text-white/90 text-sm font-medium mb-2">
-                <MapPin className="w-4 h-4" />
-                {weather.location}
+              <div className="flex items-center justify-between gap-3 text-white/90 text-sm font-medium mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <MapPin className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{weather.location}</span>
+                </div>
+                {updatedLabel && (
+                  <span className="text-[11px] text-white/60 whitespace-nowrap">
+                    {updatedLabel}
+                  </span>
+                )}
               </div>
               <div className="flex items-baseline gap-1">
                 <span className="text-6xl font-bold text-white tracking-tighter drop-shadow-sm">
@@ -144,7 +170,10 @@ export default function WeatherWidget({
                 {weather.current.description}
               </div>
               <div className="text-white/70 text-sm mt-0.5">
-                Feels like {formatTemp(weather.current.temperatureApparent)}
+                {t("weather.feels_like", {
+                  defaultValue: "Feels like {{temp}}",
+                  temp: formatTemp(weather.current.temperatureApparent),
+                })}
               </div>
             </div>
 
@@ -173,6 +202,12 @@ export default function WeatherWidget({
                   <Droplets className="w-3.5 h-3.5 text-white/90" />
                   <span className="text-xs text-white font-semibold">{weather.current.humidity}%</span>
                 </div>
+                {typeof precipChance === "number" && (
+                  <div className="flex items-center gap-2 bg-black/10 rounded-full px-3 py-1.5 backdrop-blur-sm border border-white/10">
+                    <CloudRain className="w-3.5 h-3.5 text-white/90" />
+                    <span className="text-xs text-white font-semibold">{precipChance}%</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

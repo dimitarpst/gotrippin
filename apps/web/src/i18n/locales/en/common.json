@@ -197,5 +197,30 @@
   "recommended": {
     "title": "Recommended Destinations",
     "subtitle": "Discover your next adventure"
+  },
+  "weather": {
+    "insights": "Weather Insights",
+    "loading": "Loading weather...",
+    "updated": "Updated {{minutes}}m ago",
+    "updated_short": "Updated {{time}}",
+    "updated_just_now": "Updated just now",
+    "retry": "Retry",
+    "unavailable": "Weather unavailable",
+    "no_data": "No data",
+    "check_route_dates": "Check route dates",
+    "feels_like": "Feels like {{temp}}",
+    "precip_chance": "Precip {{percent}}%",
+    "add_stops_title": "Add stops to see weather",
+    "add_stops_body": "Your trip route has no locations yet. Add at least one stop and come back here.",
+    "edit_route": "Edit route",
+    "stop_error_title": "Couldn’t fetch weather for this stop",
+    "stop_error_hint_dates": "This usually means the stop’s date range is invalid. Check arrival/departure dates.",
+    "wind": "Wind",
+    "wind_speed": "Wind speed",
+    "humidity": "Humidity",
+    "uv": "UV",
+    "uv_index": "UV index",
+    "cloud_cover": "Cloud cover",
+    "seven_day": "7-Day Forecast"
   }
 }

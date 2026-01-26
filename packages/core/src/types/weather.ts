@@ -13,6 +13,8 @@ export interface TomorrowTimelineResponse {
         startTime: string;
         values: {
           temperature?: number;
+          temperatureMin?: number;
+          temperatureMax?: number;
           temperatureApparent?: number;
           humidity?: number;
           precipitationProbability?: number;

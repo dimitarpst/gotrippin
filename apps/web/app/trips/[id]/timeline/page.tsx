@@ -8,7 +8,7 @@ import { useTrip } from "@/hooks/useTrips";
 import { useTripWeather } from "@/hooks/useWeather";
 import AuroraBackground from "@/components/effects/aurora-background";
 import { Card } from "@/components/ui/card";
-import { Calendar, ArrowLeft } from "lucide-react";
+import { Calendar, ArrowLeft, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TripLocation } from "@gotrippin/core";
 
@@ -28,6 +28,15 @@ function dateLabel(location: TripLocation) {
   return null;
 }
 
+function getUpdatedLabel(updatedAt?: number | null): string | null {
+  if (typeof updatedAt !== "number" || !Number.isFinite(updatedAt)) return null
+  const diffMs = Date.now() - updatedAt
+  if (!Number.isFinite(diffMs) || diffMs < 0) return null
+  const minutes = Math.floor(diffMs / 60000)
+  if (minutes <= 0) return "0m"
+  return `${minutes}m`
+}
+
 export default function TimelinePage({ params }: TimelinePageProps) {
   const resolved = use(params);
   const shareCode = resolved.id;
@@ -39,6 +48,7 @@ export default function TimelinePage({ params }: TimelinePageProps) {
   const { locations, activitiesByLocation, unassigned, loading, error } = useTripTimeline(tripId);
   const {
     byLocation: weatherByLocation,
+    fetchedAt: weatherFetchedAt,
     loading: weatherLoading,
     error: weatherError,
   } = useTripWeather(tripId, 5);
@@ -47,18 +57,34 @@ export default function TimelinePage({ params }: TimelinePageProps) {
 
   const getWeatherLabel = (locationId: string) => {
     const entry = weatherByLocation[locationId];
+    const current = entry?.weather?.current
     const forecast = entry?.weather?.forecast?.[0];
-    if (forecast) {
+    const temp =
+      current?.temperature ??
+      forecast?.temperatureMax ??
+      forecast?.temperature ??
+      forecast?.temperatureMin ??
+      null;
+    const desc = current?.description ?? forecast?.description ?? null
+    const precip =
+      typeof forecast?.precipitationProbability === "number"
+        ? Math.round(forecast.precipitationProbability)
+        : null
+
+    if (typeof temp === "number" || desc) {
       const temp =
-        forecast.temperatureMax ??
-        forecast.temperature ??
-        forecast.temperatureMin ??
-        null;
-      const tempText = typeof temp === "number" ? `${Math.round(temp)}°` : "";
-      return [tempText, forecast.description].filter(Boolean).join(" · ");
+        current?.temperature ??
+        forecast?.temperatureMax ??
+        forecast?.temperature ??
+        forecast?.temperatureMin ??
+        null
+      const tempText = typeof temp === "number" ? `${Math.round(temp)}°` : ""
+      const parts = [tempText, desc].filter(Boolean)
+      if (typeof precip === "number" && precip > 0) parts.push(`${precip}%`)
+      return parts.join(" · ")
     }
     if (entry?.error) {
-      return t("weather_unavailable", { defaultValue: "Weather unavailable" });
+      return t("weather.unavailable", { defaultValue: "Weather unavailable" });
     }
     return null;
   };
@@ -113,6 +139,8 @@ export default function TimelinePage({ params }: TimelinePageProps) {
               const acts = activitiesByLocation[loc.id] || [];
               const label = dateLabel(loc);
               const weatherLabel = getWeatherLabel(loc.id);
+              const updatedShort = getUpdatedLabel(weatherFetchedAt)
+              const hasIssue = !!weatherByLocation[loc.id]?.error
               return (
                 <Card
                   key={loc.id}
@@ -139,12 +167,26 @@ export default function TimelinePage({ params }: TimelinePageProps) {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-white/60">
                       {weatherLoading && (
-                        <span>{t("weather_loading", { defaultValue: "Loading weather..." })}</span>
+                        <span>{t("weather.loading", { defaultValue: "Loading weather..." })}</span>
                       )}
                       {!weatherLoading && weatherLabel && (
                         <span className="text-white/70 whitespace-nowrap">{weatherLabel}</span>
                       )}
+                      {!weatherLoading && !weatherLabel && (
+                        <span className="text-white/50 whitespace-nowrap">
+                          {t("weather.no_data", { defaultValue: "No data" })}
+                        </span>
+                      )}
+                      {!weatherLoading && updatedShort && (
+                        <span className="text-white/40 whitespace-nowrap">
+                          {t("weather.updated_short", { defaultValue: "Updated {{time}}", time: updatedShort })}
+                        </span>
+                      )}
+                      {hasIssue ? (
+                        <AlertTriangle className="w-4 h-4 text-amber-200/90" />
+                      ) : (
                       <div className="w-2 h-2 rounded-full bg-[#ff6b6b]" />
+                      )}
                     </div>
                   </div>
 

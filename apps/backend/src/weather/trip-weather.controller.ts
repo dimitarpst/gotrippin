@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Header, Param, Query, Request, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { WeatherService } from './weather.service';
@@ -13,6 +13,8 @@ export class TripWeatherController {
   constructor(private readonly weatherService: WeatherService) {}
 
   @Get()
+  @Header('Cache-Control', 'private, max-age=600, stale-while-revalidate=60')
+  @Header('Vary', 'Authorization')
   @ApiOperation({
     summary: 'Get weather forecasts for all stops in a trip',
     description: 'Returns per-stop weather using the trip route. Requires trip membership.',

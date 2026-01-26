@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface UseTripWeatherResult {
   weather: TripWeatherResponse | null;
   byLocation: Record<string, TripLocationWeather>;
+  fetchedAt: number | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -15,6 +16,7 @@ interface UseTripWeatherResult {
 
 export function useTripWeather(tripId?: string | null, days?: number): UseTripWeatherResult {
   const [weather, setWeather] = useState<TripWeatherResponse | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading, accessToken } = useAuth();
@@ -37,6 +39,7 @@ export function useTripWeather(tripId?: string | null, days?: number): UseTripWe
       setError(null);
       const data = await getTripWeather(tripId, days, accessToken);
       setWeather(data);
+      setFetchedAt(Date.now());
     } catch (err) {
       console.error("Failed to fetch trip weather:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch weather");
@@ -60,6 +63,7 @@ export function useTripWeather(tripId?: string | null, days?: number): UseTripWe
   return {
     weather,
     byLocation,
+    fetchedAt,
     loading: loading || authLoading,
     error,
     refetch: fetchWeather,

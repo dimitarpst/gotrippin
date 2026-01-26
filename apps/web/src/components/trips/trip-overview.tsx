@@ -66,6 +66,7 @@ interface TripOverviewProps {
   unassignedActivities?: Activity[]
   onRefetchTimeline?: () => Promise<void>
   weatherByLocation?: Record<string, TripLocationWeather>
+  weatherFetchedAt?: number | null
   weatherLoading?: boolean
   weatherError?: string | null
   onRefetchWeather?: () => Promise<void>
@@ -92,6 +93,7 @@ export default function TripOverview({
   unassignedActivities = [],
   onRefetchTimeline,
   weatherByLocation = {},
+  weatherFetchedAt = null,
   weatherLoading = false,
   weatherError = null,
   onRefetchWeather,
@@ -141,7 +143,7 @@ export default function TripOverview({
     if (weatherLoading) {
       return (
         <span className="text-white/50 text-xs">
-          {t("weather_loading", { defaultValue: "Loading weather..." })}
+          {t("weather.loading", { defaultValue: "Loading weather..." })}
         </span>
       )
     }
@@ -161,7 +163,7 @@ export default function TripOverview({
     if (entry?.error) {
       return (
         <span className="text-xs text-white/60">
-          {t("weather_unavailable", { defaultValue: "Weather unavailable" })}
+          {t("weather.unavailable", { defaultValue: "Weather unavailable" })}
         </span>
       )
     }
@@ -672,45 +674,87 @@ export default function TripOverview({
           {/* Weather Widget */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
             <div onClick={() => onNavigate("weather" as any)}>
-              <WeatherWidget
-                color={dominantColor || trip.color || '#ff6b6b'}
-                weather={
-                  primaryWeather || {
-                    location: derivedLocations[0]?.location_name || trip.destination || trip.title || "—",
-                    current: {
-                      temperature: 15,
-                      temperatureApparent: 14,
-                      humidity: 65,
-                      weatherCode: 1000,
-                      description: "Clear, Sunny",
-                      windSpeed: 10,
-                      windDirection: 180,
-                      cloudCover: 20,
-                      uvIndex: 5,
-                    },
-                    forecast: [],
-                  }
-                }
-              />
-              {weatherLoading && (
-                <p className="text-xs text-white/60 mt-2">
-                  {t("weather_loading", { defaultValue: "Loading weather..." })}
-                </p>
-              )}
-              {!weatherLoading && weatherError && (
-                <div className="text-xs text-red-200/80 mt-2">
-                  {weatherError}{" "}
-                  {onRefetchWeather && (
-                    <button
-                      type="button"
-                      className="underline decoration-dotted text-white/80"
-                      onClick={() => onRefetchWeather().catch(() => {})}
+              {(() => {
+                const weatherLocationLabel =
+                  derivedLocations[0]?.location_name || trip.destination || trip.title || "—"
+                const accent =
+                  dominantColor || (isGradient ? null : trip.color) || "#ff6b6b"
+
+                if (weatherLoading) {
+                  return (
+                    <Card
+                      className="relative overflow-hidden border-0 rounded-3xl shadow-xl"
+                      style={{
+                        background: `linear-gradient(135deg, ${accent} 0%, ${accent}dd 100%)`,
+                      }}
                     >
-                      {t("weather_refresh", { defaultValue: "Retry" })}
-                    </button>
-                  )}
-                </div>
-              )}
+                      <div className="absolute top-0 left-0 right-0 h-1/2 bg-linear-to-b from-white/10 to-transparent pointer-events-none" />
+                      <div className="relative p-6 z-10 flex items-center justify-between gap-6">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 text-white/90 text-sm font-medium mb-2 truncate">
+                            <span className="inline-block w-2 h-2 rounded-full bg-white/70 shrink-0" />
+                            <span className="truncate">{weatherLocationLabel}</span>
+                          </div>
+                          <div className="h-10 w-28 rounded-2xl bg-white/10 animate-pulse" />
+                          <div className="h-4 w-44 rounded-xl bg-white/5 animate-pulse mt-3" />
+                        </div>
+                        <div className="w-20 h-20 rounded-3xl bg-white/10 border border-white/10 animate-pulse shrink-0" />
+                      </div>
+                    </Card>
+                  )
+                }
+
+                if (primaryWeather?.current) {
+                  return (
+                    <WeatherWidget
+                      color={accent}
+                      weather={{
+                        ...primaryWeather,
+                        location: weatherLocationLabel,
+                      }}
+                      updatedAt={weatherFetchedAt}
+                      showMeta
+                    />
+                  )
+                }
+
+                return (
+                  <Card
+                    className="relative overflow-hidden border-0 rounded-3xl shadow-xl"
+                    style={{
+                      background: `linear-gradient(135deg, ${accent} 0%, ${accent}dd 100%)`,
+                    }}
+                  >
+                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-linear-to-b from-white/10 to-transparent pointer-events-none" />
+                    <div className="relative p-6 z-10">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="text-white/90 text-sm font-semibold truncate">
+                            {weatherLocationLabel}
+                          </div>
+                          <div className="text-white/70 text-sm mt-1">
+                            {weatherError
+                              ? weatherError
+                              : t("weather.unavailable", { defaultValue: "Weather unavailable" })}
+                          </div>
+                        </div>
+                        {onRefetchWeather && (
+                          <button
+                            type="button"
+                            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold text-white"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onRefetchWeather().catch(() => {})
+                            }}
+                          >
+                            {t("weather.retry", { defaultValue: "Retry" })}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })()}
             </div>
           </motion.div>
 
