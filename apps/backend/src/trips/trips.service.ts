@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
@@ -10,7 +10,29 @@ export class TripsService {
       const trips = await this.supabaseService.getTrips(userId);
       return trips;
     } catch (error) {
-      throw new NotFoundException('Failed to fetch trips');
+      const message =
+        error instanceof Error
+          ? error.message
+          : error && typeof error === "object" && "message" in (error as any)
+            ? String((error as any).message)
+            : "Unknown error";
+
+      console.error('Error in getTrips:', error);
+      // Log the error details for debugging
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      } else {
+        try {
+          console.error('Error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        } catch {
+          console.error('Error object (stringified):', String(error));
+        }
+      }
+      // This is an upstream (Supabase / network) failure, not "Not Found".
+      throw new ServiceUnavailableException(
+        `Failed to fetch trips: ${message}`
+      );
     }
   }
 

@@ -8,12 +8,21 @@ export class SupabaseService {
   private supabase: SupabaseClient;
 
   constructor(private configService: ConfigService) {
-    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+    let supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     const supabaseServiceKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing Supabase configuration. Please check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.');
     }
+
+    // Ensure URL uses HTTPS
+    if (supabaseUrl.startsWith('http://')) {
+      supabaseUrl = supabaseUrl.replace('http://', 'https://');
+      console.warn('[SupabaseService] URL was HTTP, converted to HTTPS');
+    }
+
+    console.log('[SupabaseService] Initializing with URL:', supabaseUrl.substring(0, 30) + '...');
+    console.log('[SupabaseService] Service key length:', supabaseServiceKey?.length || 0);
 
     this.supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -92,8 +101,9 @@ export class SupabaseService {
       .order('joined_at', { ascending: false });
 
     if (error) throw error;
+
     // Extract just the trip data from the joined response
-    return data?.map((item: any) => item.trips) || [];
+    return data?.map((item: any) => item.trips).filter(Boolean) || [];
   }
 
   // Helper method to get a single trip (if user is a member)

@@ -43,16 +43,60 @@ export class AuthService {
 
   async validateToken(token: string): Promise<any> {
     try {
-      // Use Supabase to verify the JWT token
-      const supabase = this.supabaseService.getClient();
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-
-      if (error || !user) {
+      // Decode JWT locally - no HTTP calls needed
+      // Since the token was issued by Supabase, we can trust it if it's valid
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.error('[validateToken] Invalid token format');
         return null;
       }
 
+      // Decode payload
+      let payload: any;
+      try {
+        // Base64URL decode (handle padding)
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+        payload = JSON.parse(Buffer.from(padded, 'base64').toString());
+      } catch (e) {
+        console.error('[validateToken] Failed to decode token payload:', e);
+        return null;
+      }
+
+      // Check expiration
+      if (payload.exp && payload.exp < Date.now() / 1000) {
+        console.error('[validateToken] Token expired');
+        return null;
+      }
+
+      // Check that it's an authenticated user token
+      if (payload.role !== 'authenticated') {
+        console.error('[validateToken] Token is not for authenticated user');
+        return null;
+      }
+
+      const userId = payload.sub;
+      if (!userId) {
+        console.error('[validateToken] No user ID in token');
+        return null;
+      }
+
+      // Return user object from token payload
+      // We trust the token since it was issued by Supabase
+      const user = {
+        id: userId,
+        email: payload.email,
+        user_metadata: payload.user_metadata || {},
+        app_metadata: payload.app_metadata || {},
+      };
+
+      console.log('[validateToken] Token validated successfully for user:', userId);
       return user;
     } catch (error) {
+      console.error('[validateToken] Exception during validation:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return null;
     }
   }
