@@ -1,5 +1,6 @@
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import * as dns from "dns";
 import { AppModule } from "./app.module";
@@ -12,10 +13,16 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService);
+
+  const frontendOrigins = [
+    config.get<string>("FRONTEND_ORIGIN_DEV"),
+    config.get<string>("FRONTEND_ORIGIN_PROD"),
+  ].filter((value): value is string => Boolean(value));
 
   // Enable CORS for frontend communication
   app.enableCors({
-    origin: ['https://gotrippin.app', 'http://localhost:3000'],
+    origin: frontendOrigins.length > 0 ? frontendOrigins : undefined,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

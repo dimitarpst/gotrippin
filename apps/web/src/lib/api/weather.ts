@@ -2,8 +2,9 @@
 
 import type { TripWeatherResponse } from "@gotrippin/core";
 import { ApiError } from "./trips";
+import { appConfig } from "@/config/appConfig";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE_URL = appConfig.apiUrl;
 
 async function getAuthToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;

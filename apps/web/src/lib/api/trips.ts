@@ -5,17 +5,10 @@
 
 import type { Trip, TripCreateData, TripUpdateData } from "@gotrippin/core";
 import { validateTripCreate, validateTripUpdate } from "@/lib/validation";
+import { appConfig } from "@/config/appConfig";
 
-function normalizeApiBaseUrl(url: string | undefined): string {
-  const trimmed = url?.trim();
-  if (!trimmed) return "http://localhost:3001";
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-  // Allow "localhost:3001" / "127.0.0.1:3001" style values in envs
-  return `http://${trimmed}`;
-}
-
-// API base URL - configured via environment variables
-const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+// API base URL - configured via environment variables through appConfig
+const API_BASE_URL = appConfig.apiUrl;
 
 /**
  * API Error with structured response

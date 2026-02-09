@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "react-i18next";
+import { appConfig } from "@/config/appConfig";
 
 interface ForgotPasswordDialogProps {
   isOpen: boolean;
@@ -26,9 +27,11 @@ export function ForgotPasswordDialog({ isOpen, onClose }: ForgotPasswordDialogPr
     setError(null);
 
     try {
-      const redirectUrl = typeof window !== "undefined"
-        ? `${window.location.origin}/auth/reset-password`
-        : `${process.env.NEXT_PUBLIC_SITE_URL || ""}/auth/reset-password`;
+      const base =
+        typeof window !== "undefined" && window.location?.origin
+          ? window.location.origin
+          : appConfig.siteUrl;
+      const redirectUrl = `${base}/auth/reset-password`;
 
 
       const result = await supabase.auth.resetPasswordForEmail(email, {

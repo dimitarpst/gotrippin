@@ -21,12 +21,18 @@
 - App root: `/home/gotrippin/app`
 - Startup: `/home/gotrippin/app/apps/web/.next/standalone/apps/web/server.js` (note: standalone creates nested `apps/web/` structure)
 - Mode: `Production`
-- Env: `NEXT_PUBLIC_API_URL=https://api.gotrippin.app` + Supabase public vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`).
+- Env (set in cPanel and used at **build time** locally via `.env.local`):
+  - `NEXT_PUBLIC_SITE_URL` → `http://localhost:3000` (dev) / `https://gotrippin.app` (prod)
+  - `NEXT_PUBLIC_API_URL` → `http://localhost:3001` (dev) / `https://api.gotrippin.app` (prod)
+  - Supabase public vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`).
 
 **Backend (Nest):**
 - App root: `/home/gotrippin/app`
 - Startup: `/home/gotrippin/nodevenv/app/20/bin/node apps/backend/dist/main.js` (adjust nodevenv version if different)
-- Env: backend secrets (DB URL, SUPABASE_SERVICE_KEY, JWT, etc.).
+- Env (read at **runtime** via `ConfigService`):
+  - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (and other secrets like JWT, DB URL)
+  - `FRONTEND_ORIGIN_DEV` → `http://localhost:3000`
+  - `FRONTEND_ORIGIN_PROD` → `https://gotrippin.app`
 
 ### Install & Build
 

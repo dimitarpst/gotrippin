@@ -6,6 +6,7 @@ import { Link as LinkIcon, Unlink, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
+import { appConfig } from "@/config/appConfig";
 
 interface LinkedAccountsCardProps {
   hasEmailPassword: boolean;
@@ -34,9 +35,11 @@ export default function LinkedAccountsCard({
     setError(null);
 
     try {
-      const redirectUrl = typeof window !== "undefined"
-        ? `${window.location.origin}/user?linked=true`
-        : `${process.env.NEXT_PUBLIC_SITE_URL || ""}/user?linked=true`;
+      const base =
+        typeof window !== "undefined" && window.location?.origin
+          ? window.location.origin
+          : appConfig.siteUrl;
+      const redirectUrl = `${base}/user?linked=true`;
 
 
       const { error: linkError } = await supabase.auth.linkIdentity({

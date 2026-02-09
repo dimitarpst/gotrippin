@@ -10,6 +10,7 @@ import {
 } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { AuthApiError, type AuthError, type User } from "@supabase/supabase-js";
+import { appConfig } from "@/config/appConfig";
 
 // Extend the user with profile data
 export interface ExtendedUser extends User {
@@ -276,9 +277,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, name?: string) => {
-    const redirectUrl = typeof window !== "undefined"
-      ? `${window.location.origin}/auth/callback`
-      : `${process.env.NEXT_PUBLIC_SITE_URL || ""}/auth/callback`;
+    const base =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : appConfig.siteUrl;
+    const redirectUrl = `${base}/auth/callback`;
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -292,9 +295,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    const redirectUrl = typeof window !== "undefined"
-      ? `${window.location.origin}/auth/callback`
-      : `${process.env.NEXT_PUBLIC_SITE_URL || ""}/auth/callback`;
+    const base =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : appConfig.siteUrl;
+    const redirectUrl = `${base}/auth/callback`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

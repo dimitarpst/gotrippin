@@ -1,11 +1,6 @@
-function normalizeApiBaseUrl(url: string | undefined): string {
-  const trimmed = url?.trim();
-  if (!trimmed) return "http://localhost:3001";
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-  return `http://${trimmed}`;
-}
+import { appConfig } from "@/config/appConfig";
 
-const API_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
+const API_URL = appConfig.apiUrl;
 
 export interface UnsplashImage {
   id: string;

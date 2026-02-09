@@ -1,8 +1,9 @@
 import type { CreateTripLocation, TripLocation } from "@gotrippin/core";
 import { ApiError } from "./trips";
+import { appConfig } from "@/config/appConfig";
 
 // API base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE_URL = appConfig.apiUrl;
 
 /**
  * Helper to get auth token (reused logic)
