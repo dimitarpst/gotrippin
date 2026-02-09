@@ -37,7 +37,7 @@ async function bootstrap() {
   );
 
   // Swagger documentation setup
-  const config = new DocumentBuilder()
+  const swaggerConfig = new DocumentBuilder()
     .setTitle("Go Trippin API")
     .setDescription("Backend API for Go Trippin travel planner")
     .setVersion("1.0")
@@ -53,7 +53,7 @@ async function bootstrap() {
       "JWT-auth" // This name will be used in @ApiBearerAuth() decorators
     )
     .build();
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup("api", app, document, {
     swaggerOptions: {
       persistAuthorization: true, // Keeps the token even after page refresh
