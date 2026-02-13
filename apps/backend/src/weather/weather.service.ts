@@ -251,7 +251,6 @@ export class WeatherService {
         response.data,
         location,
       );
-      
       // Cache the result
       this.setCachedData(cacheKey, weatherData);
       

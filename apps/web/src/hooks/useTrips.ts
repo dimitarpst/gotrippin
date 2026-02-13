@@ -33,7 +33,6 @@ export function useTrips(): UseTripsResult {
   const { user, loading: authLoading, accessToken } = useAuth();
 
   const fetchData = useCallback(async () => {
-    // Don't fetch if user is not authenticated or auth is still loading
     if (!user && !authLoading) {
       setLoading(false);
       setError('Authentication required');
@@ -41,7 +40,7 @@ export function useTrips(): UseTripsResult {
     }
 
     if (authLoading || !accessToken) {
-      return; // Still loading auth, don't fetch yet
+      return;
     }
 
     try {

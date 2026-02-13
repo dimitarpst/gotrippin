@@ -39,14 +39,14 @@ export class WeatherController {
     required: false,
     type: String,
     description: 'Start date for forecast (ISO 8601 format)',
-    example: '2024-12-01T00:00:00Z',
+    example: '2026-02-11T00:00:00Z',
   })
   @ApiQuery({
     name: 'endDate',
     required: false,
     type: String,
     description: 'End date for forecast (ISO 8601 format)',
-    example: '2024-12-07T23:59:59Z',
+    example: '2026-02-17T23:59:59Z',
   })
   @ApiResponse({
     status: 200,
@@ -74,7 +74,7 @@ export class WeatherController {
           items: {
             type: 'object',
             properties: {
-              date: { type: 'string', example: '2024-12-01T00:00:00Z' },
+              date: { type: 'string', example: '2026-02-11T00:00:00Z' },
               temperature: { type: 'number', example: 15 },
               temperatureMin: { type: 'number', example: 12 },
               temperatureMax: { type: 'number', example: 18 },

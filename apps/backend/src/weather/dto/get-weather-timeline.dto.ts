@@ -15,8 +15,8 @@ export class GetWeatherTimelineDto {
 
   @ApiProperty({
     required: false,
-    example: '2024-12-01T00:00:00Z',
-    description: 'Start date for forecast (ISO 8601 format: YYYY-MM-DDTHH:mm:ssZ, e.g., 2024-12-01T00:00:00Z)',
+    example: '2026-02-11T00:00:00Z',
+    description: 'Start date for forecast (ISO 8601 format: YYYY-MM-DDTHH:mm:ssZ, e.g., 2026-02-11T00:00:00Z)',
   })
   @IsOptional()
   @IsISO8601(
@@ -30,8 +30,8 @@ export class GetWeatherTimelineDto {
 
   @ApiProperty({
     required: false,
-    example: '2024-12-07T23:59:59Z',
-    description: 'End date for forecast (ISO 8601 format: YYYY-MM-DDTHH:mm:ssZ, e.g., 2024-12-07T23:59:59Z)',
+    example: '2026-02-17T23:59:59Z',
+    description: 'End date for forecast (ISO 8601 format: YYYY-MM-DDTHH:mm:ssZ, e.g., 2026-02-17T23:59:59Z)',
   })
   @IsOptional()
   @IsISO8601(

@@ -140,12 +140,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
         // Profile is guaranteed to exist due to database trigger
-        setUser({
+        const finalUser = {
           ...currentUser,
           avatar_color: updatedProfileData?.avatar_color || null,
           preferred_lng: updatedProfileData?.preferred_lng || "en",
           avatar_url: updatedProfileData?.avatar_url || null,
-        });
+        };
+        
+        setUser(finalUser);
       } else {
         setUser(null);
       }
@@ -175,7 +177,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Load the current session on mount
+    // Load the current session on mount. Never leave loading true forever.
+    const LOAD_TIMEOUT_MS = 12_000;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const loadSession = async () => {
       try {
         const {
@@ -191,17 +196,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await loadUserWithProfile(session?.user ?? null);
         hasHandledInitialSession.current = true;
       } catch (error) {
-        // Catch any unexpected errors during session load
         const authError = error as AuthError;
         if (await handleAuthError(authError)) {
           return;
         }
         console.error("Unexpected error loading session:", error);
+      } finally {
         setLoading(false);
       }
     };
 
     loadSession();
+
+    timeoutId = setTimeout(() => {
+      setLoading(false);
+    }, LOAD_TIMEOUT_MS);
 
     // Set up auth state listener with error handling
     const {
@@ -264,6 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, []);
@@ -316,10 +326,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
+
     if (error) {
-      console.error("Sign out error:", error);
-      throw error;
+      // Special-case: Supabase already considers the session gone.
+      // Treat this as a successful sign-out and just clear local state.
+      const msg = error.message || "";
+      if (msg.includes("Auth session missing")) {
+        console.warn("Sign out called with missing auth session; clearing client state anyway.");
+      } else {
+        console.error("Sign out error:", error);
+        throw error;
+      }
     }
+
     resetClientSession();
   };
 

@@ -20,18 +20,43 @@ export default function ResetPasswordPage() {
   const [isSessionReady, setIsSessionReady] = useState(false);
 
   useEffect(() => {
-    // The Supabase client automatically handles the session recovery from the URL.
-    // We listen for the auth event that signals this process is complete.
-    // Due to a likely bug in this version of the library, a SIGNED_IN event
-    // is fired for password recovery instead of PASSWORD_RECOVERY. We listen for both.
+    let isActive = true;
+
+    // 1) Proactively check for an existing session.
+    //    In some environments (Next.js App Router + PKCE) the PASSWORD_RECOVERY
+    //    event can fire before this component subscribes. getSession() ensures
+    //    we still detect a valid session and can show the form.
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!isActive) return;
+        if (error) {
+          console.error("Failed to get session for password reset:", error);
+          return;
+        }
+        if (data.session) {
+          setIsSessionReady(true);
+        }
+      })
+      .catch((err) => {
+        if (!isActive) return;
+        console.error("Unexpected error while getting session:", err);
+      });
+
+    // 2) Listen for auth events in case recovery happens after mount.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+      if (!session) return;
+
+      // Treat PASSWORD_RECOVERY, SIGNED_IN, and INITIAL_SESSION (with a session)
+      // as indicators that we're ready to accept a new password.
+      if (
+        event === "PASSWORD_RECOVERY" ||
+        event === "SIGNED_IN" ||
+        event === "INITIAL_SESSION"
+      ) {
         setIsSessionReady(true);
-        // Unsubscribe immediately to prevent this listener from firing again
-        // on subsequent auth events in the app's lifecycle.
-        subscription?.unsubscribe();
       }
     });
 
@@ -47,6 +72,7 @@ export default function ResetPasswordPage() {
     }, 5000); // 5-second timeout
 
     return () => {
+      isActive = false;
       subscription?.unsubscribe();
       clearTimeout(timer);
     };

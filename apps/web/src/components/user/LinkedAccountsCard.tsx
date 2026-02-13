@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Link as LinkIcon, Unlink, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { appConfig } from "@/config/appConfig";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LinkedAccountsCardProps {
   hasEmailPassword: boolean;
@@ -20,13 +21,87 @@ export default function LinkedAccountsCard({
   googleEmail 
 }: LinkedAccountsCardProps) {
   const { t } = useTranslation();
+  const { refreshProfile, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAddPassword, setShowAddPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  // Track if password was just set (optimistic state until Supabase adds email identity)
+  const [passwordJustSet, setPasswordJustSet] = useState(false);
+  // Source of truth from DB: user has a password set (from RPC get_my_has_password)
+  const [hasPasswordFromDb, setHasPasswordFromDb] = useState<boolean | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Persist sign-up provider once (so we know "created with Google" vs "created with email")
+  const signupProvider = user?.user_metadata?.signup_provider as 'email' | 'google' | undefined;
+
+  useEffect(() => {
+    if (!user?.id || signupProvider != null || (!hasEmailPassword && !hasGoogle)) return;
+    const value = hasEmailPassword ? 'email' : 'google';
+    supabase.auth.updateUser({ data: { signup_provider: value } }).then(() => {
+      refreshProfile().catch(() => {});
+    }).catch(() => {});
+  }, [user?.id, signupProvider, hasEmailPassword, hasGoogle, refreshProfile]);
+
+  const refreshProfileRef = useRef(refreshProfile);
+  refreshProfileRef.current = refreshProfile;
+
+  // Ask Supabase (DB) if current user has a password set. Only run when we have a session (user.id)
+  // so we don't get a false "Not connected" on first load or after refresh.
+  // If they have a password but no email identity, create it once so login and UI work.
+  // Don't put refreshProfile in deps (it changes every render) or the effect would loop.
+  useEffect(() => {
+    if (!user?.id) return;
+    if (hasEmailPassword) {
+      setHasPasswordFromDb(true);
+      return;
+    }
+    let cancelled = false;
+    supabase.rpc("get_my_has_password")
+      .then(async ({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setHasPasswordFromDb(false);
+          return;
+        }
+        if (data === true) {
+          await supabase.rpc("ensure_email_identity").then(() => {});
+          if (!cancelled) refreshProfileRef.current?.().catch(() => {});
+        }
+        if (!cancelled) setHasPasswordFromDb(data === true);
+      })
+      .catch(() => {
+        if (!cancelled) setHasPasswordFromDb(false);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, hasEmailPassword]);
+
+  useEffect(() => {
+    if (hasEmailPassword && passwordJustSet) setPasswordJustSet(false);
+  }, [hasEmailPassword, passwordJustSet]);
+
+  // Connected if: email identity exists, or DB says password set, or we just set it this session
+  const isEmailPasswordConnected = hasEmailPassword || hasPasswordFromDb === true || passwordJustSet;
+
+  // Unlink Google: only allowed when account was created with email (so they can safely remove Google)
+  // Created with Google → never allow unlink (big-corp style)
+  const canUnlinkGoogle = hasGoogle && signupProvider === 'email';
+
+  // Message when Unlink is disabled (for tooltip and inline error)
+  const unlinkGoogleDisabledMessage = !hasGoogle
+    ? ''
+    : signupProvider === 'google'
+      ? t('profile.unlink_google_created_with_google')
+      : !isEmailPasswordConnected
+        ? t('profile.unlink_account_last_provider')
+        : t('profile.unlink_google_requires_email_signin');
 
   const handleLinkGoogle = async () => {
     // Only allow linking if user has a password (for security)
-    if (!hasEmailPassword) {
+    if (!isEmailPasswordConnected) {
       setError(t("profile.link_account_password_required"));
       return;
     }
@@ -67,9 +142,8 @@ export default function LinkedAccountsCard({
   };
 
   const handleUnlinkGoogle = async () => {
-    // Don't allow unlinking if it's the only auth method
-    if (!hasEmailPassword) {
-      setError(t("profile.unlink_account_last_provider"));
+    if (!canUnlinkGoogle) {
+      setError(unlinkGoogleDisabledMessage || t("profile.unlink_account_last_provider"));
       return;
     }
 
@@ -108,6 +182,127 @@ export default function LinkedAccountsCard({
     }
   };
 
+  const handleAddPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordSuccess(null);
+    setError(null);
+
+    if (newPassword.length < 6) {
+      setError(t("auth.password_too_short", { defaultValue: "Password must be at least 6 characters long." }));
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError(t("auth.passwords_do_not_match", { defaultValue: "Passwords do not match." }));
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Supabase's updateUser can hang in dev (especially with PKCE + Strict Mode),
+      // even though the backend applies the change and emits USER_UPDATED.
+      // Use a bounded wait so the UI never stays disabled forever.
+      const updatePromise = supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      const timeoutMs = 8000;
+      const timeoutPromise = new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), timeoutMs)
+      );
+
+      const result = (await Promise.race([
+        updatePromise,
+        timeoutPromise,
+      ])) as Awaited<ReturnType<typeof supabase.auth.updateUser>> | null;
+
+      const updateError = result?.error ?? null;
+      const updatedUser = result?.data?.user ?? null;
+      const updatedIdentities = updatedUser?.identities ?? [];
+      const hasEmailIdentityAfterUpdate = updatedIdentities.some(id => id.provider === 'email');
+
+      if (updateError) {
+        // CRITICAL FIX: "New password should be different" means password EXISTS
+        // Supabase stores passwords separately from identities, so even if email identity
+        // doesn't exist, if we get this error, we know a password is set
+        if (updateError.message.includes("New password should be different from the old password")) {
+          setPasswordJustSet(true);
+          void supabase.rpc("ensure_email_identity")
+            .then(() => {
+              refreshProfileRef.current?.().catch(() => {});
+            })
+            .catch(() => {});
+          setPasswordSuccess(t("profile.password_already_set", {
+            defaultValue: "Password is already set for this account."
+          }));
+          setShowAddPassword(false);
+          setNewPassword("");
+          setConfirmPassword("");
+          setLoading(false);
+          return; // Don't throw - this is actually success (password exists)
+        }
+        
+        throw updateError;
+      }
+
+      setPasswordJustSet(true);
+      setPasswordSuccess(t("profile.password_update_success"));
+      setShowAddPassword(false);
+      setNewPassword("");
+      setConfirmPassword("");
+      setLoading(false);
+
+      // Keep all auth sync work in the background so UI never blocks on slow/hanging auth RPCs.
+      void (async () => {
+        let ensureErr: { message?: string } | null = null;
+        try {
+          const res = await supabase.rpc("ensure_email_identity");
+          ensureErr = res.error ?? null;
+        } catch (err) {
+          ensureErr = err as { message?: string };
+        }
+        if (ensureErr) {
+          console.warn("ensure_email_identity failed (password was still set):", ensureErr);
+        }
+
+        await supabase.auth.refreshSession().catch(() => {});
+        const { data: { session: sessionAfterRefresh } } = await supabase.auth.getSession();
+        const identitiesAfterRefresh = sessionAfterRefresh?.user?.identities?.map((i: { provider: string }) => i.provider) ?? [];
+        const hasEmailIdentity = identitiesAfterRefresh.includes("email");
+
+        if (!hasEmailIdentity && user?.email) {
+          await supabase.auth.signInWithPassword({ email: user.email, password: newPassword });
+        }
+
+        refreshProfileRef.current?.().catch(() => {});
+      })();
+    } catch (err) {
+      const rawMessage = err instanceof Error ? err.message : String(err);
+      console.error("Failed to add password:", err);
+
+      // Map common Supabase error messages to clearer UI copy
+      let uiMessage: string;
+      if (rawMessage.includes("New password should be different from the old password")) {
+        uiMessage = t("profile.password_same_as_old", {
+          defaultValue: "New password must be different from your current password.",
+        });
+      } else if (rawMessage.includes("Auth session missing")) {
+        uiMessage = t("profile.session_missing", {
+          defaultValue: "Your session expired. Please sign in again and then set a new password.",
+        });
+      } else {
+        uiMessage = t("profile.password_update_error", {
+          defaultValue: "Failed to update password.",
+        });
+      }
+
+      setError(uiMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <motion.div
       className="relative rounded-3xl overflow-hidden border border-white/8"
@@ -126,7 +321,7 @@ export default function LinkedAccountsCard({
           {/* Email/Password Provider */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 bg-white/5 rounded-xl border border-white/8">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                   <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
@@ -135,22 +330,89 @@ export default function LinkedAccountsCard({
               <div>
                 <p className="text-sm font-medium text-white">{t("profile.email_password_account")}</p>
                 <p className="text-xs text-white/60">
-                  {hasEmailPassword ? t("profile.connected") : t("profile.not_connected")}
+                  {isEmailPasswordConnected ? t("profile.connected") : t("profile.not_connected")}
                 </p>
               </div>
             </div>
-            {hasEmailPassword && (
+            {isEmailPasswordConnected ? (
               <div className="flex items-center gap-2 text-green-400">
                 <Check className="w-4 h-4" />
                 <span className="text-xs font-medium">{t("profile.active")}</span>
               </div>
+            ) : (
+              <Button
+                onClick={() => {
+                  setShowAddPassword((prev) => !prev);
+                  setPasswordSuccess(null);
+                  setError(null);
+                }}
+                disabled={loading}
+                variant="outline"
+                size="sm"
+                className="bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer"
+              >
+                {t("profile.add_password")}
+              </Button>
             )}
           </div>
+
+          {/* Add Password Inline Form */}
+          {!isEmailPasswordConnected && showAddPassword && (
+            <form
+              onSubmit={handleAddPassword}
+              className="space-y-3 p-3 bg-black/40 rounded-xl border border-white/10"
+            >
+              <p className="text-xs text-white/70">
+                {t("profile.password_description")}
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  type="password"
+                  className="px-3 py-2 rounded-lg bg-black/40 border border-white/15 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-(--accent)"
+                  placeholder={t("auth.new_password")}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  disabled={loading}
+                />
+                <input
+                  type="password"
+                  className="px-3 py-2 rounded-lg bg-black/40 border border-white/15 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-(--accent)"
+                  placeholder={t("auth.confirm_new_password")}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="submit"
+                  disabled={loading || !newPassword || !confirmPassword}
+                  size="sm"
+                  className="bg-(--accent) hover:bg-(--accent-hover) text-white cursor-pointer"
+                >
+                  {t("profile.set_password")}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddPassword(false);
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setError(null);
+                    setPasswordSuccess(null);
+                  }}
+                  className="text-xs text-white/60 hover:text-white cursor-pointer"
+                >
+                  {t("profile.cancel")}
+                </button>
+              </div>
+            </form>
+          )}
 
           {/* Google Provider */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 bg-white/5 rounded-xl border border-white/8">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -174,11 +436,11 @@ export default function LinkedAccountsCard({
                   </div>
                   <Button
                     onClick={handleUnlinkGoogle}
-                    disabled={loading || !hasEmailPassword}
+                    disabled={loading || !canUnlinkGoogle}
                     variant="outline"
                     size="sm"
                     className="bg-red-500/10 border-red-500/20 hover:bg-red-500/20 text-red-400 cursor-pointer"
-                    title={!hasEmailPassword ? t("profile.unlink_account_last_provider") : ""}
+                    title={!canUnlinkGoogle ? unlinkGoogleDisabledMessage : ""}
                   >
                     <Unlink className="w-3 h-3 mr-1" />
                     {t("profile.unlink")}
@@ -187,11 +449,11 @@ export default function LinkedAccountsCard({
               ) : (
                 <Button
                   onClick={handleLinkGoogle}
-                  disabled={loading || !hasEmailPassword}
+                  disabled={loading || !isEmailPasswordConnected}
                   variant="outline"
                   size="sm"
                   className="bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer"
-                  title={!hasEmailPassword ? t("profile.link_account_password_required") : ""}
+                  title={!isEmailPasswordConnected ? t("profile.link_account_password_required") : ""}
                 >
                   <LinkIcon className="w-3 h-3 mr-1" />
                   {t("profile.link")}
@@ -212,13 +474,24 @@ export default function LinkedAccountsCard({
           </motion.div>
         )}
 
+        {passwordSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg mt-4"
+          >
+            <Check className="w-4 h-4 text-green-400" />
+            <p className="text-sm text-green-400">{passwordSuccess}</p>
+          </motion.div>
+        )}
+
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg mt-4"
           >
-            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
             <p className="text-sm text-red-400">{error}</p>
           </motion.div>
         )}
