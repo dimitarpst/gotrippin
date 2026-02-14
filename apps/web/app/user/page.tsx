@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,30 +12,31 @@ export default function UserPage() {
   const router = useRouter();
   const { t } = useTranslation();
 
+  const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Store last saved values to show immediately (optimistic update)
   const [lastSaved, setLastSaved] = useState<{ displayName?: string; avatarColor?: string; avatarUrl?: string }>({});
 
-  // Check if we returned from account linking
-  useMemo(() => {
-    if (typeof window !== "undefined") {
-      const fullUrl = window.location.href;
-      const params = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  // Gate: wait for client mount before rendering interactive content (fixes race/hydration)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-      
-      if (params.get('linked') === 'true' || hashParams.get('linked') === 'true') {
-        
-        // Don't immediately reload - let's see what state we're in first
-        setTimeout(() => {
-          window.history.replaceState({}, '', '/user');
-          window.location.reload();
-        }, 3000);
-      }
+  // Check if we returned from account linking (moved from useMemo - side effects belong in useEffect)
+  useEffect(() => {
+    if (!mounted || !user || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    if (params.get("linked") === "true" || hashParams.get("linked") === "true") {
+      const timeoutId = setTimeout(() => {
+        window.history.replaceState({}, "", "/user");
+        window.location.reload();
+      }, 3000);
+      return () => clearTimeout(timeoutId);
     }
-  }, [user]);
+  }, [mounted, user]);
 
   const profileData = useMemo(() => {
     if (!user) return null;
@@ -124,7 +125,8 @@ export default function UserPage() {
 
 
 
-  if (loading) {
+  // Wait for mount (fixes race: auth/session not fully ready on client nav from home)
+  if (!mounted || loading) {
     return (
       <div className="pt-20 text-center text-white/60">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />

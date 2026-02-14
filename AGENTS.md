@@ -1,5 +1,7 @@
 # Agent rules
 
+Read `docs/next_steps.md` for roadmap and task context.
+
 ## Errors & behavior
 
 - **No silent errors.** Do not swallow or ignore errors (no empty `catch`, no `.catch(() => {})` without logging or surfacing). Log and/or show or rethrow.

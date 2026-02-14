@@ -36,23 +36,26 @@ export default function LinkedAccountsCard({
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Persist sign-up provider once (so we know "created with Google" vs "created with email")
-  const signupProvider = user?.user_metadata?.signup_provider as 'email' | 'google' | undefined;
-
-  useEffect(() => {
-    if (!user?.id || signupProvider != null || (!hasEmailPassword && !hasGoogle)) return;
-    const value = hasEmailPassword ? 'email' : 'google';
-    supabase.auth.updateUser({ data: { signup_provider: value } }).then(() => {
-      refreshProfile().catch(() => {});
-    }).catch(() => {});
-  }, [user?.id, signupProvider, hasEmailPassword, hasGoogle, refreshProfile]);
+  const signupProvider = user?.user_metadata?.signup_provider as "email" | "google" | undefined;
 
   const refreshProfileRef = useRef(refreshProfile);
   refreshProfileRef.current = refreshProfile;
 
-  // Ask Supabase (DB) if current user has a password set. Only run when we have a session (user.id)
-  // so we don't get a false "Not connected" on first load or after refresh.
-  // If they have a password but no email identity, create it once so login and UI work.
-  // Don't put refreshProfile in deps (it changes every render) or the effect would loop.
+  // Defer heavy auth effects to avoid racing with page mount (fixes logout/buttons not working)
+  const DEFER_MS = 200;
+
+  useEffect(() => {
+    if (!user?.id || signupProvider != null || (!hasEmailPassword && !hasGoogle)) return;
+    const timer = setTimeout(() => {
+      const value = hasEmailPassword ? "email" : "google";
+      supabase.auth.updateUser({ data: { signup_provider: value } }).then(() => {
+        refreshProfileRef.current?.().catch(() => {});
+      }).catch(() => {});
+    }, DEFER_MS);
+    return () => clearTimeout(timer);
+  }, [user?.id, signupProvider, hasEmailPassword, hasGoogle]);
+
+  // Ask Supabase (DB) if current user has a password set. Deferred to avoid mount race.
   useEffect(() => {
     if (!user?.id) return;
     if (hasEmailPassword) {
@@ -60,23 +63,28 @@ export default function LinkedAccountsCard({
       return;
     }
     let cancelled = false;
-    supabase.rpc("get_my_has_password")
-      .then(async ({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          setHasPasswordFromDb(false);
-          return;
-        }
-        if (data === true) {
-          await supabase.rpc("ensure_email_identity").then(() => {});
-          if (!cancelled) refreshProfileRef.current?.().catch(() => {});
-        }
-        if (!cancelled) setHasPasswordFromDb(data === true);
-      })
-      .catch(() => {
-        if (!cancelled) setHasPasswordFromDb(false);
-      });
-    return () => { cancelled = true; };
+    const timer = setTimeout(() => {
+      supabase.rpc("get_my_has_password")
+        .then(async ({ data, error }) => {
+          if (cancelled) return;
+          if (error) {
+            setHasPasswordFromDb(false);
+            return;
+          }
+          if (data === true) {
+            await supabase.rpc("ensure_email_identity").then(() => {});
+            if (!cancelled) refreshProfileRef.current?.().catch(() => {});
+          }
+          if (!cancelled) setHasPasswordFromDb(data === true);
+        })
+        .catch(() => {
+          if (!cancelled) setHasPasswordFromDb(false);
+        });
+    }, DEFER_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [user?.id, hasEmailPassword]);
 
   useEffect(() => {
