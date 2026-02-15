@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,9 @@ interface ChangePasswordCardProps {
 
 export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardProps) {
   const { t } = useTranslation();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,20 +33,31 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
 
     // Validation
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError(t("auth.password_too_short"));
       setLoading(false);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("auth.passwords_do_not_match"));
       setLoading(false);
       return;
     }
 
     try {
-      
-      // Update password (Supabase will handle this)
+      // When changing (not adding) password, verify old password first
+      if (hasPassword && user?.email) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: oldPassword,
+        });
+        if (signInError) {
+          setError(t("profile.incorrect_current_password", "Current password is incorrect."));
+          setLoading(false);
+          return;
+        }
+      }
+
       const result = await supabase.auth.updateUser({
         password: newPassword,
       });
@@ -57,6 +69,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
       }
 
       setSuccess(true);
+      setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
       
@@ -78,6 +91,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
 
   const handleCancel = () => {
     setIsEditing(false);
+    setOldPassword("");
     setNewPassword("");
     setConfirmPassword("");
     setError(null);
@@ -119,14 +133,31 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
           )}
         </div>
 
-         {isEditing && (
-          <motion.form
-            onSubmit={handleSubmit}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="space-y-4"
-          >
+         <AnimatePresence>
+          {isEditing && (
+            <motion.form
+              key="change-password-form"
+              onSubmit={handleSubmit}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="space-y-4 overflow-hidden"
+            >
+            {hasPassword && (
+              <div className="space-y-2">
+                <label className="text-sm text-white/70">{t("profile.current_password")}</label>
+                <Input
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required={hasPassword}
+                  disabled={loading}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm text-white/70">{t("auth.new_password")}</label>
               <Input
@@ -184,7 +215,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
             <div className="flex gap-2">
               <Button
                 type="submit"
-                disabled={loading || !newPassword || !confirmPassword}
+                disabled={loading || !newPassword || !confirmPassword || (hasPassword && !oldPassword)}
                 className="flex-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white cursor-pointer"
               >
                 {loading
@@ -204,7 +235,8 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
               </Button>
             </div>
           </motion.form>
-        )}
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );

@@ -151,7 +151,7 @@ export default function ResetPasswordPage() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center py-8 text-center"
+              className="flex flex-col items-center justify-center pt-8 pb-8 text-center"
             >
               <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
                 <Check className="w-8 h-8 text-green-500" />
@@ -160,7 +160,7 @@ export default function ResetPasswordPage() {
                 {t("auth.password_reset_success")}
               </p>
               <p className="text-white/60 text-sm">
-                {t("auth.redirecting_to_login")}
+                {t("auth.logging_you_back_in")}
               </p>
             </motion.div>
           ) : (

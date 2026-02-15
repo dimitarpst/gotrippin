@@ -5,7 +5,7 @@ import AuroraBackground from "@/components/effects/aurora-background"
 import CreateTrip from "@/components/trips/create-trip"
 import { useCreateTrip, useTrips } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
 import { addLocation } from "@/lib/api/trip-locations"
@@ -22,12 +22,6 @@ export default function CreateTripPage() {
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth')
-    }
-  }, [authLoading, user, router])
 
   const handleSave = async (data: { 
     title: string; 

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Calendar, Star, Palette } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { AvatarUpload } from "@/components/auth/AvatarUpload";
@@ -79,12 +79,16 @@ export default function ProfileHero({
             </span>
           </motion.div>
           
-          {isEditing && (
-            <motion.div
-              className="flex gap-2"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
+          <AnimatePresence>
+            {isEditing && (
+              <motion.div
+                key="color-picker"
+                className="flex gap-2"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
               <label
                 htmlFor="avatar-color"
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 cursor-pointer transition text-sm text-white/80"
@@ -100,33 +104,61 @@ export default function ProfileHero({
                 className="absolute opacity-0 w-0 h-0"
               />
             </motion.div>
-          )}
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="space-y-3">
-          {isEditing ? (
-            <Input
-              value={displayData.displayName}
-              onChange={(e) => onChange("displayName", e.target.value)}
-              className="text-2xl font-bold bg-white/5 border-white/8 text-white"
-              placeholder={t("profile.display_name")}
-            />
-          ) : (
-            <h2 className="text-2xl font-bold text-white">
-              {displayData.displayName || t("profile.traveler")}
-            </h2>
-          )}
+          <AnimatePresence mode="wait">
+            {isEditing ? (
+              <motion.div
+                key="edit-name"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
+                <Input
+                  value={displayData.displayName}
+                  onChange={(e) => onChange("displayName", e.target.value)}
+                  className="text-2xl font-bold bg-white/5 border-white/8 text-white"
+                  placeholder={t("profile.display_name")}
+                />
+              </motion.div>
+            ) : (
+              <motion.h2
+                key="static-name"
+                className="text-2xl font-bold text-white"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
+                {displayData.displayName || t("profile.traveler")}
+              </motion.h2>
+            )}
+          </AnimatePresence>
 
-          {isEditing && (
-            <AvatarUpload
+          <AnimatePresence>
+            {isEditing && (
+              <motion.div
+                key="avatar-upload"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
+                <AvatarUpload
               userId={data.uid}
               currentAvatarUrl={data.avatarUrl}
               googleAvatarUrl={googleAvatarUrl}
               onUploadSuccess={onAvatarUpload || (() => {})}
               isEditing={isEditing}
               editSessionId={editSessionId}
-            />
-          )}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="flex flex-wrap items-center gap-4 text-sm text-white/60">
             <div className="flex items-center gap-2">

@@ -8,25 +8,18 @@ import { useTranslation } from "react-i18next";
 import UserProfile from "@/components/user/UserProfile";
 
 export default function UserPage() {
-  const { user, loading, refreshProfile } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
-
-  const [mounted, setMounted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Store last saved values to show immediately (optimistic update)
   const [lastSaved, setLastSaved] = useState<{ displayName?: string; avatarColor?: string; avatarUrl?: string }>({});
 
-  // Gate: wait for client mount before rendering interactive content (fixes race/hydration)
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   // Check if we returned from account linking (moved from useMemo - side effects belong in useEffect)
   useEffect(() => {
-    if (!mounted || !user || typeof window === "undefined") return;
+    if (!user || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     if (params.get("linked") === "true" || hashParams.get("linked") === "true") {
@@ -36,7 +29,7 @@ export default function UserPage() {
       }, 3000);
       return () => clearTimeout(timeoutId);
     }
-  }, [mounted, user]);
+  }, [user]);
 
   const profileData = useMemo(() => {
     if (!user) return null;
@@ -46,6 +39,7 @@ export default function UserPage() {
       // Show last saved value if available, otherwise from user metadata
       displayName:
         lastSaved.displayName ||
+        user.display_name ||
         (user.user_metadata?.display_name as string | undefined) ||
         (user.user_metadata?.full_name as string | undefined) ||
         "",
@@ -73,21 +67,30 @@ export default function UserPage() {
           ? updates.avatarColor
           : "#ff6b6b";
 
-      // Update avatar color and URL in profiles table
-      const { error: profErr } = await supabase
+      // Single profiles update — no updateUser (it blocks/hangs and competes with DB writes)
+      const updatePromise = supabase
         .from("profiles")
-        .update({ 
+        .update({
+          display_name: updates.displayName.trim(),
           avatar_color: colorToSave,
           ...(updates.avatarUrl && { avatar_url: updates.avatarUrl }),
         })
         .eq("id", user.id);
 
-      if (profErr) throw profErr;
+      let timeoutId: ReturnType<typeof setTimeout>;
+      const result = await Promise.race([
+        updatePromise,
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error("Save timed out. Please try again.")), 12000);
+        }),
+      ]).catch((err: unknown) => {
+        throw err instanceof Error ? err : new Error(String(err));
+      }).finally(() => {
+        clearTimeout(timeoutId!);
+      });
 
-      // Update display name in user metadata (fire and forget - it hangs but saves data)
-      supabase.auth.updateUser({
-        data: { display_name: updates.displayName.trim() },
-      }).catch((err) => console.error("Auth update error (ignored):", err));
+      const { error: profErr } = result as Awaited<typeof updatePromise>;
+      if (profErr) throw profErr;
 
       // Optimistically update local state to show changes immediately
       setLastSaved({
@@ -95,21 +98,8 @@ export default function UserPage() {
         avatarColor: colorToSave,
         avatarUrl: updates.avatarUrl,
       });
-      
-      // Refresh profile to get updated data from database (with timeout)
-      try {
-        await Promise.race([
-          refreshProfile(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Refresh timeout")), 3000))
-        ]);
-      } catch (refreshError) {
-        console.warn("Profile refresh failed or timed out:", refreshError);
-        // Continue anyway - we have optimistic updates
-      }
-      
-      // Small delay for smooth UX
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
+
+      // Do NOT run refreshProfile after save — it contends with the next save's profiles update and causes hangs (refreshSession can block)
       setSaving(false);
       return true;
     } catch (e: unknown) {
@@ -125,16 +115,12 @@ export default function UserPage() {
 
 
 
-  // Wait for mount (fixes race: auth/session not fully ready on client nav from home)
-  if (!mounted || loading) {
-    return (
-      <div className="pt-20 text-center text-white/60">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-      </div>
-    );
+  // Match trips page: render nothing until auth ready (avoids mount race)
+  if (loading) {
+    return null;
   }
 
-  // Show login prompt if not logged in
+  // Show login prompt if not logged in (e.g. signed out, or profile deleted)
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">

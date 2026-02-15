@@ -64,12 +64,6 @@ export default function TripPage({ params }: TripPageProps) {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth')
-    }
-  }, [authLoading, user, router])
-
   const handleNavigate = (screen: string) => {
     if (screen === "overview") {
       // Stay on current page

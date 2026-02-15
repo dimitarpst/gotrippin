@@ -32,6 +32,9 @@ export function AvatarUpload({
   const [userAvatars, setUserAvatars] = useState<string[]>([]);
   const [isLoadingAvatars, setIsLoadingAvatars] = useState(false);
 
+  // Max loading time – stop skeleton after this to avoid indefinite loading for users with no avatars
+  const MAX_LOADING_MS = 6000;
+
   // Update selected avatar when currentAvatarUrl changes
   useEffect(() => {
     setSelectedAvatar(currentAvatarUrl || null);
@@ -50,6 +53,10 @@ export function AvatarUpload({
     let isMounted = true;
     let retryCount = 0;
     const maxRetries = 2;
+
+    const forceStopLoadingTimer = setTimeout(() => {
+      if (isMounted) setIsLoadingAvatars(false);
+    }, MAX_LOADING_MS);
 
     const fetchUserAvatars = async () => {
       // Show loading state
@@ -135,6 +142,7 @@ export function AvatarUpload({
 
     return () => {
       isMounted = false;
+      clearTimeout(forceStopLoadingTimer);
     };
   }, [userId, isEditing, editSessionId, onUploadError]);
 

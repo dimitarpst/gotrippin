@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { AuthHeader } from "./AuthHeader";
@@ -16,6 +16,7 @@ import { ForgotPasswordDialog } from "./ForgotPasswordDialog";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
   export default function AuthForm() {
     const { t } = useTranslation();
@@ -23,6 +24,7 @@ import { useRouter } from "next/navigation";
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [name, setName] = useState("");
 
     // 🧩 Auth hook + router
@@ -31,6 +33,7 @@ import { useRouter } from "next/navigation";
     const [lastEmail, setLastEmail] = useState("");
     const [googleLoading, setGoogleLoading] = useState(false);
     const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const router = useRouter();
 
@@ -40,6 +43,12 @@ import { useRouter } from "next/navigation";
     // 🧩 Updated only this handler
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
+
+    if (!isLogin && password !== confirmPassword) {
+      setError(t("auth.passwords_do_not_match"));
+      return;
+    }
 
     try {
       if (isLogin) {
@@ -50,25 +59,41 @@ import { useRouter } from "next/navigation";
         setPendingConfirmation(true);
         setLastEmail(email);
       }
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       if (msg.toLowerCase().includes("email not confirmed")) {
         setPendingConfirmation(true);
         setLastEmail(email);
+      } else if (msg.toLowerCase().includes("invalid login credentials")) {
+        const { data: exists, error: rpcError } = await supabase.rpc("auth_user_exists", {
+          check_email: email.trim(),
+        });
+        if (rpcError) {
+          setError(msg);
+          setIsLogin(false);
+          return;
+        }
+        if (exists === true) {
+          setError(t("auth.invalid_credentials"));
+        } else {
+          setError(t("auth.no_account_switch"));
+          setIsLogin(false);
+        }
       } else {
-        alert(msg);
+        setError(msg);
       }
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
+      setError(null);
       setGoogleLoading(true);
       await signInWithGoogle();
       // OAuth redirect will happen automatically
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
-      alert(msg);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
       setGoogleLoading(false);
     }
   };
@@ -102,7 +127,7 @@ import { useRouter } from "next/navigation";
       >
         <div className="bg-[var(--surface)]/80 backdrop-blur-xl rounded-2xl p-8 shadow-card border border-white/10">
           <AuthHeader isLogin={isLogin} />
-          <AuthTabs isLogin={isLogin} setIsLogin={setIsLogin} />
+          <AuthTabs isLogin={isLogin} setIsLogin={(v) => { setIsLogin(v); setError(null); }} />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <EmailConfirm visible={pendingConfirmation} lastEmail={lastEmail} />
@@ -115,7 +140,20 @@ import { useRouter } from "next/navigation";
               setEmail={setEmail}
               password={password}
               setPassword={setPassword}
+              confirmPassword={confirmPassword}
+              setConfirmPassword={setConfirmPassword}
             />
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg"
+              >
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-400">{error}</p>
+              </motion.div>
+            )}
 
             {isLogin && (
               <div className="flex justify-end">
@@ -154,7 +192,7 @@ import { useRouter } from "next/navigation";
             {isLogin ? t("auth.no_account") : t("auth.have_account")}
             <button
               type="button"
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => { setIsLogin(!isLogin); setError(null); }}
               className="text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors ms-1 cursor-pointer"
             >
               {isLogin ? t("auth.sign_up") : t("auth.sign_in")}

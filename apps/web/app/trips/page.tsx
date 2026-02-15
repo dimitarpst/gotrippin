@@ -7,7 +7,6 @@ import DockBar from "@/components/layout/DockBar"
 import TripsList from "@/components/trips/trips-list"
 import { useTrips } from "@/hooks/useTrips"
 import { useAuth } from "@/contexts/AuthContext"
-import { useEffect } from "react"
 
 function ProtectedTripsContent() {
   const router = useRouter()
@@ -47,15 +46,9 @@ function ProtectedTripsContent() {
 }
 
 export default function TripsPage() {
-  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/auth")
-    }
-  }, [authLoading, user, router])
-
+  // Middleware handles auth redirect
   if (authLoading || !user) {
     return null
   }

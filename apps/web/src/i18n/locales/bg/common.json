@@ -26,11 +26,13 @@
     "reset_password_title": "Нулирай паролата си",
     "enter_new_password": "Въведи новата си парола по-долу",
     "new_password": "Нова парола",
+    "confirm_password": "Потвърди паролата",
     "confirm_new_password": "Потвърди новата парола",
     "reset_password_button": "Нулирай паролата",
     "resetting": "Нулиране...",
     "password_reset_success": "Паролата беше нулирана успешно!",
     "redirecting_to_login": "Пренасочване към страница за вход...",
+    "logging_you_back_in": "Влизане в акаунта ти...",
     "password_too_short": "Паролата трябва да е поне 6 символа.",
     "passwords_do_not_match": "Паролите не съвпадат.",
     "or_continue_with": "Или продължи с",
@@ -41,7 +43,9 @@
     "email_confirm_text": "Моля, провери пощата си, за да потвърдиш имейла преди вход.",
     "resend_email": "Изпрати имейла отново",
     "email_resent_success": "Имейлът за потвърждение беше изпратен отново успешно!",
-    "email_resent_failed": "Неуспешно изпращане на имейла"
+    "email_resent_failed": "Неуспешно изпращане на имейла",
+    "invalid_credentials": "Невалидни данни за вход.",
+    "no_account_switch": "Няма акаунт с този имейл. Създай един по-долу."
   },
   "profile": {
     "title": "Профил",
@@ -78,6 +82,7 @@
     "change_password": "Смени парола",
     "add_password": "Добави парола",
     "current_password": "Настояща парола",
+    "incorrect_current_password": "Настоящата парола е грешна.",
     "password_description": "Задай парола за акаунта си, за да активираш вход с имейл и парола.",
     "password_change_note": "Ще бъде изпратен имейл за потвърждение на тази промяна.",
     "update_password": "Обнови паролата",

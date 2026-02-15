@@ -2,6 +2,8 @@
 
 Read `docs/next_steps.md` for roadmap and task context.
 
+**Complex bugs / debugging:** Read `docs/DEBUGGING_PATTERNS.md`. Use runtime logs, analyze timing, search for known issues (e.g. Supabase auth-js#762). When the user says "it doesn't work" again, change what you're instrumenting instead of repeating the same approach.
+
 ## Errors & behavior
 
 - **No silent errors.** Do not swallow or ignore errors (no empty `catch`, no `.catch(() => {})` without logging or surfacing). Log and/or show or rethrow.
@@ -9,6 +11,7 @@ Read `docs/next_steps.md` for roadmap and task context.
 - **Surface and capture.** Prefer: check `error` from Supabase calls (`{ data, error }`), handle it (message to user or `console.error`), and do not overwrite with generic success UI.
 - **Next.js:** Use `error.js`/`error.tsx` (and root `global-error.js` if needed) for boundaries; log in `useEffect` and expose a reset. API routes: use try/catch, return proper status (e.g. 500 + message), avoid leaking sensitive detail.
 - **Supabase:** Always check `error` after `rpc()`, `auth.signIn*`, `auth.updateUser`, etc. Handle and surface; do not assume success when `error` is set.
+- **Never update UI optimistically on mutations.** Only update UI after the request succeeds (check `error` / response). Do not assume success; validate the response before reflecting changes.
 
 ## Auth & provider linking (minimal reference)
 

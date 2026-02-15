@@ -30,12 +30,6 @@ export default function EditTripPage({ params }: EditTripPageProps) {
     setMounted(true)
   }, [])
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth')
-    }
-  }, [authLoading, user, router])
-
   const handleSave = async (data: { 
     title: string; 
     imageUrl?: string; 

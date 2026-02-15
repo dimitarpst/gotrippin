@@ -26,11 +26,13 @@
     "reset_password_title": "Reset Your Password",
     "enter_new_password": "Enter your new password below",
     "new_password": "New Password",
+    "confirm_password": "Confirm Password",
     "confirm_new_password": "Confirm New Password",
     "reset_password_button": "Reset Password",
     "resetting": "Resetting...",
     "password_reset_success": "Password reset successfully!",
     "redirecting_to_login": "Redirecting to login page...",
+    "logging_you_back_in": "Logging you back in...",
     "password_too_short": "Password must be at least 6 characters long.",
     "passwords_do_not_match": "Passwords do not match.",
     "or_continue_with": "Or continue with",
@@ -41,7 +43,9 @@
     "email_confirm_text": "Please check your inbox to confirm your email before logging in.",
     "resend_email": "Resend Confirmation Email",
     "email_resent_success": "Confirmation email resent successfully!",
-    "email_resent_failed": "Failed to resend email"
+    "email_resent_failed": "Failed to resend email",
+    "invalid_credentials": "Invalid login credentials.",
+    "no_account_switch": "No account found with this email. Create one below."
   },
   "profile": {
     "title": "Profile",
@@ -78,6 +82,7 @@
     "change_password": "Change Password",
     "add_password": "Add Password",
     "current_password": "Current Password",
+    "incorrect_current_password": "Current password is incorrect.",
     "password_description": "Set a password for your account to enable email/password sign in.",
     "password_change_note": "A confirmation email will be sent to verify this change.",
     "update_password": "Update Password",

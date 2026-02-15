@@ -12,11 +12,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { AuthApiError, type AuthError, type User } from "@supabase/supabase-js";
 import { appConfig } from "@/config/appConfig";
 
-// Extend the user with profile data
+// Extend the user with profile data (profiles table is source of truth for display_name)
 export interface ExtendedUser extends User {
   avatar_color?: string | null;
   preferred_lng?: string | null;
   avatar_url?: string | null;
+  display_name?: string | null;
 }
 
 interface AuthContextType {
@@ -91,6 +92,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single();
 
         if (profileError) {
+          const err = profileError as { code?: string; message?: string; details?: string };
+          const msg = (err?.message ?? "").toLowerCase();
+          const details = (err?.details ?? "").toLowerCase();
+          const isProfileDeleted =
+            err?.code === "PGRST116" ||
+            msg.includes("0 rows") ||
+            msg.includes("zero rows") ||
+            msg.includes("pgrst116") ||
+            details.includes("0 rows") ||
+            details.includes("zero rows") ||
+            msg.includes("cannot coerce");
+          if (isProfileDeleted) {
+            console.warn("Profile not found (deleted or missing). Signing out.");
+            resetClientSession();
+            try {
+              await supabase.auth.signOut();
+            } catch {
+              /* already cleared */
+            }
+            setUser(null);
+            setLoading(false);
+            if (typeof window !== "undefined") {
+              window.location.replace("/auth");
+            }
+            return;
+          }
           console.warn("Failed to load profile:", profileError);
         }
 
@@ -145,6 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           avatar_color: updatedProfileData?.avatar_color || null,
           preferred_lng: updatedProfileData?.preferred_lng || "en",
           avatar_url: updatedProfileData?.avatar_url || null,
+          display_name:
+            updatedProfileData?.display_name ??
+            currentUser.user_metadata?.display_name ??
+            currentUser.user_metadata?.full_name ??
+            null,
         };
         
         setUser(finalUser);
@@ -215,61 +247,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener with error handling
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      try {
-        if (!hasHandledInitialSession.current && event === "INITIAL_SESSION") {
-          hasHandledInitialSession.current = true;
-          return;
-        }
-
-        // Handle token refresh errors
-        if (event === "TOKEN_REFRESHED" && !session) {
-          // Token refresh failed - session is null
-          console.warn("Token refresh failed. Clearing session.");
-          resetClientSession();
-          setLoading(false);
-          return;
-        }
-
-        // Handle successful token refresh - update access token immediately
-        // without reloading profile (profile data doesn't change on token refresh)
-        if (event === "TOKEN_REFRESHED" && session) {
-          console.log("Token refreshed successfully");
-          setAccessToken(session.access_token ?? null);
-          // Update user object with new session data, but don't reload profile
-          if (session.user) {
-            setUser((prevUser) => {
-              if (!prevUser) {
-                // If no previous user, we need to load the profile
-                // This shouldn't happen normally, but handle it gracefully
-                loadUserWithProfile(session.user).catch(console.error);
-                return null; // Will be set by loadUserWithProfile
-              }
-              // Keep existing profile data, just update the user object
-              return {
-                ...session.user,
-                avatar_color: prevUser.avatar_color,
-                preferred_lng: prevUser.preferred_lng,
-                avatar_url: prevUser.avatar_url,
-              };
-            });
-          }
-          // Ensure loading is false after token refresh
-          setLoading(false);
-          return;
-        }
-
-        // For other events (SIGNED_IN, SIGNED_OUT, USER_UPDATED), reload full profile
-        setAccessToken(session?.access_token ?? null);
-        await loadUserWithProfile(session?.user ?? null);
-      } catch (error) {
-        // Catch any errors during auth state change
-        const authError = error as AuthError;
-        if (await handleAuthError(authError)) {
-          return;
-        }
-        console.error("Error in auth state change:", error);
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      // CRITICAL: Never await Supabase calls inside this callback - causes deadlock (auth-js#762).
+      // Defer all Supabase work with setTimeout(0) so it runs after the callback returns.
+      if (!hasHandledInitialSession.current && event === "INITIAL_SESSION") {
+        hasHandledInitialSession.current = true;
+        return;
       }
+
+      if (event === "TOKEN_REFRESHED" && !session) {
+        console.warn("Token refresh failed. Clearing session.");
+        resetClientSession();
+        setLoading(false);
+        return;
+      }
+
+      if (event === "TOKEN_REFRESHED" && session) {
+        setAccessToken(session.access_token ?? null);
+        if (session.user) {
+          setUser((prevUser) => {
+            if (!prevUser) {
+              setTimeout(() => loadUserWithProfile(session.user).catch(console.error), 0);
+              return null;
+            }
+            return {
+              ...session.user,
+              avatar_color: prevUser.avatar_color,
+              preferred_lng: prevUser.preferred_lng,
+              avatar_url: prevUser.avatar_url,
+            };
+          });
+        }
+        setLoading(false);
+        return;
+      }
+
+      setAccessToken(session?.access_token ?? null);
+      setTimeout(() => {
+        loadUserWithProfile(session?.user ?? null).catch((error) => {
+          handleAuthError(error as AuthError).then((handled) => {
+            if (!handled) console.error("Error in auth state change:", error);
+          });
+        });
+      }, 0);
     });
 
     return () => {
@@ -325,21 +345,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      // Special-case: Supabase already considers the session gone.
-      // Treat this as a successful sign-out and just clear local state.
-      const msg = error.message || "";
-      if (msg.includes("Auth session missing")) {
-        console.warn("Sign out called with missing auth session; clearing client state anyway.");
-      } else {
-        console.error("Sign out error:", error);
-        throw error;
-      }
-    }
-
     resetClientSession();
+    const { error } = await supabase.auth.signOut();
+    if (error && !(error.message || '').includes('Auth session missing')) {
+      console.error('Sign out:', error);
+    }
   };
 
   const resendConfirmation = async (email: string) => {

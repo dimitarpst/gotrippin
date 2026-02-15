@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import AuroraBackground from "@/components/effects/aurora-background"
 import FloatingHeader from "@/components/layout/FloatingHeader"
@@ -47,15 +46,9 @@ function ProtectedHomeContent() {
 }
 
 export default function HomePage() {
-  const router = useRouter()
   const { user, loading: authLoading } = useAuth()
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/auth")
-    }
-  }, [authLoading, user, router])
-
+  // Middleware handles auth redirect; show loading until AuthContext resolves
   if (authLoading || !user) {
     return null
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
@@ -90,14 +90,17 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
           )}
         </div>
 
-        {isEditing && (
-          <motion.form
-            onSubmit={handleSubmit}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="space-y-4"
-          >
+        <AnimatePresence>
+          {isEditing && (
+            <motion.form
+              key="change-email-form"
+              onSubmit={handleSubmit}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="space-y-4 overflow-hidden"
+            >
             <div className="space-y-2">
               <label className="text-sm text-white/70">{t("profile.new_email")}</label>
               <Input
@@ -154,7 +157,8 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
               </Button>
             </div>
           </motion.form>
-        )}
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );

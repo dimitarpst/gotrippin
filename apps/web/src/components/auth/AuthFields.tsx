@@ -14,6 +14,8 @@ interface AuthFieldsProps {
   setEmail: (value: string) => void;
   password: string;
   setPassword: (value: string) => void;
+  confirmPassword?: string;
+  setConfirmPassword?: (value: string) => void;
 }
 
 export function AuthFields({
@@ -24,6 +26,8 @@ export function AuthFields({
   setEmail,
   password,
   setPassword,
+  confirmPassword = "",
+  setConfirmPassword,
 }: AuthFieldsProps) {
   const { t } = useTranslation();
 
@@ -98,6 +102,33 @@ export function AuthFields({
           />
         </div>
       </div>
+
+      {/* confirm password (signup only) */}
+      {!isLogin && setConfirmPassword && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="overflow-hidden"
+        >
+          <Label htmlFor="confirmPassword" className="text-white mb-2 block">
+            {t("auth.confirm_password")}
+          </Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--muted)]" />
+            <Input
+              id="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              placeholder={t("auth.confirm_password")}
+              value={confirmPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setConfirmPassword(e.target.value)
+              }
+              className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-[var(--muted)] focus:border-[var(--accent)] transition-colors"
+            />
+          </div>
+        </motion.div>
+      )}
     </>
   );
 }

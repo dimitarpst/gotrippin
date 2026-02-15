@@ -104,21 +104,24 @@ export default function UserProfile({
     const syncProfile = async () => {
       setEditRefreshing(true);
       try {
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("display_name, avatar_color, avatar_url")
-          .eq("id", data.uid)
-          .single();
+        const { data: profile, error: profileError } = await Promise.race([
+          supabase
+            .from("profiles")
+            .select("display_name, avatar_color, avatar_url")
+            .eq("id", data.uid)
+            .single(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Profile fetch timeout")), 8000)
+          ),
+        ]);
 
-        if (profileError) {
-          throw profileError;
+        if (!profileError && profile) {
+          setPendingChanges({
+            displayName: profile.display_name || data.displayName,
+            avatarColor: profile.avatar_color || data.avatarColor || "#ff6b6b",
+            avatarUrl: profile.avatar_url ?? data.avatarUrl ?? undefined,
+          });
         }
-
-        setPendingChanges({
-          displayName: profile?.display_name || data.displayName,
-          avatarColor: profile?.avatar_color || data.avatarColor || "#ff6b6b",
-          avatarUrl: profile?.avatar_url || data.avatarUrl || undefined,
-        });
       } catch (error) {
         console.warn("Failed to refresh profile before editing:", error);
       } finally {
@@ -163,7 +166,7 @@ export default function UserProfile({
         onEdit={handleEdit}
         onSave={handleSave}
         onCancel={handleCancel}
-        saving={saving || editRefreshing}
+        saving={saving}
       />
 
       <motion.div
@@ -199,35 +202,25 @@ export default function UserProfile({
           />
         </div>
 
-        {/* Logout button */}
-        <motion.div
-          className="flex justify-center mt-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <motion.button
+        {/* Logout button — plain button to avoid Framer Motion mount interference */}
+        <div className="flex justify-center mt-8">
+          <button
+            type="button"
             onClick={async () => {
               try {
                 await signOut();
-                // Wait a bit to ensure session is cleared
-                await new Promise(resolve => setTimeout(resolve, 300));
-                // Force a full page reload to clear all state
                 window.location.replace("/auth");
               } catch (error) {
                 console.error("Logout error:", error);
-                // Force redirect anyway
                 window.location.replace("/auth");
               }
             }}
             className="px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white cursor-pointer border border-white/10 transition-all"
-            whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.25)" }}
-            whileTap={{ scale: 0.95 }}
           >
             <LogOut className="w-4 h-4" />
             {t("profile.logout")}
-          </motion.button>
-        </motion.div>
+          </button>
+        </div>
       </motion.div>
     </div>
   );

@@ -41,21 +41,33 @@ export default function LinkedAccountsCard({
   const refreshProfileRef = useRef(refreshProfile);
   refreshProfileRef.current = refreshProfile;
 
-  // Defer heavy auth effects to avoid racing with page mount (fixes logout/buttons not working)
-  const DEFER_MS = 200;
+  // Run heavy auth work when browser is idle — avoids blocking React commit/handler attachment
+  const runWhenIdle = (cb: () => void) => {
+    if (typeof requestIdleCallback !== "undefined") {
+      return requestIdleCallback(cb, { timeout: 3000 });
+    }
+    return window.setTimeout(cb, 0) as unknown as number;
+  };
+  const cancelIdle = (id: number) => {
+    if (typeof cancelIdleCallback !== "undefined") {
+      cancelIdleCallback(id);
+    } else {
+      clearTimeout(id);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id || signupProvider != null || (!hasEmailPassword && !hasGoogle)) return;
-    const timer = setTimeout(() => {
+    const id = runWhenIdle(() => {
       const value = hasEmailPassword ? "email" : "google";
       supabase.auth.updateUser({ data: { signup_provider: value } }).then(() => {
         refreshProfileRef.current?.().catch(() => {});
       }).catch(() => {});
-    }, DEFER_MS);
-    return () => clearTimeout(timer);
+    });
+    return () => cancelIdle(id);
   }, [user?.id, signupProvider, hasEmailPassword, hasGoogle]);
 
-  // Ask Supabase (DB) if current user has a password set. Deferred to avoid mount race.
+  // Ask Supabase (DB) if current user has a password set. Run when idle.
   useEffect(() => {
     if (!user?.id) return;
     if (hasEmailPassword) {
@@ -63,27 +75,26 @@ export default function LinkedAccountsCard({
       return;
     }
     let cancelled = false;
-    const timer = setTimeout(() => {
-      supabase.rpc("get_my_has_password")
-        .then(async ({ data, error }) => {
-          if (cancelled) return;
-          if (error) {
-            setHasPasswordFromDb(false);
-            return;
-          }
-          if (data === true) {
-            await supabase.rpc("ensure_email_identity").then(() => {});
-            if (!cancelled) refreshProfileRef.current?.().catch(() => {});
-          }
-          if (!cancelled) setHasPasswordFromDb(data === true);
-        })
-        .catch(() => {
-          if (!cancelled) setHasPasswordFromDb(false);
-        });
-    }, DEFER_MS);
+    const id = runWhenIdle(async () => {
+      try {
+        const { data, error } = await supabase.rpc("get_my_has_password");
+        if (cancelled) return;
+        if (error) {
+          setHasPasswordFromDb(false);
+          return;
+        }
+        if (data === true) {
+          await supabase.rpc("ensure_email_identity");
+          if (!cancelled) refreshProfileRef.current?.().catch(() => {});
+        }
+        if (!cancelled) setHasPasswordFromDb(data === true);
+      } catch {
+        if (!cancelled) setHasPasswordFromDb(false);
+      }
+    });
     return () => {
       cancelled = true;
-      clearTimeout(timer);
+      cancelIdle(id);
     };
   }, [user?.id, hasEmailPassword]);
 
@@ -175,13 +186,9 @@ export default function LinkedAccountsCard({
 
       if (unlinkError) throw unlinkError;
 
-
       setSuccess(true);
-      
-      // Force a complete page reload after a brief moment to show success
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Refresh session and profile so UI updates immediately (no reload needed)
+      await refreshProfile();
     } catch (err) {
       console.error("Failed to unlink Google account:", err);
       setError(err instanceof Error ? err.message : "Failed to unlink account");
@@ -236,11 +243,14 @@ export default function LinkedAccountsCard({
         // doesn't exist, if we get this error, we know a password is set
         if (updateError.message.includes("New password should be different from the old password")) {
           setPasswordJustSet(true);
-          void supabase.rpc("ensure_email_identity")
-            .then(() => {
+          void (async () => {
+            try {
+              await supabase.rpc("ensure_email_identity");
               refreshProfileRef.current?.().catch(() => {});
-            })
-            .catch(() => {});
+            } catch {
+              /* ignore */
+            }
+          })();
           setPasswordSuccess(t("profile.password_already_set", {
             defaultValue: "Password is already set for this account."
           }));
