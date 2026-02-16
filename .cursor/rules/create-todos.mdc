@@ -1,0 +1,35 @@
+---
+description: How to create todos when the user asks
+alwaysApply: true
+---
+
+# Create Todos Command
+
+When the user says "add a todo", "create a todo", "add to todo", or similar:
+
+## 1. In-code todo (Todo Highlight)
+
+Use for tasks that belong to a specific file or feature:
+
+- Add: `// TODO: description` (or `// FIXME:` for bugs, `// NOTE:`, `// HACK:`, etc.)
+- Place at the relevant location (top of file, above function, or exact line)
+- Todo Highlight picks up: TODO:, FIXME:, NOTE:, IDEA:, REVIEW:, DEBUG:, OPTIMIZE:, etc.
+
+## 2. Project todo (Todo+)
+
+Use for general tasks, backlog items, or when the user doesn't specify a file:
+
+- **File**: `TODO` in project root (no extension; Todo+ default `todo.file.name`)
+- **Format** (TaskPaper-style, 2-space indent):
+  ```
+  ProjectName:
+    ☐ Task description
+  ```
+- Symbols: ☐ (box), ✔ (done), ✘ (cancelled). Optional tags: `@est(1h)`, `@high`, etc.
+- Add new items under the relevant project (or "Todo:" if none). Indent with 2 spaces.
+- Default content for new file: `\nTodo:\n  ☐ Item\n`
+
+## When to use which
+
+- **In-code**: "add a todo here", "todo for this function", task belongs to one file
+- **Project**: "add a todo", "create a todo", "add to backlog", general task
