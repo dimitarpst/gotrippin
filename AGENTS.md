@@ -5,6 +5,12 @@ Read `docs/next_steps.md` for roadmap and task context.
 **Todos & planning**
 
 - When a task in the root `TODO` file is completed, always mark it there (change `☐` to `✔`) in addition to any internal tracking.
+- Work on todos one-by-one: complete a task, verify/test it, then move to the next. User stays in control of the pace.
+
+## Workflow & communication
+
+- **Always double ask before coding.** Before implementing any code changes, discuss the approach, get explicit confirmation ("yes implement it", "go ahead", etc.), then proceed. Never code without explicit approval.
+- **Precise and short responses.** Provide concise answers with essential info. Elaborate only if asked or if more detail is needed. Avoid overly detailed explanations unless requested.
 
 **Complex bugs / debugging:** Read `docs/DEBUGGING_PATTERNS.md`. Use runtime logs, analyze timing, search for known issues (e.g. Supabase auth-js#762). When the user says "it doesn't work" again, change what you're instrumenting instead of repeating the same approach.
 
