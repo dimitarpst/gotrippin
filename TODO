@@ -1,7 +1,7 @@
 
 Todo:
   ✔ Centralize getAuthToken() — single helper for api/trips.ts, api/weather.ts, api/activities.ts, api/trip-locations.ts
-  ☐ Move date helpers to @gotrippin/core — formatTripDate, calculateDaysUntil, calculateDuration
+  ✔ Move date helpers to @gotrippin/core — formatTripDate, calculateDaysUntil, calculateDuration
   ☐ Extract chains/booleans — trips-list.tsx, location-card.tsx, AvatarUpload.tsx
 
 Phase 2 — Architecture:

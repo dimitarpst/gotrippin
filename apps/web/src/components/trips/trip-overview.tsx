@@ -29,7 +29,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Trip, TripLocation, Activity, TripLocationWeather } from "@gotrippin/core"
-import { formatTripDate, calculateDaysUntil, calculateDuration } from "@/lib/api/trips"
+import { formatTripDate, calculateDaysUntil, calculateDuration } from "@gotrippin/core"
 import { useTranslation } from "react-i18next"
 import {
   DropdownMenu,

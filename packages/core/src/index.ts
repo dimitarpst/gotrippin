@@ -84,3 +84,8 @@ export {
 
 // Export utility functions
 export { generateShareCode, isValidShareCode } from './utils/share-code';
+export {
+  formatTripDate,
+  calculateDaysUntil,
+  calculateDuration,
+} from './utils/date';

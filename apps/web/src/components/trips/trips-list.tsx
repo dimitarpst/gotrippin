@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import type { Trip } from "@gotrippin/core"
-import { formatTripDate, calculateDaysUntil, calculateDuration } from "@/lib/api/trips"
+import { formatTripDate, calculateDaysUntil, calculateDuration } from "@gotrippin/core"
 import RecommendedDestinations from "./recommended-destinations"
 import TripFilters from "./trip-filters"
 import TripGrid from "./trip-grid"
