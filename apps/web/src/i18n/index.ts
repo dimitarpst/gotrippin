@@ -23,7 +23,7 @@ if (!i18n.isInitialized) {
       fallbackLng: DEFAULT_LANGUAGE,
       supportedLngs: SUPPORTED_LANGUAGES,
       detection: {
-        order: ["cookie", "localStorage", "navigator"],
+        order: ["cookie", "navigator"],
         caches: ["cookie"],
         lookupCookie: PREFERRED_LANGUAGE_COOKIE,
         cookieMinutes: 525600, // 1 year

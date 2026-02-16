@@ -45,7 +45,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null);
     if (typeof window !== "undefined") {
       sessionStorage.clear();
-      localStorage.removeItem("supabase.auth.token");
     }
   };
 

@@ -148,7 +148,7 @@ No duplication of schemas; validation is correctly shared.
 | Item | Web | RN |
 |------|-----|-----|
 | **Auth flow** | Redirects (OAuth) | Deep links |
-| **Session storage** | `localStorage` / cookies | Secure storage (Supabase handles this) |
+| **Session storage** | Cookies (`@supabase/ssr`), no localStorage | Secure storage (Supabase handles this) |
 | **Profiles** | Direct Supabase | Same, or migrate to NestJS |
 | **API base URL** | `NEXT_PUBLIC_API_URL` | Config/env for NestJS URL |
 

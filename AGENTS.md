@@ -1,6 +1,20 @@
 # Agent rules
 
-Read `docs/next_steps.md` for roadmap and task context.
+## Quick Start
+
+**First steps:**
+
+1. Read `TODO` — see current task (mark `☐` → `✔` when done)
+2. Read `docs/next_steps.md` — roadmap and context
+3. Read `docs/DEBUGGING_PATTERNS.md` — debugging patterns
+
+**Project:** Monorepo (`apps/web` Next.js, `apps/backend` NestJS, `packages/core` shared). Auth via Supabase (`proxy.ts` handles redirects). Recent: `getAuthToken()` → `apps/web/src/lib/api/auth.ts`, date helpers → `@gotrippin/core`.
+
+**Workflow:** Always double ask before coding. Get explicit approval ("yes implement it", "go ahead"). Mark todos complete in `TODO` when done.
+
+**Cross-platform:** Design for web + mobile (React Native). Same data, same business logic, different UI. Keep platform-specific code in UI layer only. See `docs/BACKEND_FRONTEND_MOBILE_AUDIT.md` for current state.
+
+---
 
 **Todos & planning**
 
@@ -22,6 +36,19 @@ Read `docs/next_steps.md` for roadmap and task context.
 - **Next.js:** Use `error.js`/`error.tsx` (and root `global-error.js` if needed) for boundaries; log in `useEffect` and expose a reset. API routes: use try/catch, return proper status (e.g. 500 + message), avoid leaking sensitive detail.
 - **Supabase:** Always check `error` after `rpc()`, `auth.signIn*`, `auth.updateUser`, etc. Handle and surface; do not assume success when `error` is set.
 - **Never update UI optimistically on mutations.** Only update UI after the request succeeds (check `error` / response). Do not assume success; validate the response before reflecting changes.
+
+## Cross-platform architecture
+
+- **Same data, same behavior.** Business logic, validation, API calls, data models must work identically on web and mobile. Only UI layer differs.
+- **Shared code in `@gotrippin/core`.** Types, schemas, utilities, date helpers, validation — all reusable.
+- **API layer:** Both platforms call NestJS with Supabase JWT. No platform-specific API logic.
+- **Platform-specific:** UI components, navigation, maps (different libraries), auth flows (redirects vs deep links).
+- **Audit:** See `docs/BACKEND_FRONTEND_MOBILE_AUDIT.md` for current gaps and recommendations.
+
+## Storage
+
+- **No localStorage.** Prefer session-scoped state (`sessionStorage` on web where appropriate), cookies for auth, and secure storage on native. localStorage is per-device, doesn’t align with “same data everywhere” (web + mobile), and RN uses AsyncStorage. See `docs/BACKEND_FRONTEND_MOBILE_AUDIT.md`.
+- **Supabase auth:** Use `@supabase/ssr` with cookie-based sessions so middleware can read them. No localStorage for auth.
 
 ## Auth & provider linking (minimal reference)
 

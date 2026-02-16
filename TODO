@@ -2,7 +2,9 @@
 Todo:
   ✔ Centralize getAuthToken() — single helper for api/trips.ts, api/weather.ts, api/activities.ts, api/trip-locations.ts
   ✔ Move date helpers to @gotrippin/core — formatTripDate, calculateDaysUntil, calculateDuration
+  ✔ Remove localStorage — no localStorage; use session/cookies (i18n, AuthContext, Supabase uses cookies)
   ☐ Extract chains/booleans — trips-list.tsx, location-card.tsx, AvatarUpload.tsx
+  ☐ Cross-platform audit — ensure same data/behavior for web + mobile (review BACKEND_FRONTEND_MOBILE_AUDIT.md, fix inconsistencies)
 
 Phase 2 — Architecture:
   ☐ Server Components for trip list — fetch trips on server, pass to client
