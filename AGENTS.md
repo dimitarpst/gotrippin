@@ -2,6 +2,10 @@
 
 Read `docs/next_steps.md` for roadmap and task context.
 
+**Todos & planning**
+
+- When a task in the root `TODO` file is completed, always mark it there (change `☐` to `✔`) in addition to any internal tracking.
+
 **Complex bugs / debugging:** Read `docs/DEBUGGING_PATTERNS.md`. Use runtime logs, analyze timing, search for known issues (e.g. Supabase auth-js#762). When the user says "it doesn't work" again, change what you're instrumenting instead of repeating the same approach.
 
 ## Errors & behavior

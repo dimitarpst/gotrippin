@@ -1,36 +1,10 @@
 import type { CreateTripLocation, TripLocation } from "@gotrippin/core";
 import { ApiError } from "./trips";
 import { appConfig } from "@/config/appConfig";
+import { getAuthToken } from "./auth";
 
 // API base URL
 const API_BASE_URL = appConfig.apiUrl;
-
-/**
- * Helper to get auth token (reused logic)
- * Ideally this should be exported from a shared auth-api module
- */
-async function getAuthToken(): Promise<string | null> {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const { supabase } = await import("@/lib/supabaseClient");
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) return session.access_token;
-    
-    // Fallback
-    const sessionData = localStorage.getItem(
-      "sb-" + process.env.NEXT_PUBLIC_SUPABASE_URL!.split("//")[1].split(".")[0] + "-auth-token"
-    );
-    if (sessionData) {
-      const parsed = JSON.parse(sessionData);
-      if (parsed?.access_token) return parsed.access_token;
-    }
-    return null;
-  } catch (error) {
-    console.error("Failed to get auth token:", error);
-    return null;
-  }
-}
 
 /**
  * Add a location to a trip

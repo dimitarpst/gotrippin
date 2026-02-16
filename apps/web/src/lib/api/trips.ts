@@ -6,6 +6,7 @@
 import type { Trip, TripCreateData, TripUpdateData } from "@gotrippin/core";
 import { validateTripCreate, validateTripUpdate } from "@/lib/validation";
 import { appConfig } from "@/config/appConfig";
+import { getAuthToken } from "./auth";
 
 // API base URL - configured via environment variables through appConfig
 const API_BASE_URL = appConfig.apiUrl;
@@ -21,43 +22,6 @@ export class ApiError extends Error {
   ) {
     super(message);
     this.name = "ApiError";
-  }
-}
-
-/**
- * Get auth token from Supabase session
- */
-async function getAuthToken(): Promise<string | null> {
-  if (typeof window === "undefined") return null;
-
-  try {
-    // Use the existing Supabase client to get the session
-    const { supabase } = await import("@/lib/supabaseClient");
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (session?.access_token) {
-      return session.access_token;
-    }
-
-    // Fallback: try to get session from localStorage directly
-    const sessionData = localStorage.getItem(
-      "sb-" +
-      process.env.NEXT_PUBLIC_SUPABASE_URL!.split("//")[1].split(".")[0] +
-      "-auth-token"
-    );
-    if (sessionData) {
-      const parsed = JSON.parse(sessionData);
-      if (parsed?.access_token) {
-        return parsed.access_token;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Failed to get auth token:", error);
-    return null;
   }
 }
 
