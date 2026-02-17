@@ -35,29 +35,20 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
     })
   }, [trips])
 
-  // Filter trips using pre-calculated daysUntil
   const filteredTrips = useMemo(() => {
-    return tripsWithCalculations.filter((trip) => {
-      // Filter by status
-      let matchesFilter = true
-      if (activeFilter === "all") matchesFilter = true
-      else if (activeFilter === "upcoming") matchesFilter = trip.daysUntil > 0
-      else if (activeFilter === "past") matchesFilter = trip.daysUntil < 0
-
-      // Filter by search query
-      let matchesSearch = true
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim()
-        matchesSearch = (
-          (trip.title?.toLowerCase().includes(query) ?? false) ||
-          (trip.destination?.toLowerCase().includes(query) ?? false) ||
-          (trip.description?.toLowerCase().includes(query) ?? false)
-        )
-      }
-
-      return matchesFilter && matchesSearch
-    })
-  }, [activeFilter, searchQuery, tripsWithCalculations])
+    const filter = activeFilter
+    const query = searchQuery.toLowerCase().trim()
+    const matchesStatus = (trip: { daysUntil: number }) =>
+      filter === "all" || (filter === "upcoming" && trip.daysUntil > 0) || (filter === "past" && trip.daysUntil < 0)
+    const matchesSearch = (trip: { title?: string | null; destination?: string | null; description?: string | null }) =>
+      !query ||
+      (trip.title?.toLowerCase().includes(query) ?? false) ||
+      (trip.destination?.toLowerCase().includes(query) ?? false) ||
+      (trip.description?.toLowerCase().includes(query) ?? false)
+    return tripsWithCalculations.filter(
+      (trip) => matchesStatus(trip) && matchesSearch(trip)
+    )
+  }, [tripsWithCalculations, activeFilter, searchQuery])
 
   return (
     <div className="min-h-screen relative pb-32 overflow-y-auto scrollbar-hide">

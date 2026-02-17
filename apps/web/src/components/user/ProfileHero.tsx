@@ -18,7 +18,7 @@ export default function ProfileHero({
   editSessionId,
 }: {
   data: UserProfileData;
-  displayData: { displayName: string; avatarColor: string };
+  displayData: { displayName: string; avatarColor: string; avatarUrl?: string };
   isEditing: boolean;
   onChange: (field: "displayName" | "avatarColor", value: string) => void;
   avatarLetter: string;
@@ -56,9 +56,9 @@ export default function ProfileHero({
             whileHover={{ scale: isEditing ? 1.05 : 1.02 }}
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
           >
-            {data.avatarUrl ? (
+            {(displayData.avatarUrl ?? data.avatarUrl) ? (
               <img
-                src={data.avatarUrl}
+                src={displayData.avatarUrl ?? data.avatarUrl ?? ""}
                 alt={displayData.displayName}
                 className="w-full h-full object-cover absolute inset-0"
                 onError={(e) => {
@@ -73,7 +73,7 @@ export default function ProfileHero({
               />
             ) : null}
             <span
-              className={`text-white text-5xl font-bold avatar-fallback ${data.avatarUrl ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}
+              className={`text-white text-5xl font-bold avatar-fallback ${(displayData.avatarUrl ?? data.avatarUrl) ? 'hidden' : 'flex'} items-center justify-center w-full h-full`}
             >
               {avatarLetter}
             </span>
@@ -149,12 +149,13 @@ export default function ProfileHero({
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
               >
                 <AvatarUpload
-              userId={data.uid}
-              currentAvatarUrl={data.avatarUrl}
-              googleAvatarUrl={googleAvatarUrl}
-              onUploadSuccess={onAvatarUpload || (() => {})}
-              isEditing={isEditing}
-              editSessionId={editSessionId}
+                  userId={data.uid}
+                  currentAvatarUrl={displayData.avatarUrl ?? data.avatarUrl}
+                  profileAvatarUrl={data.avatarUrl}
+                  googleAvatarUrl={googleAvatarUrl}
+                  onUploadSuccess={onAvatarUpload || (() => {})}
+                  isEditing={isEditing}
+                  editSessionId={editSessionId}
                 />
               </motion.div>
             )}

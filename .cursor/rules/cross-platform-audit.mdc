@@ -1,0 +1,27 @@
+---
+description: Cross-platform (web + React Native) rules for auth, profiles, and API layer
+globs: "**/api/**/*.ts, **/user/**/*, **/components/auth/**/*"
+alwaysApply: false
+---
+
+# Cross-Platform (Auth, Profiles, API)
+
+When editing auth, profile, or API files, remember:
+
+**What lives where**
+- **Profiles:** Web uses Supabase directly (`supabase.from("profiles")`). NestJS `/profiles` exists but is unused. Don't route profiles through NestJS unless migrating.
+- **Auth:** Supabase client (signIn, signOut, OAuth, session). NestJS validates JWT only.
+- **API calls:** JWT from Supabase → `fetch` with Bearer token. Same pattern for RN.
+
+**Rules**
+- Same data, same behavior. Business logic, validation, API calls must work identically on web and RN. Only UI differs.
+- Shared code in `@gotrippin/core`. Types, schemas, utilities.
+- No localStorage. Session/cookies on web; secure storage on native.
+- Centralize `getAuthToken()` in one helper (see `apps/web/src/lib/api/auth.ts`).
+
+**RN adaptation**
+- Auth: redirects (web) vs deep links (RN)
+- Maps: Mapbox (web) vs react-native-maps (RN)
+- Same NestJS backend; same Supabase auth/storage
+
+**Full reference:** `docs/BACKEND_FRONTEND_MOBILE_AUDIT.md`

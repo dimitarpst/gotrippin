@@ -3,7 +3,8 @@ Todo:
   ✔ Centralize getAuthToken() — single helper for api/trips.ts, api/weather.ts, api/activities.ts, api/trip-locations.ts
   ✔ Move date helpers to @gotrippin/core — formatTripDate, calculateDaysUntil, calculateDuration
   ✔ Remove localStorage — no localStorage; use session/cookies (i18n, AuthContext, Supabase uses cookies)
-  ☐ Extract chains/booleans — trips-list.tsx, location-card.tsx, AvatarUpload.tsx
+  ✔ Extract chains/booleans — trips-list.tsx, location-card.tsx, AvatarUpload.tsx
+  ✔ Avatar picker shows all uploaded avatars — fix isMounted guard blocking setUserAvatarFiles on storage list success
   ☐ Cross-platform audit — ensure same data/behavior for web + mobile (review BACKEND_FRONTEND_MOBILE_AUDIT.md, fix inconsistencies)
 
 Phase 2 — Architecture:
@@ -13,6 +14,7 @@ Phase 2 — Architecture:
   ☐ Simplify TripOverview — context or grouped props (~25 props today)
 
 Phase 4+:
+  ☐ Image pipeline — compress uploads; move off Supabase storage limits; Cloudflare CDN for avatars/images (pro setup)
   ☐ More Server Components — user profile, other pages
   ☐ Shared loading/error patterns — reusable PageLoader, PageError
   ☐ Code style doc — readable-code rules for future PRs

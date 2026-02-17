@@ -1,14 +1,35 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+
+function shouldRetryAvatarFetch(errorMessage: string, retryCount: number, maxRetries: number): boolean {
+  const isTimeout = errorMessage.includes("timeout");
+  const isRetriable = errorMessage.includes("network") || errorMessage.includes("fetch");
+  return retryCount < maxRetries && !isTimeout && isRetriable;
+}
+
+function getUploadErrorMessage(error: unknown): string {
+  const msg = error instanceof Error ? error.message : "Upload failed";
+  if (msg.includes("storage") || msg.includes("bucket")) {
+    return "Storage error. Please check your permissions and try again.";
+  }
+  if (msg.includes("size")) {
+    return "File is too large. Please choose a smaller image.";
+  }
+  return `Upload failed: ${msg}`;
+}
 import { motion } from "framer-motion";
 import { Upload, Check } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+
+const MAX_UPLOADED_AVATARS = 3;
 import { useTranslation } from "react-i18next";
 
 interface AvatarUploadProps {
   userId: string;
   currentAvatarUrl?: string | null;
+  /** Avatar URL from the profile (before edit). Never delete this file from storage when pruning. */
+  profileAvatarUrl?: string | null;
   googleAvatarUrl?: string | null;
   onUploadSuccess: (url: string) => void;
   onUploadError?: (error: string) => void;
@@ -19,6 +40,7 @@ interface AvatarUploadProps {
 export function AvatarUpload({
   userId,
   currentAvatarUrl,
+  profileAvatarUrl,
   googleAvatarUrl,
   onUploadSuccess,
   onUploadError,
@@ -29,7 +51,7 @@ export function AvatarUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(currentAvatarUrl || null);
-  const [userAvatars, setUserAvatars] = useState<string[]>([]);
+  const [userAvatarFiles, setUserAvatarFiles] = useState<{ url: string; path: string }[]>([]);
   const [isLoadingAvatars, setIsLoadingAvatars] = useState(false);
 
   // Max loading time – stop skeleton after this to avoid indefinite loading for users with no avatars
@@ -41,6 +63,7 @@ export function AvatarUpload({
   }, [currentAvatarUrl]);
 
   const lastFetchedSession = useRef<number | null>(null);
+  const knownUrlsRef = useRef<Set<string>>(new Set());
 
   // Fetch all user avatars from storage when an edit session starts
   useEffect(() => {
@@ -49,6 +72,7 @@ export function AvatarUpload({
       return;
     }
     lastFetchedSession.current = editSessionId;
+    knownUrlsRef.current = new Set();
 
     let isMounted = true;
     let retryCount = 0;
@@ -59,11 +83,9 @@ export function AvatarUpload({
     }, MAX_LOADING_MS);
 
     const fetchUserAvatars = async () => {
-      // Show loading state
       setIsLoadingAvatars(true);
 
       try {
-        // Add timeout to prevent hanging forever
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Storage listing timeout')), 5000)
         );
@@ -72,54 +94,47 @@ export function AvatarUpload({
           .from('avatars')
           .list(userId, {
             limit: 100,
-            offset: 0
+            offset: 0,
+            sortBy: { column: 'created_at', order: 'desc' }
           });
 
         const { data, error } = await Promise.race([listPromise, timeoutPromise]) as { data: any, error: any };
 
         if (error) {
           console.error('Supabase storage error:', error);
-          // Don't throw for "not found" errors - just use empty array
           if (error.message?.includes('not found') || error.message?.includes('No such bucket')) {
-            setUserAvatars([]);
+            setUserAvatarFiles([]);
             if (isMounted) setIsLoadingAvatars(false);
             return;
           }
           throw error;
         }
 
-        if (!isMounted) return; // Component was unmounted
-
-        // Get public URLs for all avatars, sorted by creation date (newest first)
-        const avatarUrls = (data || [])
-          .filter((file: any) => file.name && !file.name.startsWith('.')) // Filter out hidden files
+        const raw = Array.isArray(data) ? data : (data as any)?.files ?? [];
+        const files = (raw as any[])
+          .filter((file: any) => file?.name && !file.name.startsWith('.') && file.id != null)
           .sort((a: any, b: any) => {
-            // Sort by created_at if available, otherwise by name (which includes timestamp)
             if (a.created_at && b.created_at) {
               return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             }
-            return b.name.localeCompare(a.name);
+            return (b.name ?? '').localeCompare(a.name ?? '');
           })
+          .slice(0, MAX_UPLOADED_AVATARS)
           .map((file: any) => {
-            const { data: { publicUrl } } = supabase.storage
-              .from('avatars')
-              .getPublicUrl(`${userId}/${file.name}`);
-            return publicUrl;
+            const path = `${userId}/${file.name}`;
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+            return { url: publicUrl, path };
           });
 
-        setUserAvatars(avatarUrls);
+        setUserAvatarFiles(files);
       } catch (error) {
         if (!isMounted) return; // Component was unmounted
 
         console.warn('Error fetching user avatars (attempt', retryCount + 1, '):', error);
 
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-        // Retry on certain errors (but not timeout)
-        if (retryCount < maxRetries && !errorMessage.includes('timeout') && (
-          errorMessage.includes('network') ||
-          errorMessage.includes('fetch')
-        )) {
+        if (shouldRetryAvatarFetch(errorMessage, retryCount, maxRetries)) {
           retryCount++;
           setTimeout(() => {
             if (isMounted) fetchUserAvatars();
@@ -129,7 +144,7 @@ export function AvatarUpload({
 
         // For timeout or other errors, just set empty array and stop loading
         // Don't show error to user - they can still use Google avatar or upload new
-        setUserAvatars([]);
+        setUserAvatarFiles([]);
       } finally {
         if (isMounted) {
           setIsLoadingAvatars(false);
@@ -137,7 +152,6 @@ export function AvatarUpload({
       }
     };
 
-    setUserAvatars([]);
     fetchUserAvatars();
 
     return () => {
@@ -176,26 +190,27 @@ export function AvatarUpload({
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
-      // Add new avatar to the list
-      setUserAvatars(prev => [publicUrl, ...prev]);
+      const combined = [{ url: publicUrl, path: filePath }, ...userAvatarFiles];
+      const nextFiles = combined.slice(0, MAX_UPLOADED_AVATARS);
+
+      // Delete oldest from storage if we exceed the limit — never delete the current profile pic
+      if (combined.length > MAX_UPLOADED_AVATARS) {
+        const candidatesToRemove = combined.slice(MAX_UPLOADED_AVATARS);
+        const toRemove = candidatesToRemove.find((f) => !profileAvatarUrl || f.url !== profileAvatarUrl);
+        if (toRemove) {
+          await supabase.storage.from('avatars').remove([toRemove.path]);
+        }
+      }
+
+      setUserAvatarFiles(nextFiles);
       setSelectedAvatar(publicUrl);
       onUploadSuccess(publicUrl);
 
     } catch (error) {
-      console.error('Error uploading avatar:', error);
-      const errorMessage = error instanceof Error ? error.message : "Upload failed";
-      if (errorMessage.includes('storage') || errorMessage.includes('bucket')) {
-        onUploadError?.('Storage error. Please check your permissions and try again.');
-      } else if (errorMessage.includes('size')) {
-        onUploadError?.('File is too large. Please choose a smaller image.');
-      } else {
-        onUploadError?.(`Upload failed: ${errorMessage}`);
-      }
+      console.error("Error uploading avatar:", error);
+      onUploadError?.(getUploadErrorMessage(error));
     } finally {
       setIsUploading(false);
     }
@@ -210,11 +225,18 @@ export function AvatarUpload({
     return null;
   }
 
-  // Combine Google avatar and user avatars, removing duplicates
-  const allAvatars = [
+  const userAvatarUrls = userAvatarFiles.map((f) => f.url);
+  const baseUrls: string[] = [
     ...(googleAvatarUrl ? [googleAvatarUrl] : []),
-    ...userAvatars.filter(url => url !== googleAvatarUrl)
+    ...userAvatarUrls.filter((url) => url !== googleAvatarUrl),
+    ...(currentAvatarUrl && !userAvatarUrls.includes(currentAvatarUrl) && currentAvatarUrl !== googleAvatarUrl
+      ? [currentAvatarUrl]
+      : []),
   ];
+  baseUrls.forEach((u) => knownUrlsRef.current.add(u));
+  const baseSet = new Set(baseUrls);
+  const extraFromKnown = Array.from(knownUrlsRef.current).filter((u) => !baseSet.has(u));
+  const allAvatarUrls: string[] = [...baseUrls, ...extraFromKnown];
 
   return (
     <motion.div
@@ -224,7 +246,7 @@ export function AvatarUpload({
     >
       <p className="text-xs text-white/60 font-medium">{t("profile.avatar_section_title")}</p>
 
-      {isLoadingAvatars && allAvatars.length === 0 ? (
+      {isLoadingAvatars && allAvatarUrls.length === 0 ? (
         <div className="flex flex-wrap gap-2">
           {/* Skeleton loaders - only show if no avatars available yet */}
           {Array.from({ length: 6 }).map((_, index) => (
@@ -239,15 +261,14 @@ export function AvatarUpload({
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {/* Show Google avatar immediately if available, even while loading */}
-          {allAvatars.map((avatarUrl, index) => (
+          {allAvatarUrls.map((url, index) => (
             <motion.button
-              key={avatarUrl}
+              key={url}
               type="button"
-              onClick={() => handleSelectAvatar(avatarUrl)}
+              onClick={() => handleSelectAvatar(url)}
               className="relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-all hover:scale-105"
               style={{
-                borderColor: selectedAvatar === avatarUrl ? '#ff6b6b' : 'rgba(255,255,255,0.1)',
+                borderColor: selectedAvatar === url ? "#ff6b6b" : "rgba(255,255,255,0.1)",
               }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -256,16 +277,16 @@ export function AvatarUpload({
               transition={{ delay: index * 0.05 }}
             >
               <img
-                src={avatarUrl}
+                src={url}
                 alt={`Avatar ${index + 1}`}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // Replace broken images with a placeholder
-                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDMTMuMSAyIDE0IDIuOSAxNCA0QzE0IDUuMSAxMy4xIDYgMTIgNkMxMC45IDYgMTAgNS4xIDEwIDRDMTAgMi45IDEwLjkgMiAxMiAyWk0yMSAxOVYyMEgzVjE5QzMgMTYuMzMgNS4zMyAxNCA4IDE0SDE2QzE4LjY3IDE0IDIxIDE2LjMzIDIxIDE5WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
-                  e.currentTarget.style.opacity = '0.5';
+                  e.currentTarget.src =
+                    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDMTMuMSAyIDE0IDIuOSAxNCA0QzE0IDUuMSAxMy4xIDYgMTIgNkMxMC45IDYgMTAgNS4xIDEwIDRDMTAgMi45IDEwLjkgMiAxMiAyWk0yMSAxOVYyMEgzVjE5QzMgMTYuMzMgNS4zMyAxNCA4IDE0SDE2QzE4LjY3IDE0IDIxIDE2LjMzIDIxIDE5WiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K";
+                  e.currentTarget.style.opacity = "0.5";
                 }}
               />
-              {selectedAvatar === avatarUrl && (
+              {selectedAvatar === url && (
                 <div className="absolute inset-0 bg-[#ff6b6b]/20 flex items-center justify-center">
                   <Check className="w-4 h-4 text-white drop-shadow-lg" />
                 </div>

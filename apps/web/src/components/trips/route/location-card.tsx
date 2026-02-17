@@ -9,6 +9,29 @@ import { DatePicker } from "../date-picker"
 import { DateRange } from "react-day-picker"
 import type { RouteLocation } from "./route-builder"
 
+function getBusyRanges(
+  allLocations: { id: string; arrivalDate?: string | null; departureDate?: string | null }[] | undefined,
+  excludeId: string
+): { from: Date; to: Date }[] {
+  return (allLocations || [])
+    .filter((loc) => loc.id !== excludeId)
+    .map((loc) => {
+      if (!loc.arrivalDate) return null
+      const from = new Date(loc.arrivalDate)
+      const to = new Date(loc.departureDate || loc.arrivalDate)
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null
+      return { from, to }
+    })
+    .filter(Boolean) as { from: Date; to: Date }[]
+}
+
+function formatDateRangeText(range: DateRange | undefined): string {
+  if (!range?.from) return "Set dates"
+  const fromStr = format(range.from, "MMM d")
+  const toStr = range.to ? ` - ${format(range.to, "MMM d")}` : ""
+  return `${fromStr}${toStr}`
+}
+
 interface LocationCardProps extends HTMLMotionProps<"div"> {
   id: string
   name: string
@@ -56,23 +79,8 @@ export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
     const minDate = tripDateRange?.from
     const maxDate = tripDateRange?.to
 
-    const busyRanges =
-      (allLocations || [])
-        .filter((loc) => loc.id !== id)
-        .map((loc) => {
-          if (!loc.arrivalDate) return null
-          const from = new Date(loc.arrivalDate)
-          const to = new Date(loc.departureDate || loc.arrivalDate)
-          if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null
-          return { from, to }
-        })
-        .filter(Boolean) as { from: Date; to: Date }[]
-
-    const dateText = selectedRange?.from
-      ? `${format(selectedRange.from, "MMM d")}${
-          selectedRange.to ? ` - ${format(selectedRange.to, "MMM d")}` : ""
-        }`
-      : "Set dates"
+    const busyRanges = getBusyRanges(allLocations, id)
+    const dateText = formatDateRangeText(selectedRange)
 
     return (
       <>
