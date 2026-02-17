@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { type DateRange } from "react-day-picker"
 import { Calendar } from "@/components/ui/calendar"
@@ -27,10 +28,26 @@ export function DatePicker({
   modifiers,
 }: DatePickerProps) {
   const { t } = useTranslation()
-  
+  const [localRange, setLocalRange] = useState<DateRange | undefined>(selectedDateRange)
+
+  useEffect(() => {
+    if (open) {
+      setLocalRange(selectedDateRange)
+    }
+  }, [open, selectedDateRange])
+
   const handleDateSelect = (dateRange: DateRange | undefined) => {
-    onSelect(dateRange)
+    setLocalRange(dateRange)
   }
+
+  const handleDone = () => {
+    if (localRange?.from && localRange?.to) {
+      onSelect(localRange)
+    }
+    onClose()
+  }
+
+  const canSubmit = !!(localRange?.from && localRange?.to)
 
   const tripWindowText =
     minDate && maxDate
@@ -64,13 +81,9 @@ export function DatePicker({
               </button>
               <h2 className="text-white text-lg font-semibold">{t('date_picker.title')}</h2>
               <button
-                onClick={() => {
-                  if (selectedDateRange?.from && selectedDateRange?.to) {
-                    onClose()
-                  }
-                }}
+                onClick={handleDone}
                 className="text-[#ff6b6b] text-lg font-medium disabled:opacity-50"
-                disabled={!selectedDateRange?.from || !selectedDateRange?.to}
+                disabled={!canSubmit}
               >
                 {t('date_picker.done')}
               </button>
@@ -80,8 +93,8 @@ export function DatePicker({
             <div className="flex-1 overflow-y-auto p-6">
               <Calendar
                 mode="range"
-                defaultMonth={selectedDateRange?.from || new Date()}
-                selected={selectedDateRange}
+                defaultMonth={localRange?.from || selectedDateRange?.from || new Date()}
+                selected={localRange}
                 onSelect={handleDateSelect}
                 fromDate={minDate}
                 toDate={maxDate}

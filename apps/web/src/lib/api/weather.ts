@@ -1,5 +1,3 @@
-"use client"
-
 import type { TripWeatherResponse } from "@gotrippin/core";
 import { ApiError } from "./trips";
 import { appConfig } from "@/config/appConfig";
