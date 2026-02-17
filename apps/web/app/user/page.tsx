@@ -47,7 +47,7 @@ export default function UserPage() {
       lastSignInAt: (user.last_sign_in_at ? new Date(user.last_sign_in_at) : null) as Date | null,
       // Show last saved color if available, otherwise from profile
       avatarColor: lastSaved.avatarColor || user.avatar_color || null,
-      // Show last saved avatar URL or from user metadata (Google OAuth)
+      // Show last saved avatar URL, or from profile, or Google. Trust DB value so saved avatars display.
       avatarUrl: lastSaved.avatarUrl || user.avatar_url || (user.user_metadata?.avatar_url as string | undefined) || null,
     };
   }, [user, lastSaved]);

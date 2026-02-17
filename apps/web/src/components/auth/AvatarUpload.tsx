@@ -279,6 +279,7 @@ export function AvatarUpload({
               <img
                 src={url}
                 alt={`Avatar ${index + 1}`}
+                referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.src =

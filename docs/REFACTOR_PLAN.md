@@ -37,7 +37,7 @@
 
 1. **What to remove?** — ✅ Done. TestQueries, ProfileFormExample, TripFormExample, calendar-05 (kept calendar.tsx).
 
-2. **Auth flow** — Public landing? Shared trip links (view without login)? Need Supabase server-side session for Server Components.
+2. **Auth flow / shared trip links** — ✅ Decision (Feb 2026): Per-trip visibility toggle — Private (auth required) vs Anyone with link (view without login). Deferred to Phase 5 — see TODO. Need Supabase server-side session for Server Components (current Phase 2).
 
 3. **Bugs** — Fix forgot password + Google linking as part of refactor, or explicitly later?
 

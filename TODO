@@ -16,7 +16,7 @@ Phase 1.1 — Cross-platform audit (step-by-step):
   ✔ Mark audit complete
 
 Phase 2 — Architecture:
-  ☐ Server Components for trip list — fetch trips on server, pass to client
+  ✔ Server Components for trip list — fetch trips on server, pass to client
   ☐ Server Components for trip detail — fetch trip + locations + timeline on server
   ☐ Server Actions for mutations — trip create/update/delete
   ☐ Simplify TripOverview — context or grouped props (~25 props today)
@@ -27,3 +27,11 @@ Phase 4+:
   ☐ Shared loading/error patterns — reusable PageLoader, PageError
   ☐ Code style doc — readable-code rules for future PRs
   ☐ Maps integration — Mapbox + coordinates (MAPS_IMPLEMENTATION.md)
+
+Phase 5 — Public Trip Sharing (later):
+  ☐ Add color picker — replace native input[type=color] in profile (shadcn has no built-in; use Popover + react-colorful or similar)
+  ☐ Per-trip visibility toggle — Private (auth required) vs Anyone with link (view without login)
+  ☐ DB: add visibility field to trips
+  ☐ NestJS: GET /trips/share/:shareCode returns public trips without auth
+  ☐ Read-only layout — minimal UI for unauthenticated viewers (no DockBar, no edit, CTA to sign up)
+  ☐ RLS: allow unauthenticated select for public trips

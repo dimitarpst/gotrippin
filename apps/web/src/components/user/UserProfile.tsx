@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileHeader from "./ProfileHeader";
@@ -52,7 +52,8 @@ export default function UserProfile({
   const [editSessionId, setEditSessionId] = useState(0);
   const [editRefreshing, setEditRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  
+  const userSelectedAvatarRef = useRef(false);
+
   // Track pending changes during edit session
   const [pendingChanges, setPendingChanges] = useState<{
     displayName: string;
@@ -67,7 +68,7 @@ export default function UserProfile({
   const displayData = isEditing ? pendingChanges : {
     displayName: data.displayName,
     avatarColor: data.avatarColor || "#ff6b6b",
-    avatarUrl: data.avatarUrl,
+    avatarUrl: data.avatarUrl ?? undefined,
   };
 
   const avatarLetter = useMemo(() => {
@@ -95,6 +96,7 @@ export default function UserProfile({
   const handleEdit = useCallback(() => {
     setEditSessionId((session) => session + 1);
     setIsEditing(true);
+    userSelectedAvatarRef.current = false;
     setPendingChanges({
       displayName: data.displayName,
       avatarColor: data.avatarColor || "#ff6b6b",
@@ -116,10 +118,16 @@ export default function UserProfile({
         ]);
 
         if (!profileError && profile) {
-          setPendingChanges({
-            displayName: profile.display_name || data.displayName,
-            avatarColor: profile.avatar_color || data.avatarColor || "#ff6b6b",
-            avatarUrl: profile.avatar_url ?? data.avatarUrl ?? undefined,
+          const resolvedAvatarUrl = profile.avatar_url ?? data.avatarUrl ?? undefined;
+          setPendingChanges((prev) => {
+            const avatarToUse = userSelectedAvatarRef.current
+              ? (prev.avatarUrl ?? undefined)
+              : resolvedAvatarUrl;
+            return {
+              displayName: profile.display_name || data.displayName,
+              avatarColor: profile.avatar_color || data.avatarColor || "#ff6b6b",
+              avatarUrl: avatarToUse,
+            };
           });
         }
       } catch (error) {
@@ -154,7 +162,8 @@ export default function UserProfile({
   };
 
   const handleAvatarUpload = (url: string) => {
-    setPendingChanges(prev => ({ ...prev, avatarUrl: url }));
+    userSelectedAvatarRef.current = true;
+    setPendingChanges((prev) => ({ ...prev, avatarUrl: url }));
   };
 
   return (

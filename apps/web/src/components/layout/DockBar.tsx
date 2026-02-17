@@ -67,6 +67,7 @@ export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
           <img
             src={avatarUrl}
             alt="Profile avatar"
+            referrerPolicy="no-referrer"
             className="w-full h-full object-cover"
             onError={(e) => {
               // Hide broken image and show fallback

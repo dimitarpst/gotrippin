@@ -60,6 +60,7 @@ export default function ProfileHero({
               <img
                 src={displayData.avatarUrl ?? data.avatarUrl ?? ""}
                 alt={displayData.displayName}
+                referrerPolicy="no-referrer"
                 className="w-full h-full object-cover absolute inset-0"
                 onError={(e) => {
                   // Hide the broken image and show the letter fallback

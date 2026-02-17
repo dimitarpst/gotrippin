@@ -1,58 +1,38 @@
-"use client"
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
+import { fetchTrips } from "@/lib/api/trips";
+import { ApiError } from "@/lib/api/trips";
+import TripsPageClient from "./TripsPageClient";
 
-import { useRouter } from "next/navigation"
-import AuroraBackground from "@/components/effects/aurora-background"
-import FloatingHeader from "@/components/layout/FloatingHeader"
-import DockBar from "@/components/layout/DockBar"
-import TripsList from "@/components/trips/trips-list"
-import { useTrips } from "@/hooks/useTrips"
-import { useAuth } from "@/contexts/AuthContext"
+export const dynamic = "force-dynamic";
 
-function ProtectedTripsContent() {
-  const router = useRouter()
-  const { trips, loading, error } = useTrips()
+export default async function TripsPage() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const handleSelectTrip = (shareCode: string) => {
-    router.push(`/trips/${shareCode}`)
+  if (!user) {
+    redirect("/auth");
   }
 
-  const handleCreateTrip = () => {
-    router.push("/trips/create")
+  const token = await getServerAuthToken();
+  let trips: Awaited<ReturnType<typeof fetchTrips>> = [];
+  let error: string | null = null;
+
+  if (token) {
+    try {
+      trips = await fetchTrips(token);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        error = err.message;
+      } else {
+        error = "Failed to fetch trips";
+      }
+    }
+  } else {
+    error = "Authentication required";
   }
 
-  return (
-    <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-      <AuroraBackground />
-      <FloatingHeader />
-
-      <div className="flex-1 relative z-10">
-        {error && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 backdrop-blur-sm">
-            <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
-
-        <TripsList
-          trips={trips}
-          loading={loading}
-          onSelectTrip={handleSelectTrip}
-          onCreateTrip={handleCreateTrip}
-        />
-      </div>
-
-      <DockBar onCreateTrip={handleCreateTrip} />
-    </main>
-  )
+  return <TripsPageClient trips={trips} error={error} />;
 }
-
-export default function TripsPage() {
-  const { user, loading: authLoading } = useAuth()
-
-  // Middleware handles auth redirect
-  if (authLoading || !user) {
-    return null
-  }
-
-  return <ProtectedTripsContent />
-}
-
