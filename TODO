@@ -5,7 +5,15 @@ Todo:
   ✔ Remove localStorage — no localStorage; use session/cookies (i18n, AuthContext, Supabase uses cookies)
   ✔ Extract chains/booleans — trips-list.tsx, location-card.tsx, AvatarUpload.tsx
   ✔ Avatar picker shows all uploaded avatars — fix isMounted guard blocking setUserAvatarFiles on storage list success
-  ☐ Cross-platform audit — ensure same data/behavior for web + mobile (review BACKEND_FRONTEND_MOBILE_AUDIT.md, fix inconsistencies)
+  ✔ Cross-platform audit — ensure same data/behavior for web + mobile (review BACKEND_FRONTEND_MOBILE_AUDIT.md, fix inconsistencies)
+
+Phase 1.1 — Cross-platform audit (step-by-step):
+  ✔ Update stale audit doc — getAuthToken centralization, date helpers, profiles decision (Supabase direct)
+  ✔ Review per section — walk through NestJS, frontend API, Supabase usage, gaps
+  ✔ Identify inconsistencies — list mismatches between web + mobile expectations
+  ✔ Decide and document — keep web as-is; items 1–4 addressed when building RN
+  ✔ Implement fixes — none needed for web
+  ✔ Mark audit complete
 
 Phase 2 — Architecture:
   ☐ Server Components for trip list — fetch trips on server, pass to client

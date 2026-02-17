@@ -42,16 +42,16 @@ On hard refresh, the app mounts from scratch. Auth/session are stable before the
 | **Move side effects out of `useMemo`** | `useMemo` must be pure. Side effects (API, `updateUser`, etc.) belong in `useEffect`. |
 | **Stable refs for callbacks** | If an effect calls a callback that changes every render, use `useRef` so the effect doesn’t re-run unnecessarily and cause cascades. |
 
-### Real example (Profile page)
+### Real example (Profile page) — fixed Feb 2026
 
 **Symptoms:** Logout, edit, save did nothing on first visit after login; no network activity on click; worked after hard refresh.
 
 **Cause:** `LinkedAccountsCard` ran `updateUser` and `get_my_has_password` in `useEffect` immediately on mount. That triggered auth updates and re-renders during the initial commit. Handlers for logout and other buttons never reliably attached.
 
 **Fixes applied:**
-- User page: match trips pattern — `return null` when loading/!user (no arbitrary delays)
-- `LinkedAccountsCard`: run heavy auth effects in `requestIdleCallback` — waits for browser idle instead of guessing ms
-- Logout button: plain `<button>` instead of `motion.button` (avoids Framer Motion during mount)
+- User page: single profiles update (no `updateUser`); streamlined loading; timeout handling
+- `LinkedAccountsCard`: deferred heavy auth effects (e.g. `requestIdleCallback` or setTimeout) — waits for browser idle
+- Profile save: use `profiles` table only; avoid `auth.updateUser` for profile data
 
 ---
 

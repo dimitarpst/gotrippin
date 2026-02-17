@@ -35,7 +35,7 @@
 
 *To be filled as we discuss.*
 
-1. **What to remove?** — TestQueries, example files, calendar-05 vs calendar, etc.
+1. **What to remove?** — ✅ Done. TestQueries, ProfileFormExample, TripFormExample, calendar-05 (kept calendar.tsx).
 
 2. **Auth flow** — Public landing? Shared trip links (view without login)? Need Supabase server-side session for Server Components.
 
@@ -45,15 +45,18 @@
 
 ---
 
-## Profile Page Bug Fix (Feb 2025)
+## Profile Page Bug Fix (Feb 2025–2026)
 
 **Issue:** After login (especially Google), profile page was broken — logout, edit, save didn't work until Ctrl+Shift+R.
 
 **Root cause:** Race between page mount and auth/session state. LinkedAccountsCard's effects (updateUser, get_my_has_password) ran immediately on mount and could interfere with React's commit phase and event handler attachment.
 
-**Changes:**
-- `app/user/page.tsx`: Added `mounted` gate so we don't render interactive content until client mount; moved `linked` check from useMemo to useEffect.
-- `LinkedAccountsCard.tsx`: Deferred heavy effects (updateUser, get_my_has_password) by 200ms to avoid mount race.
+**Changes applied:**
+- `app/user/page.tsx`: Single profiles update (no `updateUser` for profile data); timeout handling; streamlined loading.
+- `LinkedAccountsCard.tsx`: Deferred heavy effects (updateUser, get_my_has_password) to avoid mount race.
+- Profile save: Use `profiles` table only for display_name, avatar_color, avatar_url; avoid `auth.updateUser` during save.
+
+**Status:** ✅ Fixed (Feb 2026). The race is gone.
 
 ---
 

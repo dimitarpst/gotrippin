@@ -532,7 +532,7 @@ npm install @nestjs/axios rxjs
 
 ### 🎨 **Date Picker Implementation**
 
-- ✅ Integrated shadcn `calendar-05` component with date range selection
+- ✅ Integrated shadcn calendar component with date range selection (calendar-05 consolidated into calendar.tsx)
 - ✅ Created custom `DatePicker` modal component matching app design
 - ✅ Connected date picker to create trip flow
 - ✅ Fixed calendar styling with Tailwind classes (coral theme colors)

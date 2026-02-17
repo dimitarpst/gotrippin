@@ -9,6 +9,8 @@ description: Applies heuristics for common Go Trippin bugs: mount races, Supabas
 
 **Cause:** Mount race / effect ordering. Heavy `useEffect`s on mount (API, `updateUser`, RPCs, profile fetch) run while React is attaching handlers. Handlers never attach or see stale state.
 
+*(The profile page race was fixed Feb 2026. These patterns still apply for similar bugs elsewhere.)*
+
 **Where to look:**
 - Heavy `useEffect`s on mount (e.g. `LinkedAccountsCard`, `updateUser`, `get_my_has_password`)
 - Bug only when navigating from another page (not on direct load/refresh)
