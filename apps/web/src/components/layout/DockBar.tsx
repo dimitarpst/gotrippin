@@ -7,6 +7,7 @@ import { Home, Compass, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { resolveAvatarUrl } from "@/lib/avatar";
 
 const baseClass =
   "bg-transparent hover:bg-white/10 text-white/80 hover:text-white transition-all duration-300";
@@ -58,7 +59,7 @@ export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
     : "U";
 
   const avatarColor = user?.avatar_color || "var(--color-muted)";
-  const avatarUrl = user?.avatar_url;
+  const avatarUrl = resolveAvatarUrl(user?.avatar_url);
 
   items.push({
     icon: (

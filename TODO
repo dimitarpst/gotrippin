@@ -22,8 +22,14 @@ Phase 2 — Architecture:
   ✔ Simplify TripOverview — grouped props: actions, timeline, weather (was ~25 flat props)
 
 Phase 4+:
-  ☐ Image pipeline — compress uploads; move off Supabase storage limits; Cloudflare CDN for avatars/images (pro setup)
+  ✔ Image pipeline — avatars on Cloudflare R2; key-based storage (not full URLs); resolveAvatarUrl helper
   ☐ More Server Components — user profile, other pages
+
+Phase 4.1 — Trip cover images (photos table + R2):
+  ☐ DB: photos table — storage_key, source (unsplash|upload), unsplash_photo_id, photographer_name, photographer_url, blur_hash (required for unsplash)
+  ☐ DB: trips.cover_photo_id FK to photos; migrate existing image_url
+  ☐ Backend: download Unsplash image → R2, track download, create photo row
+  ☐ Frontend: picker saves via new flow; resolve cover URL from photo
   ☐ Shared loading/error patterns — reusable PageLoader, PageError
   ☐ Code style doc — readable-code rules for future PRs
   ☐ Maps integration — Mapbox + coordinates (MAPS_IMPLEMENTATION.md)

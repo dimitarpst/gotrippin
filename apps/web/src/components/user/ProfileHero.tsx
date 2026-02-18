@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { AvatarUpload } from "@/components/auth/AvatarUpload";
 import type { UserProfileData } from "./UserProfile";
 import { useTranslation } from "react-i18next";
+import { resolveAvatarUrl } from "@/lib/avatar";
 
 export default function ProfileHero({
   data,
@@ -58,7 +59,7 @@ export default function ProfileHero({
           >
             {(displayData.avatarUrl ?? data.avatarUrl) ? (
               <img
-                src={displayData.avatarUrl ?? data.avatarUrl ?? ""}
+                src={resolveAvatarUrl(displayData.avatarUrl ?? data.avatarUrl) ?? ""}
                 alt={displayData.displayName}
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover absolute inset-0"
