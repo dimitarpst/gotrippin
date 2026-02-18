@@ -45,8 +45,7 @@ import type { DateRange } from "react-day-picker"
 import type { WeatherData } from "@gotrippin/core"
 import { format } from "date-fns"
 
-interface TripOverviewProps {
-  trip: Trip
+export interface TripOverviewActions {
   onNavigate: (screen: "activity" | "flight" | "timeline" | "weather") => void
   onOpenLocation?: (locationId: string) => void
   onBack: () => void
@@ -57,47 +56,71 @@ interface TripOverviewProps {
   onEditName?: () => void
   onChangeDates?: (dateRange: DateRange | undefined) => void
   onChangeBackground?: (type: "image" | "color", value: string) => void
+}
+
+export interface TripOverviewTimeline {
   routeLocations?: TripLocation[]
   routeLoading?: boolean
   timelineLocations?: TripLocation[]
   activitiesByLocation?: Record<string, Activity[]>
-  timelineLoading?: boolean
-  timelineError?: string | null
+  loading?: boolean
+  error?: string | null
   unassignedActivities?: Activity[]
-  onRefetchTimeline?: () => Promise<void>
-  weatherByLocation?: Record<string, TripLocationWeather>
-  weatherFetchedAt?: number | null
-  weatherLoading?: boolean
-  weatherError?: string | null
-  onRefetchWeather?: () => Promise<void>
+  onRefetch?: () => Promise<void>
+}
+
+export interface TripOverviewWeather {
+  byLocation?: Record<string, TripLocationWeather>
+  fetchedAt?: number | null
+  loading?: boolean
+  error?: string | null
+  onRefetch?: () => Promise<void>
+}
+
+interface TripOverviewProps {
+  trip: Trip
+  actions: TripOverviewActions
+  timeline?: TripOverviewTimeline
+  weather?: TripOverviewWeather
 }
 
 export default function TripOverview({
   trip,
-  onNavigate,
-  onBack,
-  onEdit,
-  onDelete,
-  onShare,
-  onManageGuests,
-  onEditName,
-  onOpenLocation,
-  onChangeDates,
-  onChangeBackground,
-  routeLocations = [],
-  routeLoading = false,
-  timelineLocations = [],
-  activitiesByLocation = {},
-  timelineLoading = false,
-  timelineError = null,
-  unassignedActivities = [],
-  onRefetchTimeline,
-  weatherByLocation = {},
-  weatherFetchedAt = null,
-  weatherLoading = false,
-  weatherError = null,
-  onRefetchWeather,
+  actions,
+  timeline: timelineProp = {},
+  weather: weatherProp = {},
 }: TripOverviewProps) {
+  const {
+    onNavigate,
+    onBack,
+    onEdit,
+    onDelete,
+    onShare,
+    onManageGuests,
+    onEditName,
+    onOpenLocation,
+    onChangeDates,
+    onChangeBackground,
+  } = actions
+
+  const {
+    routeLocations = [],
+    routeLoading = false,
+    timelineLocations = [],
+    activitiesByLocation = {},
+    loading: timelineLoading = false,
+    error: timelineError = null,
+    unassignedActivities = [],
+    onRefetch: onRefetchTimeline,
+  } = timelineProp
+
+  const {
+    byLocation: weatherByLocation = {},
+    fetchedAt: weatherFetchedAt = null,
+    loading: weatherLoading = false,
+    error: weatherError = null,
+    onRefetch: onRefetchWeather,
+  } = weatherProp
   const { t } = useTranslation()
   const [dominantColor, setDominantColor] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)

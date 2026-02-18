@@ -19,7 +19,7 @@ Phase 2 — Architecture:
   ✔ Server Components for trip list — fetch trips on server, pass to client
   ✔ Server Components for trip detail — fetch trip + locations + timeline + weather on server
   ✔ Server Actions for mutations — trip create/update/delete
-  ☐ Simplify TripOverview — context or grouped props (~25 props today)
+  ✔ Simplify TripOverview — grouped props: actions, timeline, weather (was ~25 flat props)
 
 Phase 4+:
   ☐ Image pipeline — compress uploads; move off Supabase storage limits; Cloudflare CDN for avatars/images (pro setup)
