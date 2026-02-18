@@ -18,7 +18,7 @@ Phase 1.1 — Cross-platform audit (step-by-step):
 Phase 2 — Architecture:
   ✔ Server Components for trip list — fetch trips on server, pass to client
   ✔ Server Components for trip detail — fetch trip + locations + timeline + weather on server
-  ☐ Server Actions for mutations — trip create/update/delete
+  ✔ Server Actions for mutations — trip create/update/delete
   ☐ Simplify TripOverview — context or grouped props (~25 props today)
 
 Phase 4+:

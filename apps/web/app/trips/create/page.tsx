@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation"
 import AuroraBackground from "@/components/effects/aurora-background"
 import CreateTrip from "@/components/trips/create-trip"
-import { useCreateTrip, useTrips } from "@/hooks/useTrips"
+import { useTrips } from "@/hooks/useTrips"
+import { createTripAction } from "@/actions/trips"
 import { useAuth } from "@/contexts/AuthContext"
 import { useState, useEffect } from "react"
 import type { DateRange } from "react-day-picker"
@@ -15,7 +16,6 @@ export default function CreateTripPage() {
   const { t } = useTranslation()
   const router = useRouter()
   const { user, loading: authLoading, accessToken } = useAuth()
-  const { create } = useCreateTrip()
   const { refetch } = useTrips()
   const [mounted, setMounted] = useState(false)
 
@@ -41,13 +41,16 @@ export default function CreateTripPage() {
       if (data.dateRange?.from) tripData.start_date = data.dateRange.from.toISOString()
       if (data.dateRange?.to) tripData.end_date = data.dateRange.to.toISOString()
       
-      console.log("Creating trip with data:", tripData)
-      
-      const newTrip = await create(tripData)
+      const result = await createTripAction(tripData)
 
-      console.log("Created trip:", newTrip)
+      if (!result.success) {
+        console.error("Failed to create trip:", result.error)
+        return
+      }
 
-      if (newTrip && newTrip.id && data.locations && data.locations.length > 0) {
+      const newTrip = result.data
+
+      if (newTrip.id && data.locations && data.locations.length > 0) {
         // Add locations (best-effort, don't block trip creation on failure)
         console.log("Adding locations:", data.locations)
         

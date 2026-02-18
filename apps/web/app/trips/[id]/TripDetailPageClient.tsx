@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import AuroraBackground from "@/components/effects/aurora-background";
 import TripOverview from "@/components/trips/trip-overview";
-import { useDeleteTrip, useUpdateTrip } from "@/hooks/useTrips";
+import { updateTripAction, deleteTripAction } from "@/actions/trips";
 import type { Trip, TripLocation, Activity, TripLocationWeather } from "@gotrippin/core";
 import type { DateRange } from "react-day-picker";
 
@@ -29,8 +29,6 @@ export default function TripDetailPageClient({
   shareCode,
 }: TripDetailPageClientProps) {
   const router = useRouter();
-  const { deleteTrip } = useDeleteTrip();
-  const { update: updateTrip } = useUpdateTrip();
 
   const handleNavigate = (screen: string) => {
     if (screen === "activity") {
@@ -54,9 +52,11 @@ export default function TripDetailPageClient({
 
   const handleDelete = async () => {
     if (!trip?.id) return;
-    const success = await deleteTrip(trip.id);
-    if (success) {
+    const result = await deleteTripAction(trip.id);
+    if (result.success) {
       router.push("/");
+    } else {
+      console.error("Failed to delete trip:", result.error);
     }
   };
 
@@ -80,9 +80,11 @@ export default function TripDetailPageClient({
       end_date: dateRange.to ? dateRange.to.toISOString() : null,
     };
 
-    const updatedTrip = await updateTrip(trip.id, updateData);
-    if (updatedTrip) {
+    const result = await updateTripAction(trip.id, updateData);
+    if (result.success) {
       router.refresh();
+    } else {
+      console.error("Failed to update dates:", result.error);
     }
   };
 
@@ -94,9 +96,11 @@ export default function TripDetailPageClient({
         ? { image_url: value, color: null }
         : { color: value, image_url: null };
 
-    const updatedTrip = await updateTrip(trip.id, updateData);
-    if (updatedTrip) {
+    const result = await updateTripAction(trip.id, updateData);
+    if (result.success) {
       router.refresh();
+    } else {
+      console.error("Failed to update background:", result.error);
     }
   };
 

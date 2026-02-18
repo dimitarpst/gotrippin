@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation"
 import { useEffect, use, useState } from "react"
 import AuroraBackground from "@/components/effects/aurora-background"
 import CreateTrip from "@/components/trips/create-trip"
-import { useUpdateTrip, useTrip } from "@/hooks/useTrips"
+import { useTrip } from "@/hooks/useTrips"
+import { updateTripAction } from "@/actions/trips"
 import { useAuth } from "@/contexts/AuthContext"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
@@ -23,7 +24,6 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   const shareCode = resolvedParams.id // Route param is share code, not UUID
   const { user, loading: authLoading } = useAuth()
   const { trip, loading: tripLoading } = useTrip(shareCode)
-  const { update } = useUpdateTrip()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -74,12 +74,12 @@ export default function EditTripPage({ params }: EditTripPageProps) {
         return
       }
       
-      const updatedTrip = await update(trip.id, tripData)
+      const result = await updateTripAction(trip.id, tripData)
 
-      console.log("Updated trip:", updatedTrip)
-
-      if (updatedTrip) {
+      if (result.success) {
         router.push(`/trips/${shareCode}`)
+      } else {
+        console.error("Failed to update trip:", result.error)
       }
     } catch (error) {
       console.error("Failed to update trip:", error)
