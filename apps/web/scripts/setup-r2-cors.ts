@@ -1,7 +1,9 @@
 /**
- * Configure CORS on the R2 avatars bucket via S3 API.
- * Run: npx tsx scripts/setup-r2-cors.ts
+ * Configure CORS on the R2 "cdn" bucket (avatars + trip-images keys).
+ * Custom domain: cdn.gotrippin.app. Run: npx tsx scripts/setup-r2-cors.ts
  *
+ * If you get AccessDenied: R2 API tokens often can't change bucket CORS. Set CORS in
+ * Cloudflare dashboard: R2 → cdn → Settings → CORS policy (origins: localhost, gotrippin.app).
  * Loads R2_* from .env.local (or set them in the shell).
  */
 
@@ -40,7 +42,7 @@ const client = new S3Client({
 async function main() {
   await client.send(
     new PutBucketCorsCommand({
-      Bucket: "avatars",
+      Bucket: "cdn",
       CORSConfiguration: {
         CORSRules: [
           {
@@ -59,7 +61,7 @@ async function main() {
       },
     })
   );
-  console.log("CORS configured for avatars bucket.");
+  console.log("CORS configured for cdn bucket.");
 }
 
 main().catch((err) => {

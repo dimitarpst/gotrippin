@@ -175,9 +175,6 @@ export async function listAvatarsAction(): Promise<ListResult> {
         key: obj.Key!,
       }));
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("[listAvatarsAction]", { prefix, rawCount: allContents.length, returnedCount: files.length, keys: files.map((f) => f.key) });
-    }
     return { success: true, files };
   } catch (err) {
     console.error("R2 list error:", err);

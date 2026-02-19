@@ -6,8 +6,10 @@ const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID!;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY!;
 
-export const AVATARS_BUCKET = "avatars";
-export const TRIP_IMAGES_BUCKET = "trip-images";
+// Bucket "cdn" → URLs: cdn.gotrippin.app/avatars/... and cdn.gotrippin.app/trip-images/...
+export const AVATARS_BUCKET = "cdn";
+export const TRIP_IMAGES_KEY_PREFIX = "trip-images/";
+export const TRIP_IMAGES_BUCKET = AVATARS_BUCKET;
 
 /** Custom HTTPS agent to avoid TLS handshake failures on Windows with Cloudflare R2 */
 const httpsAgent = new https.Agent({
@@ -30,7 +32,12 @@ export const r2Client = new S3Client({
 
 /**
  * Build a public URL for an object in R2.
- * Base from NEXT_PUBLIC_R2_PUBLIC_URL (e.g. r2.dev for dev, cdn.gotrippin.app for prod).
+ * Uses NEXT_PUBLIC_R2_PUBLIC_URL only — your custom domain (e.g. https://cdn.gotrippin.app).
+ *
+ * Per Cloudflare R2 docs (https://developers.cloudflare.com/r2/buckets/public-buckets/):
+ * - r2.dev is rate-limited and for development only; do not use in production.
+ * - Use a custom domain for production; disable "Public development URL" on the bucket.
+ * - WAF, caching, and access control require a custom domain (not available on r2.dev).
  */
 export function getR2PublicUrl(key: string): string {
   const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "";
