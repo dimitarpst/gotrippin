@@ -4,6 +4,7 @@ const API_URL = appConfig.apiUrl;
 
 export interface UnsplashImage {
   id: string;
+  blur_hash: string | null;
   urls: {
     raw: string;
     full: string;

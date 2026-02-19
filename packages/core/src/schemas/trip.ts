@@ -1,9 +1,40 @@
 import { z } from 'zod';
 
+// ============================================
+// Photo Schemas (defined first — used in TripSchema)
+// ============================================
+
+export const PhotoSchema = z.object({
+  id: z.string().uuid(),
+  storage_key: z.string(),
+  source: z.enum(['unsplash', 'upload']),
+  unsplash_photo_id: z.string().nullable().optional(),
+  photographer_name: z.string().nullable().optional(),
+  photographer_url: z.string().nullable().optional(),
+  blur_hash: z.string().nullable().optional(),
+  created_at: z.string().datetime(),
+});
+
+/**
+ * Input sent by the frontend when a user selects an Unsplash photo as trip cover.
+ * The backend downloads the image to R2, creates a photos row, and links cover_photo_id.
+ */
+export const CoverPhotoInputSchema = z.object({
+  unsplash_photo_id: z.string(),
+  download_location: z.string().url(),
+  image_url: z.string().url(),
+  photographer_name: z.string(),
+  photographer_url: z.string().url(),
+  blur_hash: z.string().nullable().optional(),
+});
+
+export type Photo = z.infer<typeof PhotoSchema>;
+export type CoverPhotoInput = z.infer<typeof CoverPhotoInputSchema>;
+
 /**
  * Zod schema for a trip
  * Matches the `public.trips` table in Supabase
- * 
+ *
  * Note: user_id removed - trips use many-to-many relationship via trip_members table
  */
 export const TripSchema = z.object({
@@ -35,6 +66,8 @@ export const TripSchema = z.object({
     .nullable()
     .optional(),
   image_url: z.union([z.string().url('Invalid image URL'), z.null(), z.undefined()]).optional(),
+  cover_photo_id: z.string().uuid().nullable().optional(),
+  cover_photo: PhotoSchema.nullable().optional(),
   color: z.union([z.string(), z.null(), z.undefined()]).optional(),
   description: z
     .string()
@@ -87,12 +120,14 @@ export const UpdateTripSchema = TripSchema.omit({
 
 /**
  * Schema for trip update request (without ID)
- * Used in API endpoints where ID comes from route params
+ * Used in API endpoints where ID comes from route params.
+ * Includes cover_photo input (downloaded to R2 by backend at save time).
  */
 export const TripUpdateDataSchema = TripSchema.omit({
   id: true,
   created_at: true,
-}).partial();
+  cover_photo: true,
+}).partial().extend({ cover_photo: CoverPhotoInputSchema.optional() });
 
 /**
  * Schema for adding a member to a trip
@@ -113,15 +148,17 @@ export const RemoveTripMemberSchema = z.object({
 /**
  * Schema for trip creation request
  * Used in API endpoints - user will be auto-added as member after creation
+ * Includes cover_photo input (downloaded to R2 by backend at save time).
  */
 export const TripCreateDataSchema = TripSchema.omit({
   id: true,
   created_at: true,
+  cover_photo: true,
 })
   .partial()
+  .extend({ cover_photo: CoverPhotoInputSchema.optional() })
   .refine(
     (data) => {
-      // Validate that end_date is after start_date if both are provided
       if (data.start_date && data.end_date) {
         return new Date(data.end_date) >= new Date(data.start_date);
       }

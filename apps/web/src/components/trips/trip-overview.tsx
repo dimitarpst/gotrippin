@@ -44,6 +44,7 @@ import WeatherWidget from "./weather-widget"
 import type { DateRange } from "react-day-picker"
 import type { WeatherData } from "@gotrippin/core"
 import { format } from "date-fns"
+import { resolveTripCoverUrl } from "@/lib/r2"
 
 export interface TripOverviewActions {
   onNavigate: (screen: "activity" | "flight" | "timeline" | "weather") => void
@@ -55,7 +56,8 @@ export interface TripOverviewActions {
   onManageGuests?: () => void
   onEditName?: () => void
   onChangeDates?: (dateRange: DateRange | undefined) => void
-  onChangeBackground?: (type: "image" | "color", value: string) => void
+  onChangeBackground?: (type: "image", value: import("@gotrippin/core").CoverPhotoInput) => void
+  onChangeBackgroundColor?: (color: string) => void
 }
 
 export interface TripOverviewTimeline {
@@ -101,6 +103,7 @@ export default function TripOverview({
     onOpenLocation,
     onChangeDates,
     onChangeBackground,
+    onChangeBackgroundColor,
   } = actions
 
   const {
@@ -194,9 +197,11 @@ export default function TripOverview({
     return null
   }
 
+  const coverUrl = resolveTripCoverUrl(trip as any)
+
   // Check if trip.color is a gradient
   const isGradient = trip.color ? trip.color.startsWith('linear-gradient') : false
-  const backgroundColor = trip.image_url
+  const backgroundColor = coverUrl
     ? 'transparent'
     : (dominantColor || trip.color || '#ff6b6b')
 
@@ -226,15 +231,14 @@ export default function TripOverview({
   }, [])
 
   useEffect(() => {
-    // Reset dominant color when image_url changes or is removed
-    if (!trip.image_url) {
+    if (!coverUrl) {
       setDominantColor(null)
       return
     }
 
     const img = new Image()
     img.crossOrigin = "Anonymous"
-    img.src = trip.image_url
+    img.src = coverUrl
 
     img.onload = () => {
       const canvas = document.createElement("canvas")
@@ -270,33 +274,27 @@ export default function TripOverview({
     img.onerror = () => {
       setDominantColor(null)
     }
-  }, [trip.image_url, trip.color])
+  }, [coverUrl, trip.color])
 
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Fixed background image at the top - show for images and solid colors, but not gradients */}
-      {(!isGradient || trip.image_url) && (
+      {(!isGradient || coverUrl) && (
         <>
           <div
             className="fixed top-0 left-0 w-full h-[45vh] z-[1]"
             style={{
-              background: trip.image_url ? 'transparent' : (isGradient ? 'transparent' : backgroundColor),
+              background: coverUrl ? 'transparent' : (isGradient ? 'transparent' : backgroundColor),
             }}
           >
-            {trip.image_url ? (
+            {coverUrl ? (
               <img
-                src={trip.image_url}
+                src={coverUrl}
                 alt={trip.destination || "Trip destination"}
                 className="w-full h-full object-cover"
                 style={{
                   maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
                   WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
-                }}
-                onError={(e) => {
-                  // Fallback to color if image fails to load
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.parentElement!.style.background = dominantColor || trip.color || '#ff6b6b';
                 }}
               />
             ) : null}
@@ -495,7 +493,7 @@ export default function TripOverview({
       <div
         className="relative h-screen overflow-y-auto scrollbar-hide z-[10]"
         style={{
-          background: isGradient && !trip.image_url && trip.color
+          background: isGradient && !coverUrl && trip.color
             ? trip.color
             : 'transparent'
         }}
@@ -943,6 +941,10 @@ export default function TripOverview({
           onClose={() => setShowBackgroundPicker(false)}
           onSelect={(type, value) => {
             onChangeBackground(type, value)
+            setShowBackgroundPicker(false)
+          }}
+          onSelectColor={(color) => {
+            onChangeBackgroundColor?.(color)
             setShowBackgroundPicker(false)
           }}
           defaultSearchQuery={trip.destination || trip.title || undefined}

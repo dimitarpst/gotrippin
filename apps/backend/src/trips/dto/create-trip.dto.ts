@@ -1,7 +1,17 @@
-import { TripCreateDataSchema } from '@gotrippin/core';
-import { IsOptional, IsString, IsUrl, MaxLength, MinLength, IsISO8601 } from 'class-validator';
+import { TripCreateDataSchema, CoverPhotoInputSchema } from '@gotrippin/core';
+import { IsOptional, IsString, MaxLength, MinLength, IsISO8601, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { z } from 'zod';
+
+export class CoverPhotoDto {
+  @IsString() unsplash_photo_id: string;
+  @IsString() download_location: string;
+  @IsString() image_url: string;
+  @IsString() photographer_name: string;
+  @IsString() photographer_url: string;
+  @IsOptional() @IsString() blur_hash?: string | null;
+}
 
 /**
  * DTO for creating a new trip
@@ -48,14 +58,11 @@ export class CreateTripDto {
   @IsISO8601({}, { message: 'End date must be a valid ISO 8601 date' })
   end_date?: string;
 
-  @ApiProperty({ 
-    required: false,
-    example: 'https://example.com/paris.jpg',
-    description: 'Trip image URL'
-  })
+  @ApiProperty({ required: false, description: 'Unsplash cover photo metadata (downloaded to R2 at save time)' })
   @IsOptional()
-  @IsUrl({}, { message: 'Image URL must be a valid URL' })
-  image_url?: string;
+  @ValidateNested()
+  @Type(() => CoverPhotoDto)
+  cover_photo?: CoverPhotoDto;
 
   @ApiProperty({ 
     required: false,
@@ -84,12 +91,12 @@ export class CreateTripDto {
     return TripCreateDataSchema.parse(data);
   }
 
-  /**
-   * Safe validation that returns result object
-   * Use this for graceful error handling
-   */
   static safeParse(data: unknown) {
     return TripCreateDataSchema.safeParse(data);
+  }
+
+  static validateCoverPhoto(data: unknown): z.infer<typeof CoverPhotoInputSchema> {
+    return CoverPhotoInputSchema.parse(data);
   }
 }
 

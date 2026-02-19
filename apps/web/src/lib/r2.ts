@@ -44,3 +44,16 @@ export function getR2PublicUrl(key: string): string {
   if (!base) return key;
   return `${base.replace(/\/$/, "")}/${key}`;
 }
+
+/**
+ * Resolve the display URL for a trip's cover photo.
+ * Reads from cover_photo.storage_key (joined from photos table) → R2 CDN URL.
+ */
+export function resolveTripCoverUrl(trip: {
+  cover_photo?: { storage_key: string } | null;
+}): string | null {
+  if (trip.cover_photo?.storage_key) {
+    return getR2PublicUrl(trip.cover_photo.storage_key);
+  }
+  return null;
+}

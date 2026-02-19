@@ -8,19 +8,20 @@ import { DatePicker } from "./date-picker"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
 import { RouteBuilder, type RouteLocation } from "./route/route-builder"
+import type { CoverPhotoInput, Photo } from "@gotrippin/core"
 
 interface CreateTripProps {
   onBack: () => void
   onSave: (data: { 
     title: string; 
-    imageUrl?: string; 
+    coverPhoto?: CoverPhotoInput;
     color?: string; 
     dateRange?: DateRange;
     locations?: RouteLocation[];
   }) => Promise<void>
   initialData?: {
     title: string
-    imageUrl?: string
+    initialCoverPhoto?: Photo | null
     color?: string
     dateRange?: DateRange
     locations?: RouteLocation[]
@@ -38,9 +39,16 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
   const [tripName, setTripName] = useState(initialData?.title || "")
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<string | null>(initialData?.imageUrl || null)
+  // New cover photo: selected by user this session (takes precedence over initialCoverPhoto for display)
+  const [selectedCoverPhoto, setSelectedCoverPhoto] = useState<CoverPhotoInput | null>(null)
   const [selectedColor, setSelectedColor] = useState<string | null>(initialData?.color || null)
   const [dateRange, setDateRange] = useState<DateRange | undefined>(initialData?.dateRange)
+  // Newly selected photo takes precedence; fall back to existing cover photo from R2
+  const previewImageUrl = selectedCoverPhoto
+    ? selectedCoverPhoto.image_url
+    : initialData?.initialCoverPhoto?.storage_key
+      ? `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ""}/${initialData.initialCoverPhoto.storage_key}`
+      : null
   
   // Route State
   const [locations, setLocations] = useState<RouteLocation[]>(initialData?.locations || [])
@@ -84,7 +92,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
     try {
       await onSave({
         title: tripName,
-        imageUrl: selectedImage || undefined,
+        coverPhoto: selectedCoverPhoto || undefined,
         color: selectedColor || undefined,
         dateRange,
         locations,
@@ -96,14 +104,15 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
     }
   }
 
-  const handleBackgroundSelect = (type: "image" | "color", value: string) => {
-    if (type === "image") {
-      setSelectedImage(value)
-      setSelectedColor(null)
-    } else {
-      setSelectedColor(value)
-      setSelectedImage(null)
-    }
+  const handleBackgroundSelect = (type: "image", value: CoverPhotoInput) => {
+    setSelectedCoverPhoto(value)
+    setSelectedColor(null)
+    setShowBackgroundPicker(false)
+  }
+
+  const handleColorSelect = (color: string) => {
+    setSelectedColor(color)
+    setSelectedCoverPhoto(null)
     setShowBackgroundPicker(false)
   }
 
@@ -124,7 +133,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
   const renderBackground = () => (
     <div className="fixed inset-0 -z-10">
       <AnimatePresence mode="wait">
-        {selectedImage ? (
+        {previewImageUrl ? (
           <motion.div
             key="image"
             className="absolute inset-0"
@@ -133,7 +142,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
             exit={{ opacity: 0 }}
           >
             <img
-              src={selectedImage || "/placeholder.svg"}
+              src={previewImageUrl}
               alt="Trip background"
               className="w-full h-full object-cover"
             />
@@ -292,13 +301,13 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
         </AnimatePresence>
       </div>
 
-      {!isEditing && (
-        <BackgroundPicker
-          open={showBackgroundPicker}
-          onClose={() => setShowBackgroundPicker(false)}
-          onSelect={handleBackgroundSelect}
-        />
-      )}
+      <BackgroundPicker
+        open={showBackgroundPicker}
+        onClose={() => setShowBackgroundPicker(false)}
+        onSelect={handleBackgroundSelect}
+        onSelectColor={handleColorSelect}
+        defaultSearchQuery={tripName}
+      />
       
       <DatePicker
         open={showDatePicker}

@@ -524,7 +524,11 @@ npm install @nestjs/axios rxjs
 - ✅ Trigger download endpoint when user selects image
 - ✅ Display "Photo by [Name] on Unsplash" attribution with links
 - ✅ App distinctly branded as "Go Trippin'"
-- 📝 Ready to apply at https://unsplash.com/oauth/applications for 5,000 req/hour
+- ✅ **Production access granted — 5,000 requests/hour** (Feb 2026)
+
+> **Note for feature planning:** We have Unsplash Production API access (5,000 req/hour).
+> When brainstorming new features, consider Unsplash integration — activity images, destination
+> hero photos, location cards, AI-suggested imagery, etc. The infrastructure is already in place.
 
 ---
 

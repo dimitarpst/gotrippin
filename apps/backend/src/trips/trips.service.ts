@@ -1,9 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { ImagesService } from '../images/images.service';
+import type { CoverPhotoInput } from '@gotrippin/core';
 
 @Injectable()
 export class TripsService {
-  constructor(private supabaseService: SupabaseService) { }
+  constructor(
+    private supabaseService: SupabaseService,
+    private imagesService: ImagesService,
+  ) { }
 
   async getTrips(userId: string) {
     try {
@@ -41,22 +46,25 @@ export class TripsService {
     destination?: string;
     start_date?: string;
     end_date?: string;
-    image_url?: string;
+    cover_photo?: CoverPhotoInput;
     color?: string;
     description?: string;
   }) {
     try {
-      // Create the trip (without user_id)
-      const tripToCreate = {
-        ...tripData,
+      const { cover_photo, ...rest } = tripData;
+
+      let cover_photo_id: string | undefined;
+      if (cover_photo) {
+        cover_photo_id = await this.imagesService.downloadAndStorePhoto(cover_photo);
+      }
+
+      const newTrip = await this.supabaseService.createTrip({
+        ...rest,
+        ...(cover_photo_id ? { cover_photo_id } : {}),
         created_at: new Date().toISOString(),
-      };
+      });
 
-      const newTrip = await this.supabaseService.createTrip(tripToCreate);
-
-      // Add the creator as the first member
       await this.supabaseService.addTripMember(newTrip.id, userId);
-
       return newTrip;
     } catch (error) {
       throw new NotFoundException('Failed to create trip');
@@ -68,12 +76,11 @@ export class TripsService {
     destination: string;
     start_date: string;
     end_date: string;
-    image_url: string;
+    cover_photo: CoverPhotoInput;
     color: string;
     description: string;
   }>) {
     try {
-      // First check if the trip belongs to the user
       const existingTrip = await this.supabaseService.getTrips(userId);
       const trip = existingTrip.find(t => t.id === tripId);
 
@@ -81,9 +88,16 @@ export class TripsService {
         throw new ForbiddenException('Trip not found or access denied');
       }
 
-      // Filter out undefined values
+      const { cover_photo, ...rest } = updateData;
+
+      let cover_photo_id: string | undefined;
+      if (cover_photo) {
+        cover_photo_id = await this.imagesService.downloadAndStorePhoto(cover_photo);
+      }
+
       const filteredData = Object.fromEntries(
-        Object.entries(updateData).filter(([_, value]) => value !== undefined)
+        Object.entries({ ...rest, ...(cover_photo_id ? { cover_photo_id } : {}) })
+          .filter(([_, value]) => value !== undefined),
       );
 
       const updatedTrip = await this.supabaseService.updateTrip(tripId, filteredData);

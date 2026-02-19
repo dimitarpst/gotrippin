@@ -25,18 +25,17 @@ export default function CreateTripPage() {
 
   const handleSave = async (data: { 
     title: string; 
-    imageUrl?: string; 
+    coverPhoto?: import("@gotrippin/core").CoverPhotoInput;
     color?: string; 
     dateRange?: DateRange;
     locations?: RouteLocation[];
   }) => {
     try {
-      // Build trip data, filtering out undefined values
       const tripData: any = {
         title: data.title,
       }
       
-      if (data.imageUrl) tripData.image_url = data.imageUrl
+      if (data.coverPhoto) tripData.cover_photo = data.coverPhoto
       if (data.color) tripData.color = data.color
       if (data.dateRange?.from) tripData.start_date = data.dateRange.from.toISOString()
       if (data.dateRange?.to) tripData.end_date = data.dateRange.to.toISOString()

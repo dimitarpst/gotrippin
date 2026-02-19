@@ -79,17 +79,22 @@ export default function TripDetailPageClient({
           console.error("Failed to update dates:", result.error);
         }
       },
-      onChangeBackground: async (type, value) => {
+      onChangeBackground: async (_type, coverPhoto) => {
         if (!trip?.id) return;
-        const updateData =
-          type === "image"
-            ? { image_url: value, color: null }
-            : { color: value, image_url: null };
-        const result = await updateTripAction(trip.id, updateData);
+        const result = await updateTripAction(trip.id, { cover_photo: coverPhoto, color: undefined });
         if (result.success) {
           router.refresh();
         } else {
           console.error("Failed to update background:", result.error);
+        }
+      },
+      onChangeBackgroundColor: async (color) => {
+        if (!trip?.id) return;
+        const result = await updateTripAction(trip.id, { color, cover_photo: undefined });
+        if (result.success) {
+          router.refresh();
+        } else {
+          console.error("Failed to update background color:", result.error);
         }
       },
     }),

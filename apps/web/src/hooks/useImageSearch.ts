@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { searchImages, trackImageDownload, type UnsplashImage } from '@/lib/api';
+import { searchImages, type UnsplashImage } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useImageSearch() {
@@ -85,16 +85,6 @@ export function useImageSearch() {
     }
   }, [loadingMore, page, totalPages, query, performSearch]);
 
-  // Track download when user selects image
-  const selectImage = useCallback(
-    async (image: UnsplashImage) => {
-      if (accessToken) {
-        await trackImageDownload(image.links.download_location, accessToken);
-      }
-    },
-    [accessToken],
-  );
-
   return {
     images,
     loading,
@@ -103,7 +93,6 @@ export function useImageSearch() {
     hasMore: page < totalPages,
     loadMore,
     setQuery,
-    selectImage,
   };
 }
 

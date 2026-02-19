@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, Search, Loader2 } from "lucide-react"
 import { useImageSearch } from "@/hooks/useImageSearch"
 import { useTranslation } from "react-i18next"
+import type { CoverPhotoInput } from "@gotrippin/core"
 
 interface BackgroundPickerProps {
   open: boolean
   onClose: () => void
-  onSelect: (type: "image" | "color", value: string) => void
+  onSelect: (type: "image", value: CoverPhotoInput) => void
+  onSelectColor: (color: string) => void
   defaultSearchQuery?: string
 }
 
@@ -31,14 +33,14 @@ const sampleGradients = [
   "linear-gradient(to bottom, #558b2f 0%, #33691e 100%)", // Deep lime green
 ]
 
-export function BackgroundPicker({ open, onClose, onSelect, defaultSearchQuery }: BackgroundPickerProps) {
+export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, defaultSearchQuery }: BackgroundPickerProps) {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<"images" | "colors">("images")
   const [searchInput, setSearchInput] = useState("")
   const [hasSearched, setHasSearched] = useState(false)
   const observerRef = useRef<HTMLDivElement>(null)
   const justOpenedRef = useRef(false)
-  const { images, loading, loadingMore, error, hasMore, loadMore, setQuery, selectImage } = useImageSearch()
+  const { images, loading, loadingMore, error, hasMore, loadMore, setQuery } = useImageSearch()
 
   // Auto-fill search input with trip title when modal opens
   useEffect(() => {
@@ -92,9 +94,15 @@ export function BackgroundPicker({ open, onClose, onSelect, defaultSearchQuery }
     return () => observer.disconnect()
   }, [hasMore, loadingMore, loadMore, activeTab])
 
-  const handleImageSelect = async (imageUrl: string, image: any) => {
-    await selectImage(image)
-    onSelect("image", imageUrl)
+  const handleImageSelect = (image: any) => {
+    onSelect("image", {
+      unsplash_photo_id: image.id,
+      download_location: image.links.download_location,
+      image_url: image.urls.regular,
+      photographer_name: image.user.name,
+      photographer_url: image.user.links.html,
+      blur_hash: image.blur_hash ?? null,
+    })
   }
 
   return (
@@ -193,7 +201,7 @@ export function BackgroundPicker({ open, onClose, onSelect, defaultSearchQuery }
                       {images.map((image, index) => (
                         <button
                           key={`${image.id}-${index}`}
-                          onClick={() => handleImageSelect(image.urls.regular, image)}
+                          onClick={() => handleImageSelect(image)}
                           className="relative aspect-[3/4] rounded-xl overflow-hidden group"
                         >
                           <img
@@ -245,7 +253,7 @@ export function BackgroundPicker({ open, onClose, onSelect, defaultSearchQuery }
                   {sampleGradients.map((gradient, index) => (
                     <button
                       key={index}
-                      onClick={() => onSelect("color", gradient)}
+                      onClick={() => onSelectColor(gradient)}
                       className="aspect-square rounded-xl hover:scale-110 transition-transform shadow-lg"
                       style={{ background: gradient }}
                     />

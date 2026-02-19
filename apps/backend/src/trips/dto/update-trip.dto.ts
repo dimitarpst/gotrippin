@@ -1,7 +1,9 @@
 import { TripUpdateDataSchema } from '@gotrippin/core';
-import { IsOptional, IsString, IsUrl, MaxLength, MinLength, IsISO8601 } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength, IsISO8601, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { z } from 'zod';
+import { CoverPhotoDto } from './create-trip.dto';
 
 /**
  * DTO for updating an existing trip
@@ -48,14 +50,11 @@ export class UpdateTripDto {
   @IsISO8601({}, { message: 'End date must be a valid ISO 8601 date' })
   end_date?: string;
 
-  @ApiProperty({ 
-    required: false,
-    example: 'https://example.com/paris.jpg',
-    description: 'Trip image URL'
-  })
+  @ApiProperty({ required: false, description: 'Unsplash cover photo metadata (downloaded to R2 at save time)' })
   @IsOptional()
-  @IsUrl({}, { message: 'Image URL must be a valid URL' })
-  image_url?: string;
+  @ValidateNested()
+  @Type(() => CoverPhotoDto)
+  cover_photo?: CoverPhotoDto;
 
   @ApiProperty({ 
     required: false,

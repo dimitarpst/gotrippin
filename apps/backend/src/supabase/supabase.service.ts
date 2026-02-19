@@ -85,7 +85,7 @@ export class SupabaseService {
     const { data, error } = await this.supabase
       .from('trips')
       .insert({ ...tripData, share_code: shareCode })
-      .select()
+      .select('*, cover_photo:photos(*)')
       .single();
 
     if (error) throw error;
@@ -96,19 +96,17 @@ export class SupabaseService {
   async getTrips(userId: string) {
     const { data, error } = await this.supabase
       .from('trip_members')
-      .select('trip_id, trips(*)')
+      .select('trip_id, trips(*, cover_photo:photos(*))')
       .eq('user_id', userId)
       .order('joined_at', { ascending: false });
 
     if (error) throw error;
 
-    // Extract just the trip data from the joined response
     return data?.map((item: any) => item.trips).filter(Boolean) || [];
   }
 
   // Helper method to get a single trip (if user is a member)
   async getTrip(tripId: string, userId: string) {
-    // First check if user is a member
     const { data: membership } = await this.supabase
       .from('trip_members')
       .select('*')
@@ -118,10 +116,9 @@ export class SupabaseService {
 
     if (!membership) return null;
 
-    // Get the trip data
     const { data, error } = await this.supabase
       .from('trips')
-      .select('*')
+      .select('*, cover_photo:photos(*)')
       .eq('id', tripId)
       .single();
 
@@ -131,18 +128,15 @@ export class SupabaseService {
 
   // Helper method to get a trip by share code (if user is a member)
   async getTripByShareCode(shareCode: string, userId: string) {
-    // Get trip by share code
     const { data: trip, error: tripError } = await this.supabase
       .from('trips')
-      .select('*')
+      .select('*, cover_photo:photos(*)')
       .eq('share_code', shareCode)
       .single();
 
     if (tripError || !trip) return null;
 
-    // Check if user is a member
     const isMember = await this.isTripMember(trip.id, userId);
-
     if (!isMember) return null;
 
     return trip;
@@ -154,7 +148,7 @@ export class SupabaseService {
       .from('trips')
       .update(updates)
       .eq('id', tripId)
-      .select()
+      .select('*, cover_photo:photos(*)')
       .single();
 
     if (error) throw error;

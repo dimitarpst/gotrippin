@@ -32,17 +32,16 @@ export default function EditTripPage({ params }: EditTripPageProps) {
 
   const handleSave = async (data: { 
     title: string; 
-    imageUrl?: string; 
+    coverPhoto?: import("@gotrippin/core").CoverPhotoInput;
     color?: string; 
     dateRange?: DateRange;
     locations?: RouteLocation[];
   }) => {
     try {
-      // Build trip data, filtering out undefined values
       const tripData: any = {}
       
       if (data.title !== trip?.title) tripData.title = data.title
-      if (data.imageUrl !== trip?.image_url) tripData.image_url = data.imageUrl
+      if (data.coverPhoto) tripData.cover_photo = data.coverPhoto
       if (data.color !== trip?.color) tripData.color = data.color
       
       // Handle dates
@@ -137,15 +136,14 @@ export default function EditTripPage({ params }: EditTripPageProps) {
     )
   }
 
-  // Prepare initial data from the trip
   const initialData = {
     title: trip.title || '',
-    imageUrl: trip.image_url,
-    color: trip.color,
+    initialCoverPhoto: (trip as any).cover_photo ?? null,
+    color: trip.color ?? undefined,
     dateRange: (trip.start_date && trip.end_date) ? {
       from: new Date(trip.start_date),
       to: new Date(trip.end_date)
-    } : undefined
+    } : undefined,
   }
 
   return (
@@ -156,13 +154,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
         <CreateTrip
           onBack={handleBack}
           onSave={handleSave}
-          initialData={{
-            ...initialData,
-            imageUrl: initialData.imageUrl ?? undefined,
-            color: initialData.color ?? undefined,
-            // if dateRange can be null, coerce that too:
-            dateRange: initialData.dateRange ?? undefined,
-          }}
+          initialData={initialData}
           isEditing={true}
         />
       </div>
