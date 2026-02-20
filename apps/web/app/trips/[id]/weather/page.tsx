@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { useTrip } from "@/hooks/useTrips"
+import PageLoader from "@/components/ui/page-loader"
 import { use, useEffect, useMemo, useState } from "react"
 import { useTripWeather } from "@/hooks/useWeather"
 import type { TripLocationWeather } from "@gotrippin/core"
@@ -99,16 +100,18 @@ export default function WeatherPage({ params }: WeatherPageProps) {
         setActiveLocationId(preferred ?? weather.locations[0].locationId)
     }, [weather, activeLocationId])
 
-    // Extract dominant color from trip image (like in trip-overview)
+    // Extract dominant color from cover image — null until ready so ambient glows fade in without flicker.
+    // CORB on cross-origin images will call onerror, keeping dominantColor null (glows hidden) which is acceptable.
     useEffect(() => {
-        if (!trip?.image_url) {
+        const imageUrl = trip?.image_url
+        if (!imageUrl) {
             setDominantColor(null)
             return
         }
 
         const img = new Image()
         img.crossOrigin = "Anonymous"
-        img.src = trip.image_url
+        img.src = imageUrl
 
         img.onload = () => {
             const canvas = document.createElement("canvas")
@@ -119,49 +122,42 @@ export default function WeatherPage({ params }: WeatherPageProps) {
             canvas.height = img.height
             ctx.drawImage(img, 0, 0)
 
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-            const data = imageData.data
-            let r = 0,
-                g = 0,
-                b = 0
-            const sampleSize = 10
+            try {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+                const data = imageData.data
+                let r = 0, g = 0, b = 0
+                const sampleSize = 10
 
-            for (let i = 0; i < data.length; i += 4 * sampleSize) {
-                r += data[i]
-                g += data[i + 1]
-                b += data[i + 2]
+                for (let i = 0; i < data.length; i += 4 * sampleSize) {
+                    r += data[i]
+                    g += data[i + 1]
+                    b += data[i + 2]
+                }
+
+                const pixelCount = data.length / (4 * sampleSize)
+                r = Math.round(r / pixelCount)
+                g = Math.round(g / pixelCount)
+                b = Math.round(b / pixelCount)
+
+                setDominantColor(`#${[r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')}`)
+            } catch {
+                setDominantColor(null)
             }
-
-            const pixelCount = data.length / (4 * sampleSize)
-            r = Math.round(r / pixelCount)
-            g = Math.round(g / pixelCount)
-            b = Math.round(b / pixelCount)
-
-            const hexColor = `#${[r, g, b].map(x => {
-                const hex = x.toString(16)
-                return hex.length === 1 ? "0" + hex : hex
-            }).join("")}`
-
-            setDominantColor(hexColor)
         }
 
-        img.onerror = () => {
-            setDominantColor(null)
-        }
+        img.onerror = () => setDominantColor(null)
     }, [trip?.image_url])
 
-    if (!mounted || tripLoading) {
-        return <div className="min-h-screen bg-[#0e0b10]" />
-    }
-
-    // Get theme color: use dominant color from image if available, otherwise use trip color, fallback to coral
-    // Handle gradient colors - if trip.color is a gradient, use dominant color or fallback
     const isGradient = trip?.color ? trip.color.startsWith("linear-gradient") : false
-    const safeTripColor = trip?.color && !isGradient ? trip.color : null
+    // Image trips: use extracted dominant color (null while loading → no flicker, glows appear smoothly).
+    // Solid color trips: use stored color directly.
     const themeColor = trip?.image_url
-        ? (dominantColor || safeTripColor || "#ff6b6b") // If image exists, prefer dominant color; never use gradient strings here
-        : (safeTripColor || dominantColor || "#ff6b6b") // If no image, use trip color (unless gradient)
+        ? dominantColor
+        : (trip?.color && !isGradient ? trip.color : null)
+    // Safe for hex template literals — neutral dark when no color available
+    const themeHex = themeColor ?? '#1a1a2e'
 
+    // useMemo must be before any early returns (Rules of Hooks)
     const selectedLocation: TripLocationWeather | null = useMemo(() => {
         if (!weather?.locations?.length) return null
         return (
@@ -170,6 +166,10 @@ export default function WeatherPage({ params }: WeatherPageProps) {
             null
         )
     }, [weather, activeLocationId])
+
+    if (!mounted || tripLoading) {
+        return <PageLoader />
+    }
 
     const locationLabel = selectedLocation?.locationName || trip?.destination || trip?.title || "Weather"
     const locationWeather = selectedLocation?.weather || null
@@ -185,15 +185,19 @@ export default function WeatherPage({ params }: WeatherPageProps) {
 
     return (
         <div className="min-h-screen bg-[#0e0b10] text-white relative overflow-hidden">
-            {/* Ambient Background Glow */}
-            <div
-                className="fixed top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full blur-[120px] opacity-30 pointer-events-none"
-                style={{ background: themeColor }}
-            />
-            <div
-                className="fixed bottom-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full blur-[120px] opacity-20 pointer-events-none"
-                style={{ background: themeColor }}
-            />
+            {/* Ambient Background Glow — only shown when trip has a stored color */}
+            {themeColor && (
+                <>
+                    <div
+                        className="fixed top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full blur-[120px] opacity-30 pointer-events-none"
+                        style={{ background: themeColor }}
+                    />
+                    <div
+                        className="fixed bottom-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full blur-[120px] opacity-20 pointer-events-none"
+                        style={{ background: themeColor }}
+                    />
+                </>
+            )}
 
             <div className="relative z-10 p-4 pb-20 max-w-lg mx-auto">
                 {/* Header */}
@@ -369,7 +373,7 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                     <Card
                         className="border-0 overflow-hidden relative rounded-[32px] shadow-2xl p-8"
                         style={{
-                            background: `linear-gradient(135deg, ${themeColor} 0%, ${themeColor}aa 100%)`
+                            background: `linear-gradient(135deg, ${themeHex} 0%, ${themeHex}aa 100%)`
                         }}
                     >
                         {/* Glass shine effect */}
@@ -385,7 +389,7 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                             >
                                 <div
                                     className="w-32 h-32 rounded-3xl flex items-center justify-center backdrop-blur-sm border border-white/10"
-                                    style={{ background: `${themeColor}40` }}
+                                    style={{ background: `${themeHex}40` }}
                                 >
                                     <WeatherIcon className="w-20 h-20 text-white drop-shadow-lg" />
                                 </div>
@@ -406,7 +410,7 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                                 <div className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-black/10 backdrop-blur-sm border border-white/10">
                                     <div
                                         className="w-10 h-10 rounded-xl flex items-center justify-center"
-                                        style={{ background: `${themeColor}40` }}
+                                        style={{ background: `${themeHex}40` }}
                                     >
                                         <Wind className="w-5 h-5 text-white" />
                                     </div>
@@ -418,7 +422,7 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                                 <div className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-black/10 backdrop-blur-sm border border-white/10">
                                     <div
                                         className="w-10 h-10 rounded-xl flex items-center justify-center"
-                                        style={{ background: `${themeColor}40` }}
+                                        style={{ background: `${themeHex}40` }}
                                     >
                                         <Droplets className="w-5 h-5 text-white" />
                                     </div>
@@ -430,7 +434,7 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                                 <div className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-black/10 backdrop-blur-sm border border-white/10">
                                     <div
                                         className="w-10 h-10 rounded-xl flex items-center justify-center"
-                                        style={{ background: `${themeColor}40` }}
+                                        style={{ background: `${themeHex}40` }}
                                     >
                                         <Sun className="w-5 h-5 text-white" />
                                     </div>
@@ -520,9 +524,9 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                                             <div
                                                 className="absolute h-full rounded-full"
                                                 style={{
-                                                    left: '20%',
-                                                    right: '20%',
-                                                    background: themeColor
+                                    left: '20%',
+                                    right: '20%',
+                                    background: themeHex
                                                 }}
                                             />
                                         </div>
@@ -544,7 +548,7 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                     <div className="bg-white/5 backdrop-blur-xl rounded-[24px] p-5 border border-white/5 hover:bg-white/10 transition-colors">
                         <div
                             className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                            style={{ background: `${themeColor}30` }}
+                            style={{ background: `${themeHex}30` }}
                         >
                             <Wind className="w-6 h-6 text-white" />
                         </div>
@@ -560,7 +564,7 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                     <div className="bg-white/5 backdrop-blur-xl rounded-[24px] p-5 border border-white/5 hover:bg-white/10 transition-colors">
                         <div
                             className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                            style={{ background: `${themeColor}30` }}
+                            style={{ background: `${themeHex}30` }}
                         >
                             <Droplets className="w-6 h-6 text-white" />
                         </div>
@@ -576,7 +580,7 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                     <div className="bg-white/5 backdrop-blur-xl rounded-[24px] p-5 border border-white/5 hover:bg-white/10 transition-colors">
                         <div
                             className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                            style={{ background: `${themeColor}30` }}
+                            style={{ background: `${themeHex}30` }}
                         >
                             <Cloud className="w-6 h-6 text-white" />
                         </div>
@@ -592,7 +596,7 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                     <div className="bg-white/5 backdrop-blur-xl rounded-[24px] p-5 border border-white/5 hover:bg-white/10 transition-colors">
                         <div
                             className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                            style={{ background: `${themeColor}30` }}
+                            style={{ background: `${themeHex}30` }}
                         >
                             <Sun className="w-6 h-6 text-white" />
                         </div>

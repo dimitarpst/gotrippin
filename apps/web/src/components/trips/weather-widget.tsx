@@ -61,7 +61,7 @@ export default function WeatherWidget({
   weather,
   compact = false,
   onClick,
-  color = "#ff6b6b",
+  color = "#1a1a2e",
   variant,
   updatedAt,
   showMeta = false,

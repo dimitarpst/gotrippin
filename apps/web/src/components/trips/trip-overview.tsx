@@ -199,11 +199,14 @@ export default function TripOverview({
 
   const coverUrl = resolveTripCoverUrl(trip as any)
 
-  // Check if trip.color is a gradient
   const isGradient = trip.color ? trip.color.startsWith('linear-gradient') : false
-  const backgroundColor = coverUrl
-    ? 'transparent'
-    : (dominantColor || trip.color || '#ff6b6b')
+  // When a cover image is present: use the extracted dominant color (null while loading, so no flicker).
+  // When no cover image: use the stored trip color directly.
+  // Never mix them — that's what caused the visible color switch on every render.
+  const tripAccent = coverUrl
+    ? dominantColor  // null until extraction completes → gradient fades in smoothly
+    : (trip.color && !isGradient ? trip.color : null)
+  const backgroundColor = coverUrl ? 'transparent' : (tripAccent ?? 'transparent')
 
   // Throttled scroll handler using requestAnimationFrame for smooth performance
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -230,6 +233,9 @@ export default function TripOverview({
     }
   }, [])
 
+  // Extract dominant color from cover image so the gradient overlay matches the photo.
+  // Starts null → gradient invisible → fades in once ready. No color switch, no flicker.
+  // CORB may block cross-origin images; onerror keeps dominantColor null (no overlay) which is fine.
   useEffect(() => {
     if (!coverUrl) {
       setDominantColor(null)
@@ -249,32 +255,31 @@ export default function TripOverview({
       canvas.height = img.height
       ctx.drawImage(img, 0, 0)
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const data = imageData.data
-      let r = 0,
-        g = 0,
-        b = 0
-      const sampleSize = 10
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const data = imageData.data
+        let r = 0, g = 0, b = 0
+        const sampleSize = 10
 
-      for (let i = 0; i < data.length; i += 4 * sampleSize) {
-        r += data[i]
-        g += data[i + 1]
-        b += data[i + 2]
+        for (let i = 0; i < data.length; i += 4 * sampleSize) {
+          r += data[i]
+          g += data[i + 1]
+          b += data[i + 2]
+        }
+
+        const pixelCount = data.length / (4 * sampleSize)
+        r = Math.floor(r / pixelCount)
+        g = Math.floor(g / pixelCount)
+        b = Math.floor(b / pixelCount)
+
+        setDominantColor(`#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`)
+      } catch {
+        setDominantColor(null)
       }
-
-      const pixelCount = data.length / (4 * sampleSize)
-      r = Math.floor(r / pixelCount)
-      g = Math.floor(g / pixelCount)
-      b = Math.floor(b / pixelCount)
-
-      const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
-      setDominantColor(hexColor)
     }
 
-    img.onerror = () => {
-      setDominantColor(null)
-    }
-  }, [coverUrl, trip.color])
+    img.onerror = () => setDominantColor(null)
+  }, [coverUrl])
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -319,21 +324,23 @@ export default function TripOverview({
             />
           )}
 
-          {/* Gradient overlay that stretches up as you scroll - color to transparent going up */}
-          <div
-            className="fixed left-0 w-full pointer-events-none z-[3]"
-            style={{
-              bottom: 0,
-              height: `calc(90vh + ${scrollY * 1.5}px)`,
-              background: `linear-gradient(to top, 
-                ${dominantColor || trip.color || '#ff6b6b'} 0%,
-                ${dominantColor || trip.color || '#ff6b6b'} 50%,
-                ${dominantColor || trip.color || '#ff6b6b'}dd 70%,
-                ${dominantColor || trip.color || '#ff6b6b'}99 85%,
-                transparent 100%)`,
-              willChange: 'height',
-            }}
-          />
+          {/* Gradient overlay — only shown when trip has a stored color */}
+          {tripAccent && (
+            <div
+              className="fixed left-0 w-full pointer-events-none z-[3]"
+              style={{
+                bottom: 0,
+                height: `calc(90vh + ${scrollY * 1.5}px)`,
+                background: `linear-gradient(to top,
+                  ${tripAccent} 0%,
+                  ${tripAccent} 50%,
+                  ${tripAccent}dd 70%,
+                  ${tripAccent}99 85%,
+                  transparent 100%)`,
+                willChange: 'height',
+              }}
+            />
+          )}
         </>
       )}
 
@@ -343,7 +350,7 @@ export default function TripOverview({
         <motion.div
           className="absolute inset-0 backdrop-blur-xl"
           style={{
-            background: `${dominantColor || trip.color || '#ff6b6b'}f0`,
+            background: tripAccent ? `${tripAccent}f0` : 'rgba(14, 11, 16, 0.9)',
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: scrollY > 200 ? 1 : 0 }}
@@ -698,8 +705,7 @@ export default function TripOverview({
               {(() => {
                 const weatherLocationLabel =
                   derivedLocations[0]?.location_name || trip.destination || trip.title || "—"
-                const accent =
-                  dominantColor || (isGradient ? null : trip.color) || "#ff6b6b"
+                const accent = tripAccent ?? '#1a1a2e'
 
                 if (weatherLoading) {
                   return (

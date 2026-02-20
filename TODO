@@ -46,8 +46,8 @@ Phase 4.1 — Trip cover images (photos table + R2):
 
 Phase 4.3 — No Fallbacks. No Silent Failures. Handle Errors:
   Visible color/state flicker:
-    ☐ Remove canvas dominant color extraction — trip-overview.tsx and weather/page.tsx both load the cover image into a canvas to guess a color; this fires after render causing a visible color flicker, and fails with CORB errors on Unsplash URLs. Delete this logic entirely. The trip's stored color is the source of truth — use it directly.
-    ☐ Remove #ff6b6b hardcoded color chains — trip-overview.tsx, weather/page.tsx, timeline/[locationId]/page.tsx, UserProfile.tsx all fall back to "#ff6b6b" silently. If no color is set, show a neutral/empty state, not a hardcoded brand color.
+    ✔ Remove canvas dominant color extraction — trip-overview.tsx and weather/page.tsx both load the cover image into a canvas to guess a color; this fires after render causing a visible color flicker, and fails with CORB errors on Unsplash URLs. Delete this logic entirely. The trip's stored color is the source of truth — use it directly.
+    ✔ Remove #ff6b6b hardcoded color chains — trip-overview.tsx, weather/page.tsx, timeline/[locationId]/page.tsx, UserProfile.tsx all fall back to "#ff6b6b" silently. If no color is set, show a neutral/empty state, not a hardcoded brand color.
   Silent server-side swallowing (trips/[id]/page.tsx):
     ☐ getLocations .catch(() => []) — if locations fail to load, the trip detail page shows an empty route silently. Propagate the error to the client so TripDetailPageClient can show a SectionError instead.
     ☐ getGroupedActivities .catch(() => empty object) — same: timeline silently appears empty on error. Surface it.

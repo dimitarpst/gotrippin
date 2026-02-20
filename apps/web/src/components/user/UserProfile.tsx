@@ -61,13 +61,13 @@ export default function UserProfile({
     avatarUrl?: string;
   }>({
     displayName: data.displayName,
-    avatarColor: data.avatarColor || "#ff6b6b",
+    avatarColor: data.avatarColor || "#1a1a2e",
     avatarUrl: data.avatarUrl || undefined,
   });
 
   const displayData = isEditing ? pendingChanges : {
     displayName: data.displayName,
-    avatarColor: data.avatarColor || "#ff6b6b",
+    avatarColor: data.avatarColor || "#1a1a2e",
     avatarUrl: data.avatarUrl ?? undefined,
   };
 
@@ -99,7 +99,7 @@ export default function UserProfile({
     userSelectedAvatarRef.current = false;
     setPendingChanges({
       displayName: data.displayName,
-      avatarColor: data.avatarColor || "#ff6b6b",
+      avatarColor: data.avatarColor || "#1a1a2e",
       avatarUrl: data.avatarUrl || undefined,
     });
 
@@ -125,7 +125,7 @@ export default function UserProfile({
               : resolvedAvatarUrl;
             return {
               displayName: profile.display_name || data.displayName,
-              avatarColor: profile.avatar_color || data.avatarColor || "#ff6b6b",
+              avatarColor: profile.avatar_color || data.avatarColor || "#1a1a2e",
               avatarUrl: avatarToUse,
             };
           });
@@ -150,7 +150,7 @@ export default function UserProfile({
   const handleCancel = () => {
     setPendingChanges({
       displayName: data.displayName,
-      avatarColor: data.avatarColor || "#ff6b6b",
+      avatarColor: data.avatarColor || "#1a1a2e",
       avatarUrl: data.avatarUrl || undefined,
     });
     setIsEditing(false);

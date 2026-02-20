@@ -316,7 +316,7 @@ export default function RouteDetailPage({ params }: RouteDetailPageProps) {
                       ...locationWeather,
                       location: location.location_name || locationWeather.location,
                     }}
-                    color={trip?.color || "#ff6b6b"}
+                    color={trip?.color && !trip.color.startsWith('linear-gradient') ? trip.color : undefined}
                     updatedAt={weatherFetchedAt}
                     showMeta
                   />
