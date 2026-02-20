@@ -23,7 +23,6 @@ Phase 2 — Architecture:
 
 Phase 4+:
   ✔ Image pipeline — avatars on Cloudflare R2; key-based storage (not full URLs); resolveAvatarUrl helper
-  ☐ More Server Components — user profile, other pages
 
 Phase 4.1 — Trip cover images (photos table + R2):
   ✔ DB: photos table — storage_key, source (unsplash|upload), unsplash_photo_id, photographer_name, photographer_url, blur_hash (required for unsplash)
@@ -33,6 +32,12 @@ Phase 4.1 — Trip cover images (photos table + R2):
   ☐ Shared loading/error patterns — reusable PageLoader, PageError
   ☐ Code style doc — readable-code rules for future PRs
   ☐ Maps integration — Mapbox + coordinates (MAPS_IMPLEMENTATION.md)
+
+Phase 4.2 — More Server Components (SSR Migration):
+  ☐ User Profile (/user) — check auth server-side, instant redirect, pass user prop to client
+  ☐ Auth Page (/auth) — instantly redirect logged-in users to /trips via createServerSupabaseClient
+  ☐ Create/Edit Trip — secure on server; for edit, fetch trip data server-side to skip initial loading
+  ☐ Timeline & Weather sub-pages — convert to server components using NestJS API helpers for instant render
 
 Phase 5 — Public Trip Sharing (later):
   ☐ Add color picker — replace native input[type=color] in profile (shadcn has no built-in; use Popover + react-colorful or similar)
