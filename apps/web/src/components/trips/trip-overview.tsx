@@ -45,6 +45,7 @@ import type { DateRange } from "react-day-picker"
 import type { WeatherData } from "@gotrippin/core"
 import { format } from "date-fns"
 import { resolveTripCoverUrl } from "@/lib/r2"
+import { toast } from "sonner"
 
 export interface TripOverviewActions {
   onNavigate: (screen: "activity" | "flight" | "timeline" | "weather") => void
@@ -136,8 +137,8 @@ export default function TripOverview({
   const { daysUntil, duration, startDate, endDate } = useMemo(() => ({
     daysUntil: trip.start_date ? calculateDaysUntil(trip.start_date) : 0,
     duration: trip.start_date && trip.end_date ? calculateDuration(trip.start_date, trip.end_date) : 0,
-    startDate: trip.start_date ? formatTripDate(trip.start_date) : "TBD",
-    endDate: trip.end_date ? formatTripDate(trip.end_date) : "TBD",
+    startDate: trip.start_date ? formatTripDate(trip.start_date) : "—",
+    endDate: trip.end_date ? formatTripDate(trip.end_date) : "—",
   }), [trip.start_date, trip.end_date])
 
   const derivedLocations = timelineLocations.length ? timelineLocations : routeLocations
@@ -771,7 +772,7 @@ export default function TripOverview({
                             className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold text-white"
                             onClick={(e) => {
                               e.stopPropagation()
-                              onRefetchWeather().catch(() => {})
+                              onRefetchWeather().catch((e: unknown) => toast.error("Retry failed", { description: e instanceof Error ? e.message : String(e) }))
                             }}
                           >
                             {t("weather.retry", { defaultValue: "Retry" })}

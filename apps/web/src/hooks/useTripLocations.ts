@@ -46,7 +46,7 @@ export function useTripLocations(tripId?: string | null): UseTripLocationsResult
   }, [tripId])
 
   useEffect(() => {
-    fetchLocations().catch(() => {})
+    void fetchLocations()
   }, [fetchLocations])
 
   return {

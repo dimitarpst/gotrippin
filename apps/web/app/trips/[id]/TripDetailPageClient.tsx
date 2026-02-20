@@ -22,6 +22,9 @@ interface TripDetailPageClientProps {
   unassignedActivities: Activity[];
   weatherByLocation: Record<string, TripLocationWeather>;
   weatherFetchedAt: number | null;
+  locationsError: string | null;
+  activitiesError: string | null;
+  weatherError: string | null;
   shareCode: string;
 }
 
@@ -33,6 +36,9 @@ export default function TripDetailPageClient({
   unassignedActivities,
   weatherByLocation,
   weatherFetchedAt,
+  locationsError,
+  activitiesError,
+  weatherError,
   shareCode,
 }: TripDetailPageClientProps) {
   const router = useRouter();
@@ -112,18 +118,20 @@ export default function TripDetailPageClient({
       timelineLocations,
       activitiesByLocation,
       unassignedActivities,
+      error: locationsError || activitiesError || null,
       onRefetch: async () => router.refresh(),
     }),
-    [routeLocations, timelineLocations, activitiesByLocation, unassignedActivities, router]
+    [routeLocations, timelineLocations, activitiesByLocation, unassignedActivities, locationsError, activitiesError, router]
   );
 
   const weather: TripOverviewWeather = useMemo(
     () => ({
       byLocation: weatherByLocation,
       fetchedAt: weatherFetchedAt,
+      error: weatherError,
       onRefetch: async () => router.refresh(),
     }),
-    [weatherByLocation, weatherFetchedAt, router]
+    [weatherByLocation, weatherFetchedAt, weatherError, router]
   );
 
   return (

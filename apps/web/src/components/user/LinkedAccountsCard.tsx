@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { appConfig } from "@/config/appConfig";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface LinkedAccountsCardProps {
   hasEmailPassword: boolean;
@@ -61,8 +62,8 @@ export default function LinkedAccountsCard({
     const id = runWhenIdle(() => {
       const value = hasEmailPassword ? "email" : "google";
       supabase.auth.updateUser({ data: { signup_provider: value } }).then(() => {
-        refreshProfileRef.current?.().catch(() => {});
-      }).catch(() => {});
+        refreshProfileRef.current?.().catch((e: unknown) => console.error("refreshProfile failed after signup_provider update:", e));
+      }).catch((e: unknown) => console.error("signup_provider update failed:", e));
     });
     return () => cancelIdle(id);
   }, [user?.id, signupProvider, hasEmailPassword, hasGoogle]);
@@ -85,7 +86,7 @@ export default function LinkedAccountsCard({
         }
         if (data === true) {
           await supabase.rpc("ensure_email_identity");
-          if (!cancelled) refreshProfileRef.current?.().catch(() => {});
+          if (!cancelled) refreshProfileRef.current?.().catch((e: unknown) => console.error("refreshProfile failed after ensure_email_identity:", e));
         }
         if (!cancelled) setHasPasswordFromDb(data === true);
       } catch {
@@ -246,7 +247,7 @@ export default function LinkedAccountsCard({
           void (async () => {
             try {
               await supabase.rpc("ensure_email_identity");
-              refreshProfileRef.current?.().catch(() => {});
+              refreshProfileRef.current?.().catch((e: unknown) => console.error("refreshProfile failed after password already set:", e));
             } catch {
               /* ignore */
             }
@@ -284,7 +285,10 @@ export default function LinkedAccountsCard({
           console.warn("ensure_email_identity failed (password was still set):", ensureErr);
         }
 
-        await supabase.auth.refreshSession().catch(() => {});
+        await supabase.auth.refreshSession().catch((e: unknown) => {
+          console.error("Session refresh failed after add-password:", e);
+          toast.error("Session refresh failed", { description: "Your session may be stale — please reload if you experience issues." });
+        });
         const { data: { session: sessionAfterRefresh } } = await supabase.auth.getSession();
         const identitiesAfterRefresh = sessionAfterRefresh?.user?.identities?.map((i: { provider: string }) => i.provider) ?? [];
         const hasEmailIdentity = identitiesAfterRefresh.includes("email");
@@ -293,7 +297,7 @@ export default function LinkedAccountsCard({
           await supabase.auth.signInWithPassword({ email: user.email, password: newPassword });
         }
 
-        refreshProfileRef.current?.().catch(() => {});
+        refreshProfileRef.current?.().catch((e: unknown) => console.error("refreshProfile failed after add-password:", e));
       })();
     } catch (err) {
       const rawMessage = err instanceof Error ? err.message : String(err);

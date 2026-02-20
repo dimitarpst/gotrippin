@@ -46,16 +46,32 @@ export default async function TripDetailPage({
     notFound();
   }
 
+  let locationsError: string | null = null;
+  let activitiesError: string | null = null;
+  let weatherError: string | null = null;
+
   const [routeLocations, timelineRaw, weather] = await Promise.all([
-    getLocations(trip.id, token).catch(() => []),
+    getLocations(trip.id, token).catch((e: unknown) => {
+      locationsError = e instanceof Error ? e.message : "Failed to load locations";
+      console.error("[TripDetailPage] getLocations failed:", e);
+      return [];
+    }),
     getGroupedActivities(trip.id, token)
       .then(normalizeTimelineData)
-      .catch(() => ({
-        locations: [],
-        activitiesByLocation: {} as Record<string, Activity[]>,
-        unassigned: [] as Activity[],
-      })),
-    getTripWeather(trip.id, 5, token).catch(() => null),
+      .catch((e: unknown) => {
+        activitiesError = e instanceof Error ? e.message : "Failed to load activities";
+        console.error("[TripDetailPage] getGroupedActivities failed:", e);
+        return {
+          locations: [],
+          activitiesByLocation: {} as Record<string, Activity[]>,
+          unassigned: [] as Activity[],
+        };
+      }),
+    getTripWeather(trip.id, 5, token).catch((e: unknown) => {
+      weatherError = e instanceof Error ? e.message : "Failed to load weather";
+      console.error("[TripDetailPage] getTripWeather failed:", e);
+      return null;
+    }),
   ]);
 
   const weatherByLocation =
@@ -76,6 +92,9 @@ export default async function TripDetailPage({
       unassignedActivities={timelineRaw.unassigned}
       weatherByLocation={weatherByLocation}
       weatherFetchedAt={weather ? Date.now() : null}
+      locationsError={locationsError}
+      activitiesError={activitiesError}
+      weatherError={weatherError}
       shareCode={shareCode}
     />
   );

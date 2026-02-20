@@ -11,6 +11,7 @@ import { ImageIcon, Camera } from "lucide-react"
 import { useTripLocations } from "@/hooks/useTripLocations"
 import { createActivity } from "@/lib/api/activities"
 import { useAuth } from "@/contexts/AuthContext"
+import { toast } from "sonner"
 
 interface TrainRouteFormProps {
   tripId: string
@@ -117,7 +118,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
           <div className="mt-2 text-xs text-red-300 flex items-center gap-2">
             <span>Failed to load stops: {locationsError}</span>
             <button
-              onClick={() => refetch().catch(() => {})}
+              onClick={() => refetch().catch((e: unknown) => toast.error("Retry failed", { description: e instanceof Error ? e.message : String(e) }))}
               className="underline decoration-dotted text-white/80"
               type="button"
             >
@@ -151,7 +152,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
                 Go to route
               </button>
               <button
-                onClick={() => refetch().catch(() => {})}
+                onClick={() => refetch().catch((e: unknown) => toast.error("Retry failed", { description: e instanceof Error ? e.message : String(e) }))}
                 className="text-sm font-medium px-4 py-2 rounded-lg text-white/80 underline decoration-dotted"
               >
                 Retry

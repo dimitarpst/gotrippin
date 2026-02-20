@@ -54,7 +54,7 @@ export function useTripTimeline(tripId?: string | null): UseTripTimelineResult {
   }, [tripId, user, authLoading, accessToken]);
 
   useEffect(() => {
-    fetchData().catch(() => {});
+    void fetchData();
   }, [fetchData]);
 
   return {

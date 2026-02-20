@@ -49,7 +49,7 @@ export function useTripWeather(tripId?: string | null, days?: number): UseTripWe
   }, [tripId, days, user, authLoading, accessToken]);
 
   useEffect(() => {
-    fetchWeather().catch(() => {});
+    void fetchWeather();
   }, [fetchWeather]);
 
   const byLocation = useMemo(() => {

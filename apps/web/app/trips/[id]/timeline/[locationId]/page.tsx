@@ -12,6 +12,7 @@ import { useTrip } from "@/hooks/useTrips"
 import { useTripTimeline } from "@/hooks/useTripTimeline"
 import { useTripWeather } from "@/hooks/useWeather"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import type { TripLocation } from "@gotrippin/core"
 
 interface RouteDetailPageProps {
@@ -161,7 +162,7 @@ export default function RouteDetailPage({ params }: RouteDetailPageProps) {
                         className="underline decoration-dotted text-white/80"
                         onClick={(e) => {
                           e.stopPropagation()
-                          refetchWeather().catch(() => {})
+                          refetchWeather().catch((e: unknown) => toast.error("Retry failed", { description: e instanceof Error ? e.message : String(e) }))
                         }}
                       >
                         {t("weather.retry", { defaultValue: "Retry" })}
@@ -330,7 +331,7 @@ export default function RouteDetailPage({ params }: RouteDetailPageProps) {
                         <button
                           type="button"
                           className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold text-white"
-                          onClick={() => refetchWeather().catch(() => {})}
+                          onClick={() => refetchWeather().catch((e: unknown) => toast.error("Retry failed", { description: e instanceof Error ? e.message : String(e) }))}
                         >
                           {t("weather.retry", { defaultValue: "Retry" })}
                         </button>

@@ -27,8 +27,8 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
       const daysUntil = trip.start_date ? calculateDaysUntil(trip.start_date) : 0
       return {
         ...trip,
-        startDate: trip.start_date ? formatTripDate(trip.start_date) : "TBD",
-        endDate: trip.end_date ? formatTripDate(trip.end_date) : "TBD",
+        startDate: trip.start_date ? formatTripDate(trip.start_date) : "—",
+        endDate: trip.end_date ? formatTripDate(trip.end_date) : "—",
         daysUntil,
         duration: trip.start_date && trip.end_date ? calculateDuration(trip.start_date, trip.end_date) : 0,
       }
