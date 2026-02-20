@@ -70,7 +70,7 @@ Phase 4.3 — No Fallbacks. No Silent Failures. Handle Errors:
     ✔ AvatarUpload.tsx img onerror — replaces broken avatar src with a base64 SVG placeholder silently. Remove the replacement; show a visible broken/missing state (e.g. grey square or initials) so it's clear the image failed, not that it loaded.
 
 Phase 4.2 — More Server Components (SSR Migration):
-  ☐ User Profile (/user) — check auth server-side, instant redirect, pass user prop to client
+  ✔ User Profile (/user) — check auth server-side, instant redirect, pass user prop to client
   ☐ Auth Page (/auth) — instantly redirect logged-in users to /trips via createServerSupabaseClient
   ☐ Create/Edit Trip — secure on server; for edit, fetch trip data server-side to skip initial loading
   ☐ Timeline & Weather sub-pages — convert to server components using NestJS API helpers for instant render

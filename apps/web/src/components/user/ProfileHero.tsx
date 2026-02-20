@@ -170,11 +170,11 @@ export default function ProfileHero({
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              <span>{t("profile.joined")} {formatMonthYear(data.createdAt)}</span>
+              <span suppressHydrationWarning>{t("profile.joined")} {formatMonthYear(data.createdAt)}</span>
             </div>
             <div className="flex items-center gap-2">
               <Star className="w-4 h-4" />
-              <span>{t("profile.last_signin")} {formatMonthYear(data.lastSignInAt)}</span>
+              <span suppressHydrationWarning>{t("profile.last_signin")} {formatMonthYear(data.lastSignInAt)}</span>
             </div>
           </div>
         </div>
