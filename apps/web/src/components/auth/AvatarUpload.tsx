@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Upload, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   uploadAvatarAction,
   listAvatarsAction,
@@ -226,12 +228,9 @@ export function AvatarUpload({
       {isLoadingAvatars && allOptions.length === 0 ? (
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: 6 }).map((_, index) => (
-            <motion.div
+            <Skeleton
               key={`skeleton-${index}`}
-              className="w-12 h-12 rounded-lg bg-white/5 animate-pulse shrink-0"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: index * 0.1 }}
+              className="w-12 h-12 rounded-lg bg-white/5 shrink-0"
             />
           ))}
         </div>
@@ -288,7 +287,7 @@ export function AvatarUpload({
               className="hidden"
             />
             {isUploading ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <Spinner className="size-4 text-white" />
             ) : (
               <Upload className="w-4 h-4 text-white/60" />
             )}

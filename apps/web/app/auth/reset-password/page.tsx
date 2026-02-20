@@ -6,7 +6,9 @@ import { motion } from "framer-motion";
 import { Lock, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTranslation } from "react-i18next";
 
 export default function ResetPasswordPage() {
@@ -167,8 +169,8 @@ export default function ResetPasswordPage() {
             <>
               {!isSessionReady && !error && (
                 <div className="text-center text-white/60 py-8">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-                  <p className="mt-4">Verifying reset link...</p>
+                  <Spinner className="size-8 mx-auto text-[var(--color-accent)] mb-4" />
+                  <p>Verifying reset link...</p>
                 </div>
               )}
 
@@ -210,7 +212,14 @@ export default function ResetPasswordPage() {
                     disabled={loading || !password || !confirmPassword}
                     className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium py-6 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-[var(--accent)]/20"
                   >
-                    {loading ? t("auth.resetting") : t("auth.reset_password_button")}
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <Spinner className="size-4" />
+                        {t("auth.resetting")}
+                      </div>
+                    ) : (
+                      t("auth.reset_password_button")
+                    )}
                   </Button>
                 </motion.form>
               )}
@@ -219,10 +228,13 @@ export default function ResetPasswordPage() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg"
                 >
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-400">{error}</p>
+                  <Alert variant="destructive" className="bg-red-500/10 border-red-500/20">
+                    <AlertCircle className="size-4" />
+                    <AlertDescription className="text-red-400">
+                      {error}
+                    </AlertDescription>
+                  </Alert>
                 </motion.div>
               )}
             </>

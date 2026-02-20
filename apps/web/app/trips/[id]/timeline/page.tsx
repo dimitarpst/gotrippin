@@ -8,7 +8,9 @@ import { useTrip } from "@/hooks/useTrips";
 import { useTripWeather } from "@/hooks/useWeather";
 import AuroraBackground from "@/components/effects/aurora-background";
 import { Card } from "@/components/ui/card";
-import { Calendar, ArrowLeft, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar, ArrowLeft, AlertTriangle, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TripLocation } from "@gotrippin/core";
 
@@ -110,21 +112,23 @@ export default function TimelinePage({ params }: TimelinePageProps) {
         {isLoading && (
           <div className="space-y-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-24 rounded-2xl bg-white/5 border border-white/10 animate-pulse" />
+              <Skeleton key={i} className="h-24 rounded-2xl bg-white/5 border border-white/10" />
             ))}
           </div>
         )}
 
         {!isLoading && error && (
-          <Card className="p-4 border-white/10 bg-white/5 text-sm text-red-200">
-            {error}
-          </Card>
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 mb-4">
+            <AlertCircle className="size-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         {!isLoading && !error && weatherError && (
-          <Card className="p-3 border-white/10 bg-white/5 text-xs text-red-200">
-            {weatherError}
-          </Card>
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 mb-4 p-3">
+            <AlertCircle className="size-4" />
+            <AlertDescription className="text-xs">{weatherError}</AlertDescription>
+          </Alert>
         )}
 
         {!isLoading && !error && (

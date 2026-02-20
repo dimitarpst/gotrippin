@@ -12,6 +12,8 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 import { useTrip } from "@/hooks/useTrips"
 import { use, useEffect, useMemo, useState } from "react"
 import { useTripWeather } from "@/hooks/useWeather"
@@ -234,28 +236,29 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                 {/* Error / Empty states */}
                 {(tripError || weatherError) && (
                     <div className="mb-6">
-                        <Card className="border border-white/10 bg-white/5 backdrop-blur-xl rounded-[24px] p-5">
-                            <div className="text-sm font-semibold mb-2">
-                                {t("weather.unavailable", { defaultValue: "Weather unavailable" })}
-                            </div>
-                            <div className="text-xs text-white/70">
-                                {tripError || weatherError}
-                            </div>
-                            <div className="mt-4 flex gap-3">
-                                <button
-                                    onClick={() => refetch().catch(() => {})}
-                                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold"
-                                >
-                                    {t("weather.retry", { defaultValue: "Retry" })}
-                                </button>
-                                <button
-                                    onClick={() => router.back()}
-                                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-semibold text-white/80"
-                                >
-                                    {t("common.back", { defaultValue: "Go back" })}
-                                </button>
-                            </div>
-                        </Card>
+                        <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 backdrop-blur-xl rounded-[24px] p-5">
+                            <AlertCircle className="size-4" />
+                            <AlertTitle>{t("weather.unavailable", { defaultValue: "Weather unavailable" })}</AlertTitle>
+                            <AlertDescription>
+                                <div className="text-xs text-white/70 mb-4">
+                                    {tripError || weatherError}
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => refetch().catch(() => {})}
+                                        className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold"
+                                    >
+                                        {t("weather.retry", { defaultValue: "Retry" })}
+                                    </button>
+                                    <button
+                                        onClick={() => router.back()}
+                                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-semibold text-white/80"
+                                    >
+                                        {t("common.back", { defaultValue: "Go back" })}
+                                    </button>
+                                </div>
+                            </AlertDescription>
+                        </Alert>
                     </div>
                 )}
 
@@ -324,35 +327,36 @@ export default function WeatherPage({ params }: WeatherPageProps) {
                 {/* Per-stop warning */}
                 {selectedLocation?.error && (
                     <div className="mb-6">
-                        <Card className="border border-amber-200/20 bg-amber-200/5 backdrop-blur-xl rounded-[24px] p-5">
-                            <div className="text-sm font-semibold mb-2">
-                                {t("weather.stop_error_title", { defaultValue: "Couldn’t fetch weather for this stop" })}
-                            </div>
-                            <div className="text-xs text-white/70">
-                                {selectedLocation.error}
-                            </div>
-                            {selectedLocation.error.toLowerCase().includes("time traveler") && (
-                                <div className="text-xs text-white/60 mt-2">
-                                    {t("weather.stop_error_hint_dates", {
-                                      defaultValue: "This usually means the stop’s date range is invalid. Check arrival/departure dates.",
-                                    })}
+                        <Alert variant="destructive" className="border-amber-200/20 bg-amber-200/5 backdrop-blur-xl rounded-[24px] p-5">
+                            <AlertCircle className="size-4 text-amber-200/90" />
+                            <AlertTitle className="text-amber-200/90">{t("weather.stop_error_title", { defaultValue: "Couldn’t fetch weather for this stop" })}</AlertTitle>
+                            <AlertDescription>
+                                <div className="text-xs text-white/70 mb-2">
+                                    {selectedLocation.error}
                                 </div>
-                            )}
-                            <div className="mt-4 flex gap-3">
-                                <button
-                                    onClick={() => refetch().catch(() => {})}
-                                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold"
-                                >
-                                    {t("weather.retry", { defaultValue: "Retry" })}
-                                </button>
-                                <button
-                                    onClick={() => router.push(`/trips/${shareCode}/activity/route`)}
-                                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-semibold text-white/80"
-                                >
-                                    {t("weather.check_route_dates", { defaultValue: "Check route dates" })}
-                                </button>
-                            </div>
-                        </Card>
+                                {selectedLocation.error.toLowerCase().includes("time traveler") && (
+                                    <div className="text-xs text-white/60 mb-4">
+                                        {t("weather.stop_error_hint_dates", {
+                                          defaultValue: "This usually means the stop’s date range is invalid. Check arrival/departure dates.",
+                                        })}
+                                    </div>
+                                )}
+                                <div className="mt-4 flex gap-3">
+                                    <button
+                                        onClick={() => refetch().catch(() => {})}
+                                        className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold text-white"
+                                    >
+                                        {t("weather.retry", { defaultValue: "Retry" })}
+                                    </button>
+                                    <button
+                                        onClick={() => router.push(`/trips/${shareCode}/activity/route`)}
+                                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-semibold text-white/80"
+                                    >
+                                        {t("weather.check_route_dates", { defaultValue: "Check route dates" })}
+                                    </button>
+                                </div>
+                            </AlertDescription>
+                        </Alert>
                     </div>
                 )}
 

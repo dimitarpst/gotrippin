@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation"
 import AuroraBackground from "@/components/effects/aurora-background"
+import PageLoader from "@/components/ui/page-loader"
 import CreateTrip from "@/components/trips/create-trip"
+import { toast } from "sonner"
 import { useTrips } from "@/hooks/useTrips"
 import { createTripAction } from "@/actions/trips"
 import { useAuth } from "@/contexts/AuthContext"
@@ -43,11 +45,14 @@ export default function CreateTripPage() {
       const result = await createTripAction(tripData)
 
       if (!result.success) {
-        console.error("Failed to create trip:", result.error)
+        toast.error(t("trips.create_failed", { defaultValue: "Failed to create trip" }), {
+          description: result.error
+        })
         return
       }
 
       const newTrip = result.data
+      toast.success(t("trips.create_success", { defaultValue: "Trip created successfully!" }))
 
       if (newTrip.id && data.locations && data.locations.length > 0) {
         // Add locations (best-effort, don't block trip creation on failure)
@@ -85,7 +90,9 @@ export default function CreateTripPage() {
         }
       }
     } catch (error) {
-      console.error("Failed to create trip:", error)
+      toast.error(t("common.error_occurred", { defaultValue: "An error occurred" }), {
+        description: error instanceof Error ? error.message : String(error)
+      })
     }
   }
 
@@ -94,30 +101,11 @@ export default function CreateTripPage() {
   }
 
   if (!mounted || authLoading) {
-    return (
-      <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-        <AuroraBackground />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            {mounted && <p className="text-white text-lg">{t('trips.loading')}</p>}
-          </div>
-        </div>
-      </main>
-    )
+    return <PageLoader message={mounted ? t("trips.loading") : undefined} />
   }
 
   if (!user) {
-    return (
-      <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-        <AuroraBackground />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-white">{t('trips.redirecting')}</p>
-          </div>
-        </div>
-      </main>
-    )
+    return <PageLoader message={t("trips.redirecting")} />
   }
 
   return (

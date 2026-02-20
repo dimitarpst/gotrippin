@@ -6,6 +6,9 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import UserProfile from "@/components/user/UserProfile";
+import PageLoader from "@/components/ui/page-loader";
+import PageError from "@/components/ui/page-error";
+import { toast } from "sonner";
 
 export default function UserPage() {
   const { user, loading } = useAuth();
@@ -101,13 +104,14 @@ export default function UserPage() {
 
       // Do NOT run refreshProfile after save — it contends with the next save's profiles update and causes hangs (refreshSession can block)
       setSaving(false);
+      toast.success(t("profile.save_success", { defaultValue: "Profile updated successfully!" }));
       return true;
     } catch (e: unknown) {
-      if (e instanceof Error) {
-        setError(e.message);
-      } else {
-        setError("An unknown error occurred");
-      }
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+      toast.error(t("profile.save_failed", { defaultValue: "Failed to update profile" }), {
+        description: msg
+      });
       setSaving(false);
       return false;
     }
@@ -117,37 +121,23 @@ export default function UserPage() {
 
   // Match trips page: render nothing until auth ready (avoids mount race)
   if (loading) {
-    return null;
+    return <PageLoader />;
   }
 
   // Show login prompt if not logged in (e.g. signed out, or profile deleted)
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
-        <div className="text-center px-4 max-w-md">
-          <h1 className="text-3xl font-bold mb-4 text-[var(--color-foreground)]">
-            {t("profile.please_sign_in")}
-          </h1>
-          <p className="text-white/60 mb-8">
-            {t("profile.sign_in_required")}
-          </p>
-          <button
-            onClick={() => router.push("/auth")}
-            className="px-6 py-3 bg-[var(--color-accent)] text-[var(--color-accent-foreground)] rounded-lg font-semibold hover:opacity-90 transition-opacity"
-          >
-            {t("profile.go_to_sign_in")}
-          </button>
-        </div>
-      </div>
+      <PageError
+        title={t("profile.please_sign_in")}
+        message={t("profile.sign_in_required")}
+        onRetry={() => router.push("/auth")}
+        showAurora={true}
+      />
     );
   }
 
   if (!profileData) {
-    return (
-      <div className="pt-20 text-center text-white/60">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
-      </div>
-    );
+    return <PageLoader message={t("profile.loading_profile")} />;
   }
 
   // Detect authentication providers

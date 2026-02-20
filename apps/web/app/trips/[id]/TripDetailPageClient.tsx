@@ -10,6 +10,7 @@ import type {
   TripOverviewWeather,
 } from "@/components/trips/trip-overview";
 import { updateTripAction, deleteTripAction } from "@/actions/trips";
+import { toast } from "sonner";
 import type { Trip, TripLocation, Activity, TripLocationWeather } from "@gotrippin/core";
 import type { DateRange } from "react-day-picker";
 
@@ -53,9 +54,10 @@ export default function TripDetailPageClient({
         if (!trip?.id) return;
         const result = await deleteTripAction(trip.id);
         if (result.success) {
+          toast.success("Trip deleted successfully");
           router.push("/");
         } else {
-          console.error("Failed to delete trip:", result.error);
+          toast.error("Failed to delete trip", { description: result.error });
         }
       },
       onShare: () => {
@@ -74,27 +76,30 @@ export default function TripDetailPageClient({
           end_date: dateRange.to ? dateRange.to.toISOString() : null,
         });
         if (result.success) {
+          toast.success("Dates updated");
           router.refresh();
         } else {
-          console.error("Failed to update dates:", result.error);
+          toast.error("Failed to update dates", { description: result.error });
         }
       },
       onChangeBackground: async (_type, coverPhoto) => {
         if (!trip?.id) return;
         const result = await updateTripAction(trip.id, { cover_photo: coverPhoto, color: undefined });
         if (result.success) {
+          toast.success("Background updated");
           router.refresh();
         } else {
-          console.error("Failed to update background:", result.error);
+          toast.error("Failed to update background", { description: result.error });
         }
       },
       onChangeBackgroundColor: async (color) => {
         if (!trip?.id) return;
         const result = await updateTripAction(trip.id, { color, cover_photo: undefined });
         if (result.success) {
+          toast.success("Color updated");
           router.refresh();
         } else {
-          console.error("Failed to update background color:", result.error);
+          toast.error("Failed to update color", { description: result.error });
         }
       },
     }),

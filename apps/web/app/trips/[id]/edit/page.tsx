@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation"
 import { useEffect, use, useState } from "react"
 import AuroraBackground from "@/components/effects/aurora-background"
+import PageLoader from "@/components/ui/page-loader"
+import PageError from "@/components/ui/page-error"
 import CreateTrip from "@/components/trips/create-trip"
+import { toast } from "sonner"
 import { useTrip } from "@/hooks/useTrips"
 import { updateTripAction } from "@/actions/trips"
 import { useAuth } from "@/contexts/AuthContext"
@@ -76,12 +79,17 @@ export default function EditTripPage({ params }: EditTripPageProps) {
       const result = await updateTripAction(trip.id, tripData)
 
       if (result.success) {
+        toast.success(t("trips.update_success", { defaultValue: "Trip updated successfully!" }))
         router.push(`/trips/${shareCode}`)
       } else {
-        console.error("Failed to update trip:", result.error)
+        toast.error(t("trips.update_failed", { defaultValue: "Failed to update trip" }), {
+          description: result.error
+        })
       }
     } catch (error) {
-      console.error("Failed to update trip:", error)
+      toast.error(t("common.error_occurred", { defaultValue: "An error occurred" }), {
+        description: error instanceof Error ? error.message : String(error)
+      })
     }
   }
 
@@ -90,49 +98,20 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   }
 
   if (!mounted || authLoading || tripLoading) {
-    return (
-      <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-        <AuroraBackground />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-8 h-8 border-4 border-[#ff6b6b] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            {mounted && <p className="text-white text-lg">{t('trips.loading')}</p>}
-          </div>
-        </div>
-      </main>
-    )
+    return <PageLoader message={mounted ? t("trips.loading") : undefined} />
   }
 
   if (!user) {
-    return (
-      <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-        <AuroraBackground />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-white">{t('trips.redirecting')}</p>
-          </div>
-        </div>
-      </main>
-    )
+    return <PageLoader message={t("trips.redirecting")} />
   }
 
   if (!trip) {
     return (
-      <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-        <AuroraBackground />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-white text-lg">{t('trips.trip_not_found')}</p>
-            <button
-              onClick={() => router.push('/')}
-              className="mt-4 px-6 py-2 rounded-full font-semibold"
-              style={{ background: "#ff6b6b", color: "white" }}
-            >
-              {t('trips.go_home')}
-            </button>
-          </div>
-        </div>
-      </main>
+      <PageError
+        title={t("trips.trip_not_found")}
+        message={t("trips.trip_not_found_description", { defaultValue: "We couldn't find the trip you're looking for." })}
+        onRetry={() => router.push("/")}
+      />
     )
   }
 

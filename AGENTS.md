@@ -1,5 +1,15 @@
 # Agent rules
 
+## Available MCPs
+
+Three MCP servers are available and should be used proactively:
+
+- **`user-shadcn`** — Browse, search and install shadcn components (`skeleton`, `spinner`, `alert`, `sonner`, etc.). Always check shadcn before writing custom UI primitives.
+- **`user-context7`** — Fetch up-to-date library docs and code examples. Use when unsure about an API or checking for breaking changes.
+- **`user-supabase`** — Query Supabase (schema, data, RLS, RPCs). Use to verify tables, inspect data, or check RLS policies without leaving the editor.
+
+---
+
 ## Quick Start
 
 **First steps:**

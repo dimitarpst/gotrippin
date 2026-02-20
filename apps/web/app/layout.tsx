@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import I18nProvider from "../src/i18n/I18nProvider";
 import { AuthProvider } from "../src/contexts/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 import {
   DEFAULT_LANGUAGE,
   PREFERRED_LANGUAGE_COOKIE,
@@ -32,7 +33,10 @@ export default async function RootLayout({
     <html lang={initialLanguage} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <AuthProvider>
-          <I18nProvider initialLanguage={initialLanguage}>{children}</I18nProvider>
+          <I18nProvider initialLanguage={initialLanguage}>
+            {children}
+            <Toaster position="top-center" expand={true} richColors />
+          </I18nProvider>
         </AuthProvider>
       </body>
     </html>
