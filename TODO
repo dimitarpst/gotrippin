@@ -73,6 +73,7 @@ Phase 4.2 — More Server Components (SSR Migration):
   ✔ User Profile (/user) — check auth server-side, instant redirect, pass user prop to client
   ✔ Auth Page (/auth) — instantly redirect logged-in users to /trips via createServerSupabaseClient
   ✔ Create/Edit Trip — secure on server; for edit, fetch trip data server-side to skip initial loading
+  ✔ Unsplash search drawer thumbnails — use blurhash as placeholder (CoverImageWithBlur) until image loads
   ☐ Timeline & Weather sub-pages — convert to server components using NestJS API helpers for instant render
   ☐ Trip Detail Page — convert to server component using NestJS API helpers for instant render
   ☐ Trip List Page — convert to server component using NestJS API helpers for instant render

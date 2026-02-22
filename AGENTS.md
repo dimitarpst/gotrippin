@@ -55,6 +55,10 @@ Three MCP servers are available and should be used proactively:
 - **Platform-specific:** UI components, navigation, maps (different libraries), auth flows (redirects vs deep links).
 - **Audit:** See `docs/BACKEND_FRONTEND_MOBILE_AUDIT.md` for current gaps and recommendations.
 
+## Images & Unsplash
+
+- **Blurhash:** We use blurhash for image placeholders. Whenever we use Unsplash (search results, cover picker, etc.), show blurhash as the placeholder until the image loads — e.g. via `CoverImageWithBlur` or equivalent. Store `blur_hash` for Unsplash-sourced photos (photos table has it). If we add more Unsplash surfaces later, use blurhash there too.
+
 ## Storage
 
 - **No localStorage.** Prefer session-scoped state (`sessionStorage` on web where appropriate), cookies for auth, and secure storage on native. localStorage is per-device, doesn’t align with “same data everywhere” (web + mobile), and RN uses AsyncStorage. See `docs/BACKEND_FRONTEND_MOBILE_AUDIT.md`.

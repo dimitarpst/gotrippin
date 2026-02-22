@@ -6,6 +6,7 @@ import { X, Search, Loader2 } from "lucide-react"
 import { useImageSearch } from "@/hooks/useImageSearch"
 import { useTranslation } from "react-i18next"
 import type { CoverPhotoInput } from "@gotrippin/core"
+import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 
 interface BackgroundPickerProps {
   open: boolean
@@ -96,7 +97,6 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, defau
 
   const handleImageSelect = (image: any) => {
     const blurHash = image.blur_hash ?? null
-    console.log("[background-picker] Sending cover with blur_hash:", blurHash ? `${String(blurHash).slice(0, 16)}...` : "null")
     onSelect("image", {
       unsplash_photo_id: image.id,
       download_location: image.links.download_location,
@@ -112,7 +112,6 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, defau
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <motion.div
             className="fixed inset-0 bg-black/60 z-40"
             initial={{ opacity: 0 }}
@@ -207,10 +206,12 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, defau
                           onClick={() => handleImageSelect(image)}
                           className="relative aspect-[3/4] rounded-xl overflow-hidden group"
                         >
-                          <img
+                          <CoverImageWithBlur
                             src={image.urls.small}
                             alt={image.alt_description || "Travel photo"}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            blurHash={image.blur_hash ?? undefined}
+                            className="absolute inset-0 w-full h-full rounded-xl"
+                            imgClassName="group-hover:scale-110 transition-transform duration-300"
                           />
                           {/* Subtle gradient for attribution readability */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
