@@ -46,6 +46,7 @@ import type { WeatherData } from "@gotrippin/core"
 import { format } from "date-fns"
 import { resolveTripCoverUrl } from "@/lib/r2"
 import { updateTripCoverDominantColor } from "@/lib/api/trips"
+import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 import { toast } from "sonner"
 
 export interface TripOverviewActions {
@@ -311,11 +312,12 @@ export default function TripOverview({
             }}
           >
             {coverUrl ? (
-              <img
+              <CoverImageWithBlur
                 src={coverUrl}
                 alt={trip.destination || "Trip destination"}
-                className="w-full h-full object-cover"
-                style={{
+                blurHash={(trip.cover_photo as { blur_hash?: string | null } | null | undefined)?.blur_hash ?? undefined}
+                className="absolute inset-0 w-full h-full"
+                imgStyle={{
                   maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
                   WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
                 }}

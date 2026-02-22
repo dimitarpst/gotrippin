@@ -8,6 +8,7 @@ import WeatherWidget from "./weather-widget"
 import type { Trip } from "@gotrippin/core"
 import type { WeatherData } from "@gotrippin/core"
 import { resolveTripCoverUrl } from "@/lib/r2"
+import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 
 interface TripWithCalculations extends Trip {
   startDate: string
@@ -63,12 +64,12 @@ export default function TripGrid({ trips, activeFilter, onSelectTrip }: TripGrid
                         return (
                           <div className="relative h-48 overflow-hidden" style={{ background: coverUrl ? 'transparent' : trip.color || '#ff6b6b' }}>
                             {coverUrl && (
-                              <motion.img
+                              <CoverImageWithBlur
                                 src={coverUrl}
                                 alt={trip.destination || trip.title || "Trip"}
-                                className="w-full h-full object-cover"
-                                whileHover={{ scale: 1.1 }}
-                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                blurHash={(trip.cover_photo as { blur_hash?: string | null } | null | undefined)?.blur_hash ?? undefined}
+                                className="absolute inset-0 w-full h-full"
+                                hoverScale
                               />
                             )}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-100 group-hover:from-black/90 transition-all duration-300" />

@@ -11,6 +11,7 @@ export class CoverPhotoDto {
   @IsString() photographer_name: string;
   @IsString() photographer_url: string;
   @IsOptional() @IsString() blur_hash?: string | null;
+  @IsOptional() @IsString() dominant_color?: string | null;
 }
 
 /**

@@ -95,13 +95,15 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, defau
   }, [hasMore, loadingMore, loadMore, activeTab])
 
   const handleImageSelect = (image: any) => {
+    const blurHash = image.blur_hash ?? null
+    console.log("[background-picker] Sending cover with blur_hash:", blurHash ? `${String(blurHash).slice(0, 16)}...` : "null")
     onSelect("image", {
       unsplash_photo_id: image.id,
       download_location: image.links.download_location,
       image_url: image.urls.regular,
       photographer_name: image.user.name,
       photographer_url: image.user.links.html,
-      blur_hash: image.blur_hash ?? null,
+      blur_hash: blurHash,
       dominant_color: image.color ?? null,
     })
   }

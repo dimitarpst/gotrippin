@@ -172,7 +172,15 @@ export class ImagesService {
 
     if (existing) {
       this.logger.log(`Reusing existing photo ${existing.id} for unsplash_photo_id ${input.unsplash_photo_id}`);
-      // Still track the download as Unsplash requires it
+      // Backfill blur_hash/dominant_color if client sent them and we're reusing an old row that might not have them
+      const updates: { blur_hash?: string | null; dominant_color?: string | null } = {};
+      if (input.blur_hash != null) updates.blur_hash = input.blur_hash;
+      if (input.dominant_color != null) updates.dominant_color = input.dominant_color;
+      if (Object.keys(updates).length > 0) {
+        const { error: updateErr } = await supabase.from('photos').update(updates).eq('id', existing.id);
+        if (updateErr) this.logger.warn(`Failed to backfill photo ${existing.id}: ${updateErr.message}`);
+        else this.logger.log(`Backfilled photo ${existing.id} with ${Object.keys(updates).join(', ')}`);
+      }
       void this.trackDownload(input.download_location);
       return existing.id;
     }
