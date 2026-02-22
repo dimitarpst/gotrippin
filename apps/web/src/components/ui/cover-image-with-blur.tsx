@@ -9,6 +9,8 @@ export interface CoverImageWithBlurProps {
   alt: string
   /** Optional BlurHash string; when set, shows as placeholder until image loads */
   blurHash?: string | null
+  /** Background for the container so letterboxing/gaps show this color (e.g. dominant color) */
+  containerBackground?: string | null
   className?: string
   /** Applied to the img (e.g. mask for hero) */
   imgStyle?: React.CSSProperties
@@ -25,6 +27,7 @@ export function CoverImageWithBlur({
   src,
   alt,
   blurHash,
+  containerBackground,
   className = "",
   imgStyle,
   imgClassName = "",
@@ -81,7 +84,11 @@ export function CoverImageWithBlur({
   )
 
   return (
-    <div ref={containerRef} className={`relative overflow-hidden ${className}`}>
+    <div
+      ref={containerRef}
+      className={`relative overflow-hidden ${className}`}
+      style={containerBackground ? { background: containerBackground } : undefined}
+    >
       {showPlaceholder && (
         <canvas
           ref={canvasRef}

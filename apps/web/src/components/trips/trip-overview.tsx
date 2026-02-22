@@ -308,7 +308,7 @@ export default function TripOverview({
           <div
             className="fixed top-0 left-0 w-full h-[45vh] z-[1]"
             style={{
-              background: coverUrl ? 'transparent' : (isGradient ? 'transparent' : backgroundColor),
+              background: coverUrl ? (tripAccent ?? 'var(--color-background)') : (isGradient ? 'transparent' : backgroundColor),
             }}
           >
             {coverUrl ? (
@@ -331,6 +331,19 @@ export default function TripOverview({
               }}
             />
           </div>
+
+          {/* Fill rest of viewport below the 45vh image with dominant color — removes the line/gap */}
+          {!isGradient && (coverUrl ? tripAccent : backgroundColor !== 'transparent') && (
+            <div
+              className="fixed left-0 w-full z-[1]"
+              style={{
+                top: '45vh',
+                bottom: 0,
+                background: coverUrl ? (tripAccent ?? 'var(--color-background)') : backgroundColor,
+              }}
+              aria-hidden
+            />
+          )}
 
           {/* Gradient fade from image to background - only for image/solid color (not gradients) */}
           {!isGradient && (
