@@ -126,15 +126,28 @@ export class SupabaseService {
     return data;
   }
 
-  // Helper method to get a trip by share code (if user is a member)
+  // Helper method to get a trip by share code or by trip id (if user is a member)
   async getTripByShareCode(shareCode: string, userId: string) {
-    const { data: trip, error: tripError } = await this.supabase
+    const byShareCode = await this.supabase
       .from('trips')
       .select('*, cover_photo:photos(*)')
       .eq('share_code', shareCode)
       .single();
 
-    if (tripError || !trip) return null;
+    let trip = byShareCode.data;
+    const tripError = byShareCode.error;
+
+    // If not found by share_code and param looks like a UUID, try by id (e.g. /trips/<uuid>)
+    if ((tripError || !trip) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareCode)) {
+      const byId = await this.supabase
+        .from('trips')
+        .select('*, cover_photo:photos(*)')
+        .eq('id', shareCode)
+        .single();
+      trip = byId.data;
+    }
+
+    if (!trip) return null;
 
     const isMember = await this.isTripMember(trip.id, userId);
     if (!isMember) return null;
