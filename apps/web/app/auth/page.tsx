@@ -1,20 +1,16 @@
-"use client"
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
+import AuthForm from "@/components/auth/AuthForm";
 
-import AuthForm from "@/components/auth/AuthForm"
-import { useAuth } from "@/contexts/AuthContext"
-
-export default function AuthPage() {
-  const { user, loading } = useAuth()
-
-  // Middleware redirects logged-in users to /; show loading until resolved
-  if (loading) {
-    return null
-  }
+export default async function AuthPage() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (user) {
-    return null
+    redirect("/trips");
   }
 
-  return <AuthForm />
+  return <AuthForm />;
 }
-

@@ -71,9 +71,13 @@ Phase 4.3 — No Fallbacks. No Silent Failures. Handle Errors:
 
 Phase 4.2 — More Server Components (SSR Migration):
   ✔ User Profile (/user) — check auth server-side, instant redirect, pass user prop to client
-  ☐ Auth Page (/auth) — instantly redirect logged-in users to /trips via createServerSupabaseClient
+  ✔ Auth Page (/auth) — instantly redirect logged-in users to /trips via createServerSupabaseClient
   ☐ Create/Edit Trip — secure on server; for edit, fetch trip data server-side to skip initial loading
   ☐ Timeline & Weather sub-pages — convert to server components using NestJS API helpers for instant render
+  ☐ Trip Detail Page — convert to server component using NestJS API helpers for instant render
+  ☐ Trip List Page — convert to server component using NestJS API helpers for instant render
+  ☐ Home Page — convert to server component using NestJS API helpers for instant render
+  ☐ User Page — convert to server component using NestJS API helpers for instant render
 
 Phase 5 — Public Trip Sharing (later):
   ☐ Add color picker — replace native input[type=color] in profile (shadcn has no built-in; use Popover + react-colorful or similar)
@@ -82,3 +86,4 @@ Phase 5 — Public Trip Sharing (later):
   ☐ NestJS: GET /trips/share/:shareCode returns public trips without auth
   ☐ Read-only layout — minimal UI for unauthenticated viewers (no DockBar, no edit, CTA to sign up)
   ☐ RLS: allow unauthenticated select for public trips
+

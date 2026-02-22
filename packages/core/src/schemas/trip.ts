@@ -12,6 +12,7 @@ export const PhotoSchema = z.object({
   photographer_name: z.string().nullable().optional(),
   photographer_url: z.string().nullable().optional(),
   blur_hash: z.string().nullable().optional(),
+  dominant_color: z.string().nullable().optional(),
   created_at: z.string().datetime(),
 });
 
@@ -26,6 +27,7 @@ export const CoverPhotoInputSchema = z.object({
   photographer_name: z.string(),
   photographer_url: z.string().url(),
   blur_hash: z.string().nullable().optional(),
+  dominant_color: z.string().nullable().optional(),
 });
 
 export type Photo = z.infer<typeof PhotoSchema>;

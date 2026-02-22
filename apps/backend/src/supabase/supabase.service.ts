@@ -213,4 +213,14 @@ export class SupabaseService {
 
     return !!data;
   }
+
+  /** Update a photo's dominant_color (used after client-side extraction so next load has instant color). */
+  async updatePhotoDominantColor(photoId: string, dominantColor: string) {
+    const { error } = await this.supabase
+      .from('photos')
+      .update({ dominant_color: dominantColor })
+      .eq('id', photoId);
+
+    if (error) throw error;
+  }
 }

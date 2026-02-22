@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Delete,
+  Patch,
   Param,
   Body,
   UseGuards,
@@ -77,6 +78,25 @@ export class TripsController {
 
     const userId = request.user.id;
     return this.tripsService.createTrip(userId, result.data);
+  }
+
+  @Patch(":id/cover-dominant-color")
+  @ApiOperation({ summary: "Update trip cover photo dominant color (persist client-extracted value)" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiResponse({ status: 200, description: "Dominant color updated" })
+  @ApiResponse({ status: 400, description: "Trip has no cover photo" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  @ApiResponse({ status: 404, description: "Trip not found" })
+  async updateCoverDominantColor(
+    @Param("id") id: string,
+    @Req() request: any,
+    @Body() body: { dominant_color: string },
+  ) {
+    const userId = request.user.id;
+    if (!body?.dominant_color || typeof body.dominant_color !== "string") {
+      throw new BadRequestException("dominant_color is required");
+    }
+    return this.tripsService.updateCoverDominantColor(id, userId, body.dominant_color);
   }
 
   @Put(":id")

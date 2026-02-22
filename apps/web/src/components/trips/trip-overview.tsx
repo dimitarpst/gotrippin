@@ -45,6 +45,7 @@ import type { DateRange } from "react-day-picker"
 import type { WeatherData } from "@gotrippin/core"
 import { format } from "date-fns"
 import { resolveTripCoverUrl } from "@/lib/r2"
+import { updateTripCoverDominantColor } from "@/lib/api/trips"
 import { toast } from "sonner"
 
 export interface TripOverviewActions {
@@ -126,7 +127,11 @@ export default function TripOverview({
     onRefetch: onRefetchWeather,
   } = weatherProp
   const { t } = useTranslation()
-  const [dominantColor, setDominantColor] = useState<string | null>(null)
+  // Seed from DB value (stored at photo-selection time) — no flicker on first render.
+  // Canvas extraction below will refine this value once the image loads (same-origin R2 images).
+  const [dominantColor, setDominantColor] = useState<string | null>(
+    (trip.cover_photo as { dominant_color?: string | null } | null | undefined)?.dominant_color ?? null
+  )
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
@@ -235,8 +240,15 @@ export default function TripOverview({
   }, [])
 
   // Extract dominant color from cover image so the gradient overlay matches the photo.
-  // Starts null → gradient invisible → fades in once ready. No color switch, no flicker.
-  // CORB may block cross-origin images; onerror keeps dominantColor null (no overlay) which is fine.
+  // Reset to DB color whenever the trip's cover changes, then refine via canvas extraction.
+  // DB color = instant (no flicker). Canvas = precise (same-origin R2 images only).
+  useEffect(() => {
+    const stored = (trip.cover_photo as { dominant_color?: string | null } | null | undefined)?.dominant_color ?? null
+    setDominantColor(stored)
+  }, [trip.cover_photo])
+
+  // Canvas extraction refines the DB color once the image loads (R2 same-origin only).
+  // On load error (CORB) or getImageData failure: do NOT clear — keep DB-seeded color so gradient stays visible.
   useEffect(() => {
     if (!coverUrl) {
       setDominantColor(null)
@@ -273,13 +285,18 @@ export default function TripOverview({
         g = Math.floor(g / pixelCount)
         b = Math.floor(b / pixelCount)
 
-        setDominantColor(`#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`)
-      } catch {
-        setDominantColor(null)
+        const extracted = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+        setDominantColor(extracted)
+        // Persist so next load has instant gradient (no delay)
+        void updateTripCoverDominantColor(trip.id, extracted).catch(() => {})
+      } catch (e) {
+        console.error("[trip-overview] dominant color extraction failed, keeping DB value", e)
       }
     }
 
-    img.onerror = () => setDominantColor(null)
+    img.onerror = () => {
+      // Do not set null — keep DB-seeded dominant_color so the gradient shows immediately with no delay
+    }
   }, [coverUrl])
 
   return (

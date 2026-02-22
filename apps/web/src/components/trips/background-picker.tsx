@@ -102,6 +102,7 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, defau
       photographer_name: image.user.name,
       photographer_url: image.user.links.html,
       blur_hash: image.blur_hash ?? null,
+      dominant_color: image.color ?? null,
     })
   }
 

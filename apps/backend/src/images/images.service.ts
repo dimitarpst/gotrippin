@@ -11,6 +11,7 @@ import type { CoverPhotoInput } from '@gotrippin/core';
 interface UnsplashPhoto {
   id: string;
   blur_hash: string | null;
+  color: string | null;
   urls: {
     raw: string;
     full: string;
@@ -81,6 +82,35 @@ export class ImagesService {
       credentials: { accessKeyId, secretAccessKey },
       requestHandler: new NodeHttpHandler({ httpsAgent }),
     });
+  }
+
+  async getRandomPhoto(query = 'travel landscape'): Promise<UnsplashPhoto> {
+    const url = 'https://api.unsplash.com/photos/random';
+    const response = await firstValueFrom(
+      this.httpService.get<UnsplashPhoto>(url, {
+        params: { query, orientation: 'landscape' },
+        headers: { Authorization: `Client-ID ${this.accessKey}` },
+      }),
+    );
+    this.logger.log(`Fetched random photo: ${response.data.id}`);
+    return response.data;
+  }
+
+  /**
+   * Convenience: fetch a random travel photo and convert to CoverPhotoInput.
+   * Used as the default cover when a trip is created without a user-selected photo.
+   */
+  async getRandomTravelCoverInput(): Promise<CoverPhotoInput> {
+    const photo = await this.getRandomPhoto('travel landscape nature');
+    return {
+      unsplash_photo_id: photo.id,
+      download_location: photo.links.download_location,
+      image_url: photo.urls.regular,
+      photographer_name: photo.user.name,
+      photographer_url: photo.user.links.html,
+      blur_hash: photo.blur_hash ?? null,
+      dominant_color: photo.color ?? null,
+    };
   }
 
   async searchImages(query: string, page: number = 1, perPage: number = 9) {
@@ -175,6 +205,7 @@ export class ImagesService {
         photographer_name: input.photographer_name,
         photographer_url: input.photographer_url,
         blur_hash: input.blur_hash ?? null,
+        dominant_color: input.dominant_color ?? null,
       })
       .select('id')
       .single();

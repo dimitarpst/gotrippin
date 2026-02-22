@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ImagesService } from '../images/images.service';
 import type { CoverPhotoInput } from '@gotrippin/core';
@@ -56,6 +56,15 @@ export class TripsService {
       let cover_photo_id: string | undefined;
       if (cover_photo) {
         cover_photo_id = await this.imagesService.downloadAndStorePhoto(cover_photo);
+      } else if (!rest.color) {
+        // No photo and no color selected — assign a random travel photo as the default cover
+        try {
+          const randomCover = await this.imagesService.getRandomTravelCoverInput();
+          cover_photo_id = await this.imagesService.downloadAndStorePhoto(randomCover);
+        } catch (e) {
+          // Non-fatal: if Unsplash is unavailable, trip is created with no cover
+          console.warn('Failed to fetch random cover photo for new trip:', e);
+        }
       }
 
       const newTrip = await this.supabaseService.createTrip({
@@ -162,6 +171,20 @@ export class TripsService {
       }
       throw new NotFoundException('Trip not found');
     }
+  }
+
+  /** Persist extracted dominant color for the trip's cover photo so next load has instant gradient. */
+  async updateCoverDominantColor(tripId: string, userId: string, dominantColor: string) {
+    const trip = await this.supabaseService.getTrip(tripId, userId);
+    if (!trip) {
+      throw new ForbiddenException('Trip not found or access denied');
+    }
+    const photoId = (trip as { cover_photo?: { id: string } | null }).cover_photo?.id;
+    if (!photoId) {
+      throw new BadRequestException('Trip has no cover photo');
+    }
+    await this.supabaseService.updatePhotoDominantColor(photoId, dominantColor);
+    return { ok: true };
   }
 
   async addMember(tripId: string, currentUserId: string, userIdToAdd: string) {

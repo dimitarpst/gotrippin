@@ -104,6 +104,20 @@ export async function fetchTripByShareCode(shareCode: string, token?: string | n
 }
 
 /**
+ * Persist extracted dominant color for the trip's cover photo (so next load has instant gradient).
+ */
+export async function updateTripCoverDominantColor(
+  tripId: string,
+  dominantColor: string,
+  token?: string | null
+): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>(`/trips/${tripId}/cover-dominant-color`, {
+    method: "PATCH",
+    body: JSON.stringify({ dominant_color: dominantColor }),
+  }, token);
+}
+
+/**
  * Create a new trip with validation
  */
 export async function createTrip(data: TripCreateData, token?: string | null): Promise<Trip> {
