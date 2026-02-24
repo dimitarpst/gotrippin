@@ -1,13 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
-import { fetchTripByShareCode } from "@/lib/api/trips";
-import { getLocations } from "@/lib/api/trip-locations";
-import type { Activity } from "@gotrippin/core";
-import {
-  getGroupedActivities,
-  normalizeTimelineData,
-} from "@/lib/api/activities";
-import { getTripWeather } from "@/lib/api/weather";
+import { fetchTripDetail } from "@/lib/api/trips";
+import { normalizeTimelineData } from "@/lib/api/activities";
+import type { Activity, TripLocation } from "@gotrippin/core";
 import TripDetailPageClient from "./TripDetailPageClient";
 
 export const dynamic = "force-dynamic";
@@ -33,47 +28,32 @@ export default async function TripDetailPage({
     redirect("/auth");
   }
 
-  let trip: Awaited<ReturnType<typeof fetchTripByShareCode>> | null = null;
-  let tripError: string | null = null;
-
+  let detail;
   try {
-    trip = await fetchTripByShareCode(shareCode, token);
+    detail = await fetchTripDetail(shareCode, token);
   } catch {
     notFound();
   }
 
-  if (!trip) {
+  if (!detail?.trip) {
     notFound();
   }
 
-  let locationsError: string | null = null;
-  let activitiesError: string | null = null;
-  let weatherError: string | null = null;
+  const { trip } = detail;
+  const routeLocations = detail.route_locations ?? [];
+  const locationsError = detail.route_locations_error ?? null;
+  const activitiesError = detail.activities_error ?? null;
+  const weatherError = detail.weather_error ?? null;
 
-  const [routeLocations, timelineRaw, weather] = await Promise.all([
-    getLocations(trip.id, token).catch((e: unknown) => {
-      locationsError = e instanceof Error ? e.message : "Failed to load locations";
-      console.error("[TripDetailPage] getLocations failed:", e);
-      return [];
-    }),
-    getGroupedActivities(trip.id, token)
-      .then(normalizeTimelineData)
-      .catch((e: unknown) => {
-        activitiesError = e instanceof Error ? e.message : "Failed to load activities";
-        console.error("[TripDetailPage] getGroupedActivities failed:", e);
-        return {
-          locations: [],
-          activitiesByLocation: {} as Record<string, Activity[]>,
-          unassigned: [] as Activity[],
-        };
-      }),
-    getTripWeather(trip.id, 5, token).catch((e: unknown) => {
-      weatherError = e instanceof Error ? e.message : "Failed to load weather";
-      console.error("[TripDetailPage] getTripWeather failed:", e);
-      return null;
-    }),
-  ]);
+  const timelineRaw = detail.grouped_activities
+    ? normalizeTimelineData(detail.grouped_activities as { locations: unknown[]; unassigned: unknown[] })
+    : {
+        locations: [],
+        activitiesByLocation: {} as Record<string, Activity[]>,
+        unassigned: [] as Activity[],
+      };
 
+  const weather = detail.weather;
   const weatherByLocation =
     weather?.locations?.reduce(
       (acc, loc) => {
@@ -86,7 +66,7 @@ export default async function TripDetailPage({
   return (
     <TripDetailPageClient
       trip={trip}
-      routeLocations={routeLocations}
+      routeLocations={routeLocations as TripLocation[]}
       timelineLocations={timelineRaw.locations}
       activitiesByLocation={timelineRaw.activitiesByLocation}
       unassignedActivities={timelineRaw.unassigned}

@@ -3,7 +3,7 @@
  * Handles all trip-related API calls with validation
  */
 
-import type { Trip, TripCreateData, TripUpdateData } from "@gotrippin/core";
+import type { Trip, TripCreateData, TripUpdateData, TripWeatherResponse } from "@gotrippin/core";
 import { validateTripCreate, validateTripUpdate } from "@/lib/validation";
 import { appConfig } from "@/config/appConfig";
 import { getAuthToken } from "./auth";
@@ -101,6 +101,25 @@ export async function fetchTripById(id: string, token?: string | null): Promise<
  */
 export async function fetchTripByShareCode(shareCode: string, token?: string | null): Promise<Trip> {
   return apiRequest<Trip>(`/trips/share/${shareCode}`, undefined, token);
+}
+
+/** Response from GET /trips/share/:shareCode/detail (one request for detail screen; web + mobile) */
+export interface TripDetailResponse {
+  trip: Trip;
+  route_locations: unknown[] | null;
+  route_locations_error?: string;
+  grouped_activities: { locations: unknown[]; unassigned: unknown[] } | null;
+  activities_error?: string;
+  weather: TripWeatherResponse | null;
+  weather_error?: string;
+}
+
+/**
+ * Fetch full trip detail (trip + locations + timeline + weather) in one request.
+ * Used by trip detail page and mobile.
+ */
+export async function fetchTripDetail(shareCode: string, token?: string | null): Promise<TripDetailResponse> {
+  return apiRequest<TripDetailResponse>(`/trips/share/${shareCode}/detail`, undefined, token);
 }
 
 /**

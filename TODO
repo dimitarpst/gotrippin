@@ -69,19 +69,22 @@ Phase 4.3 — No Fallbacks. No Silent Failures. Handle Errors:
   Broken avatar images:
     ✔ AvatarUpload.tsx img onerror — replaces broken avatar src with a base64 SVG placeholder silently. Remove the replacement; show a visible broken/missing state (e.g. grey square or initials) so it's clear the image failed, not that it loaded.
 
-Phase 4.2 — More Server Components (SSR Migration):
+Phase 4.2 — One NestJS endpoint per screen (web server component + mobile reuse):
+  Goal: Add a single NestJS endpoint per screen that returns the full payload. Web server component calls it for instant render; mobile calls the same endpoint.
+  Checked items — mobile: User (Supabase only, same on RN). Auth (N/A, no payload). Create/Edit (1 call GET /trips/share/:code, same on RN). Unsplash+blurhash (same GET /images/search; need blur_hash in response). Timeline & Weather (2 calls each, same on RN; no combined endpoint).
   ✔ User Profile (/user) — check auth server-side, instant redirect, pass user prop to client
   ✔ Auth Page (/auth) — instantly redirect logged-in users to /trips via createServerSupabaseClient
   ✔ Create/Edit Trip — secure on server; for edit, fetch trip data server-side to skip initial loading
   ✔ Unsplash search drawer thumbnails — use blurhash as placeholder (CoverImageWithBlur) until image loads
-  ✔ Timeline & Weather sub-pages — convert to server components using NestJS API helpers for instant render
-  ☐ Trip Detail Page — convert to server component using NestJS API helpers for instant render
-  ☐ Trip List Page — convert to server component using NestJS API helpers for instant render
-  ☐ Home Page — convert to server component using NestJS API helpers for instant render
-  ☐ User Page — convert to server component using NestJS API helpers for instant render
+  ✔ Timeline & Weather sub-pages — server components; NestJS already has per-resource endpoints (activities, weather)
+  ✔ Trip Detail — NestJS: GET /trips/share/:shareCode/detail (trip + locations + timeline + weather). Web: page calls it server-side; mobile reuses.
+  ☐ Trip List — NestJS: single endpoint for list (or document GET /trips as the contract). Web: server component calls it; mobile reuses.
+  ☐ Home Page — NestJS: endpoint for home payload (e.g. trips summary / hero). Web: server component; mobile reuses.
+  ☐ User Page — If needed: NestJS endpoint for user screen payload; else keep Supabase direct per audit. Web: server component; mobile reuses.
 
 Phase 5 — Public Trip Sharing (later):
   ☐ Add color picker — replace native input[type=color] in profile (shadcn has no built-in; use Popover + react-colorful or similar)
+  ☐ Add newest drawer element from shadcn/ui 
   ☐ Per-trip visibility toggle — Private (auth required) vs Anyone with link (view without login)
   ☐ DB: add visibility field to trips
   ☐ NestJS: GET /trips/share/:shareCode returns public trips without auth

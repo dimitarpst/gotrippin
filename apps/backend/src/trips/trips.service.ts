@@ -1,13 +1,29 @@
 import { Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ImagesService } from '../images/images.service';
-import type { CoverPhotoInput } from '@gotrippin/core';
+import { TripLocationsService } from '../trip-locations/trip-locations.service';
+import { ActivitiesService } from '../activities/activities.service';
+import { WeatherService } from '../weather/weather.service';
+import type { CoverPhotoInput, TripWeatherResponse } from '@gotrippin/core';
+
+export interface TripDetailDto {
+  trip: Awaited<ReturnType<TripsService['getTripByShareCode']>>;
+  route_locations: unknown[] | null;
+  route_locations_error?: string;
+  grouped_activities: { locations: unknown[]; unassigned: unknown[] } | null;
+  activities_error?: string;
+  weather: TripWeatherResponse | null;
+  weather_error?: string;
+}
 
 @Injectable()
 export class TripsService {
   constructor(
     private supabaseService: SupabaseService,
     private imagesService: ImagesService,
+    private tripLocationsService: TripLocationsService,
+    private activitiesService: ActivitiesService,
+    private weatherService: WeatherService,
   ) { }
 
   async getTrips(userId: string) {
@@ -171,6 +187,40 @@ export class TripsService {
       }
       throw new NotFoundException('Trip not found');
     }
+  }
+
+  /**
+   * Full trip detail for detail screen: trip + locations + timeline + weather.
+   * Used by web server component and mobile; one request instead of four.
+   */
+  async getTripDetailByShareCode(shareCode: string, userId: string): Promise<TripDetailDto> {
+    const trip = await this.getTripByShareCode(shareCode, userId);
+    const tripId = trip.id;
+
+    const [routeResult, activitiesResult, weatherResult] = await Promise.all([
+      this.tripLocationsService.getRoute(tripId, userId).then(
+        (data) => ({ data }),
+        (e: Error) => ({ error: e?.message ?? 'Failed to load locations' }),
+      ),
+      this.activitiesService.getActivitiesGroupedByLocation(tripId, userId).then(
+        (data) => ({ data }),
+        (e: Error) => ({ error: e?.message ?? 'Failed to load activities' }),
+      ),
+      this.weatherService.getTripWeather(tripId, userId, { days: 5 }).then(
+        (data) => ({ data }),
+        (e: Error) => ({ error: e?.message ?? 'Failed to load weather' }),
+      ),
+    ]);
+
+    return {
+      trip,
+      route_locations: 'data' in routeResult ? routeResult.data : null,
+      route_locations_error: 'error' in routeResult ? routeResult.error : undefined,
+      grouped_activities: 'data' in activitiesResult ? activitiesResult.data : null,
+      activities_error: 'error' in activitiesResult ? activitiesResult.error : undefined,
+      weather: 'data' in weatherResult ? weatherResult.data : null,
+      weather_error: 'error' in weatherResult ? weatherResult.error : undefined,
+    };
   }
 
   /** Persist extracted dominant color for the trip's cover photo so next load has instant gradient. */

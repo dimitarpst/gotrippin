@@ -40,6 +40,17 @@ export class TripsController {
     return this.tripsService.getTrips(userId);
   }
 
+  @Get('share/:shareCode/detail')
+  @ApiOperation({ summary: 'Get full trip detail (trip + locations + timeline + weather) for detail screen' })
+  @ApiParam({ name: 'shareCode', description: 'Trip share code' })
+  @ApiResponse({ status: 200, description: 'Trip detail; sub-resources may be null with *_error set' })
+  @ApiResponse({ status: 403, description: 'Trip not found or access denied' })
+  @ApiResponse({ status: 404, description: 'Trip not found' })
+  async getTripDetailByShareCode(@Param('shareCode') shareCode: string, @Req() request: any) {
+    const userId = request.user.id;
+    return this.tripsService.getTripDetailByShareCode(shareCode, userId);
+  }
+
   @Get('share/:shareCode')
   @ApiOperation({ summary: 'Get trip by share code' })
   @ApiParam({ name: 'shareCode', description: 'Trip share code' })
