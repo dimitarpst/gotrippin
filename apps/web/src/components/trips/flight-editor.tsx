@@ -11,9 +11,10 @@ interface FlightEditorProps {
   tripId: string
   flightId?: string
   onBack: () => void
+  onSave?: () => void
 }
 
-export default function FlightEditor({ tripId, flightId, onBack }: FlightEditorProps) {
+export default function FlightEditor({ tripId, flightId, onBack, onSave }: FlightEditorProps) {
   const [showDocumentModal, setShowDocumentModal] = useState(false)
   // Hardcoded data for visual tweaking
   const [departure, setDeparture] = useState({ code: "BOJ", date: "26 Oct", time: "10:30 AM" })
@@ -34,7 +35,12 @@ export default function FlightEditor({ tripId, flightId, onBack }: FlightEditorP
             Cancel
           </button>
           <h1 className="text-lg font-semibold text-white">Flight Details</h1>
-          <button className="text-sm font-medium" style={{ color: "var(--accent)" }}>
+          <button
+            type="button"
+            onClick={onSave ?? onBack}
+            className="text-sm font-medium"
+            style={{ color: "var(--accent)" }}
+          >
             Save
           </button>
         </div>

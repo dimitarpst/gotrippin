@@ -83,9 +83,9 @@ Phase 4.2 — One NestJS endpoint per screen (web server component + mobile reus
   ✔ User Page — Supabase direct per audit (profiles). Web: server component; mobile mirrors.
   ✔ Auth callback (/auth/callback) — route handler does code exchange + redirect; no page (Next.js conflict)
   ✔ Reset password (/auth/reset-password) — server component wrapper; client form (session from hash + updateUser)
-  ☐ Activity type (/trips/[id]/activity) — convert to server component; fetch trip + payload server-side
-  ☐ Activity lodging (/trips/[id]/activity/lodging) — convert to server component; fetch trip + payload server-side
-  ☐ Activity flight (/trips/[id]/activity/flight) — convert to server component; fetch trip + payload server-side
+  ✔ Activity type (/trips/[id]/activity) — server component; fetch trip server-side, pass to client
+  ✔ Activity lodging (/trips/[id]/activity/lodging) — server component; fetch trip server-side, pass to client
+  ✔ Activity flight (/trips/[id]/activity/flight) — server component; fetch trip server-side, pass to client
   ☐ Activity flight by id (/trips/[id]/activity/flight/[flightId]) — convert to server component; fetch trip + flight server-side
   ☐ Activity route (/trips/[id]/activity/route) — convert to server component; fetch trip + payload server-side
 

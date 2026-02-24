@@ -1,38 +1,41 @@
-"use client"
+import { redirect, notFound } from "next/navigation";
+import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
+import { fetchTripByShareCode } from "@/lib/api/trips";
+import ActivityPageClient from "./ActivityPageClient";
 
-import { useRouter } from "next/navigation"
-import { use } from "react"
-import AuroraBackground from "@/components/effects/aurora-background"
-import ActivitySelector from "@/components/trips/activity-selector"
-import { useTrip } from "@/hooks/useTrips"
+export const dynamic = "force-dynamic";
 
-interface ActivityPageProps {
-  params: Promise<{
-    id: string
-  }>
-}
+export default async function ActivityPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: shareCode } = await params;
 
-export default function ActivityPage({ params }: ActivityPageProps) {
-  const router = useRouter()
-  const resolvedParams = use(params)
-  const shareCode = resolvedParams.id
-  const { trip, loading } = useTrip(shareCode)
-  const tripId = trip?.id
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const handleBack = () => {
-    router.push(`/trips/${shareCode}`)
+  if (!user) {
+    redirect("/auth");
   }
 
-  return (
-    <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-      <AuroraBackground />
-      <div className="flex-1 relative z-10">
-        <ActivitySelector tripId={tripId ?? ""} shareCode={shareCode} onBack={handleBack} />
-        {loading && !tripId && (
-          <div className="absolute inset-0 flex items-center justify-center text-white/70 text-sm">Loading trip…</div>
-        )}
-      </div>
-    </main>
-  )
-}
+  const token = await getServerAuthToken();
+  if (!token) {
+    redirect("/auth");
+  }
 
+  let trip;
+  try {
+    trip = await fetchTripByShareCode(shareCode, token);
+  } catch {
+    notFound();
+  }
+
+  if (!trip) {
+    notFound();
+  }
+
+  return <ActivityPageClient trip={trip} shareCode={shareCode} />;
+}

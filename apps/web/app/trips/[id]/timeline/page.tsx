@@ -41,7 +41,7 @@ export default async function TimelinePage({
     notFound()
   }
 
-  const { locations, activitiesByLocation, unassigned } = normalizeTimelineData(grouped)
+  const { locations, activitiesByLocation } = normalizeTimelineData(grouped)
 
   return (
     <TimelinePageClient
@@ -49,7 +49,6 @@ export default async function TimelinePage({
       shareCode={shareCode}
       locations={locations}
       activitiesByLocation={activitiesByLocation}
-      unassigned={unassigned}
     />
   )
 }

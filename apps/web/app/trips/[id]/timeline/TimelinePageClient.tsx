@@ -33,7 +33,6 @@ export interface TimelinePageClientProps {
   shareCode: string
   locations: TripLocation[]
   activitiesByLocation: Record<string, Activity[]>
-  unassigned: Activity[]
 }
 
 export default function TimelinePageClient({
@@ -41,7 +40,6 @@ export default function TimelinePageClient({
   shareCode,
   locations,
   activitiesByLocation,
-  unassigned,
 }: TimelinePageClientProps) {
   const router = useRouter()
   const { t } = useTranslation()
@@ -203,29 +201,6 @@ export default function TimelinePageClient({
               </Card>
             )
           })}
-
-          {unassigned.length > 0 && (
-            <Card className="p-5 border-white/10 bg-white/5">
-              <p className="text-sm font-semibold text-white mb-2">
-                {t("route_call_to_action", { defaultValue: "Unassigned activities" })}
-              </p>
-              <div className="space-y-2">
-                {unassigned.map((act) => (
-                  <div
-                    key={act.id}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 flex items-center justify-between"
-                  >
-                    <p className="text-white text-sm font-medium">{act.title}</p>
-                    {act.type && (
-                      <span className="text-[11px] uppercase tracking-wide text-white/50">
-                        {act.type}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
         </div>
       </div>
     </main>

@@ -69,7 +69,6 @@ export default async function TripDetailPage({
       routeLocations={routeLocations as TripLocation[]}
       timelineLocations={timelineRaw.locations}
       activitiesByLocation={timelineRaw.activitiesByLocation}
-      unassignedActivities={timelineRaw.unassigned}
       weatherByLocation={weatherByLocation}
       weatherFetchedAt={weather ? Date.now() : null}
       locationsError={locationsError}

@@ -70,7 +70,6 @@ export interface TripOverviewTimeline {
   activitiesByLocation?: Record<string, Activity[]>
   loading?: boolean
   error?: string | null
-  unassignedActivities?: Activity[]
   onRefetch?: () => Promise<void>
 }
 
@@ -116,7 +115,6 @@ export default function TripOverview({
     activitiesByLocation = {},
     loading: timelineLoading = false,
     error: timelineError = null,
-    unassignedActivities = [],
     onRefetch: onRefetchTimeline,
   } = timelineProp
 
