@@ -86,8 +86,8 @@ Phase 4.2 — One NestJS endpoint per screen (web server component + mobile reus
   ✔ Activity type (/trips/[id]/activity) — server component; fetch trip server-side, pass to client
   ✔ Activity lodging (/trips/[id]/activity/lodging) — server component; fetch trip server-side, pass to client
   ✔ Activity flight (/trips/[id]/activity/flight) — server component; fetch trip server-side, pass to client
-  ☐ Activity flight by id (/trips/[id]/activity/flight/[flightId]) — convert to server component; fetch trip + flight server-side
-  ☐ Activity route (/trips/[id]/activity/route) — convert to server component; fetch trip + payload server-side
+  ✔ Activity flight by id (/trips/[id]/activity/flight/[flightId]) — server component; fetch trip server-side, pass to client
+  ✔ Activity route (/trips/[id]/activity/route) — server component; fetch trip server-side, pass to client
 
 Phase 5 — Public Trip Sharing (later):
   ☐ Add color picker — replace native input[type=color] in profile (shadcn has no built-in; use Popover + react-colorful or similar)
