@@ -80,7 +80,14 @@ Phase 4.2 — One NestJS endpoint per screen (web server component + mobile reus
   ✔ Trip Detail — NestJS: GET /trips/share/:shareCode/detail (trip + locations + timeline + weather). Web: page calls it server-side; mobile reuses.
   ✔ Trip List — NestJS: GET /trips is the contract. Web: server component calls it; mobile reuses.
   ✔ Home Page — GET /trips (same as list). Web: server component fetches server-side; mobile reuses.
-  ☐ User Page — Supabase direct per audit (profiles). Web: server component; mobile mirrors.
+  ✔ User Page — Supabase direct per audit (profiles). Web: server component; mobile mirrors.
+  ✔ Auth callback (/auth/callback) — route handler does code exchange + redirect; no page (Next.js conflict)
+  ✔ Reset password (/auth/reset-password) — server component wrapper; client form (session from hash + updateUser)
+  ☐ Activity type (/trips/[id]/activity) — convert to server component; fetch trip + payload server-side
+  ☐ Activity lodging (/trips/[id]/activity/lodging) — convert to server component; fetch trip + payload server-side
+  ☐ Activity flight (/trips/[id]/activity/flight) — convert to server component; fetch trip + payload server-side
+  ☐ Activity flight by id (/trips/[id]/activity/flight/[flightId]) — convert to server component; fetch trip + flight server-side
+  ☐ Activity route (/trips/[id]/activity/route) — convert to server component; fetch trip + payload server-side
 
 Phase 5 — Public Trip Sharing (later):
   ☐ Add color picker — replace native input[type=color] in profile (shadcn has no built-in; use Popover + react-colorful or similar)
