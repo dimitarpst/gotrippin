@@ -4,9 +4,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Calendar, MapPin } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import WeatherWidget from "./weather-widget"
 import type { Trip } from "@gotrippin/core"
-import type { WeatherData } from "@gotrippin/core"
 import { resolveTripCoverUrl } from "@/lib/r2"
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 
@@ -73,22 +71,6 @@ export default function TripGrid({ trips, activeFilter, onSelectTrip }: TripGrid
                               />
                             )}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-100 group-hover:from-black/90 transition-all duration-300" />
-                            <WeatherWidget
-                              weather={{
-                                location: trip.destination || "Tokyo",
-                                current: {
-                                  temperature: 15 + Math.floor(Math.random() * 10),
-                                  temperatureApparent: 14,
-                                  humidity: 65,
-                                  weatherCode: 1000,
-                                  description: "Clear, Sunny",
-                                  windSpeed: 10,
-                                  windDirection: 180,
-                                  cloudCover: 20,
-                                },
-                              }}
-                              compact
-                            />
                             {trip.daysUntil > 0 && (
                               <motion.div
                                 className="absolute top-3 right-3"

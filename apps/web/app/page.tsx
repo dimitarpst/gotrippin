@@ -1,62 +1,37 @@
-"use client"
+import { redirect } from "next/navigation"
+import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server"
+import { fetchTrips, ApiError } from "@/lib/api/trips"
+import TripsPageClient from "./trips/TripsPageClient"
 
-import { useRouter } from "next/navigation"
-import AuroraBackground from "@/components/effects/aurora-background"
-import FloatingHeader from "@/components/layout/FloatingHeader"
-import DockBar from "@/components/layout/DockBar"
-import TripsList from "@/components/trips/trips-list"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
-import { useTrips } from "@/hooks/useTrips"
-import { useAuth } from "@/contexts/AuthContext"
+export const dynamic = "force-dynamic"
 
-function ProtectedHomeContent() {
-  const router = useRouter()
-  const { trips, loading, error } = useTrips()
+export default async function HomePage() {
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const handleSelectTrip = (shareCode: string) => {
-    router.push(`/trips/${shareCode}`)
+  if (!user) {
+    redirect("/auth")
   }
 
-  const handleCreateTrip = () => {
-    router.push("/trips/create")
+  const token = await getServerAuthToken()
+  let trips: Awaited<ReturnType<typeof fetchTrips>> = []
+  let error: string | null = null
+
+  if (token) {
+    try {
+      trips = await fetchTrips(token)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        error = err.message
+      } else {
+        error = "Failed to fetch trips"
+      }
+    }
+  } else {
+    error = "Authentication required"
   }
 
-  return (
-    <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
-      <AuroraBackground />
-      <FloatingHeader />
-
-      <div className="flex-1 relative z-10">
-        {error && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-full max-w-md px-4">
-            <Alert variant="destructive" className="bg-destructive/10 backdrop-blur-md border-destructive/20">
-              <AlertCircle className="size-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          </div>
-        )}
-
-        <TripsList
-          trips={trips}
-          loading={loading}
-          onSelectTrip={handleSelectTrip}
-          onCreateTrip={handleCreateTrip}
-        />
-      </div>
-
-      <DockBar onCreateTrip={handleCreateTrip} />
-    </main>
-  )
-}
-
-export default function HomePage() {
-  const { user, loading: authLoading } = useAuth()
-
-  // Middleware handles auth redirect; show loading until AuthContext resolves
-  if (authLoading || !user) {
-    return null
-  }
-
-  return <ProtectedHomeContent />
+  return <TripsPageClient trips={trips} error={error} />
 }

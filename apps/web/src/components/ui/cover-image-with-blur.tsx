@@ -36,6 +36,7 @@ export function CoverImageWithBlur({
   const [loaded, setLoaded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   // Decode and draw blur as soon as we have blurHash (fixed 32x32, CSS scales to fill).
   // No wait for container size — avoids blank gap after skeleton disappears.
@@ -67,10 +68,21 @@ export function CoverImageWithBlur({
     }
   }, [blurHash])
 
+  // After hydration, image may already be loaded from cache (common with SSR).
+  // If we don't sync, blur stays because onLoad already fired before we attached.
+  useEffect(() => {
+    const img = imgRef.current
+    if (img?.complete && img.naturalWidth > 0) setLoaded(true)
+  }, [src])
+
+  const handleLoad = () => setLoaded(true)
+  const handleError = () => setLoaded(true) // hide blur so we don't stick on placeholder when image fails
+
   const showPlaceholder = !!blurHash
 
   const img = (
     <img
+      ref={imgRef}
       src={src}
       alt={alt}
       className={`absolute inset-0 w-full h-full object-cover ${imgClassName}`}
@@ -79,7 +91,8 @@ export function CoverImageWithBlur({
         opacity: !blurHash ? 1 : loaded ? 1 : 0,
         transition: "opacity 0.25s ease-out",
       }}
-      onLoad={() => setLoaded(true)}
+      onLoad={handleLoad}
+      onError={handleError}
     />
   )
 

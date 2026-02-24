@@ -78,9 +78,9 @@ Phase 4.2 — One NestJS endpoint per screen (web server component + mobile reus
   ✔ Unsplash search drawer thumbnails — use blurhash as placeholder (CoverImageWithBlur) until image loads
   ✔ Timeline & Weather sub-pages — server components; NestJS already has per-resource endpoints (activities, weather)
   ✔ Trip Detail — NestJS: GET /trips/share/:shareCode/detail (trip + locations + timeline + weather). Web: page calls it server-side; mobile reuses.
-  ☐ Trip List — NestJS: single endpoint for list (or document GET /trips as the contract). Web: server component calls it; mobile reuses.
-  ☐ Home Page — NestJS: endpoint for home payload (e.g. trips summary / hero). Web: server component; mobile reuses.
-  ☐ User Page — If needed: NestJS endpoint for user screen payload; else keep Supabase direct per audit. Web: server component; mobile reuses.
+  ✔ Trip List — NestJS: GET /trips is the contract. Web: server component calls it; mobile reuses.
+  ✔ Home Page — GET /trips (same as list). Web: server component fetches server-side; mobile reuses.
+  ☐ User Page — Supabase direct per audit (profiles). Web: server component; mobile mirrors.
 
 Phase 5 — Public Trip Sharing (later):
   ☐ Add color picker — replace native input[type=color] in profile (shadcn has no built-in; use Popover + react-colorful or similar)
