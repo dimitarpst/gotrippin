@@ -19,7 +19,7 @@ Use for tasks that belong to a specific file or feature:
 
 Use for general tasks, backlog items, or when the user doesn't specify a file:
 
-- **File**: `TODO` in project root (no extension; Todo+ default `todo.file.name`)
+- **File**: `features.todo` in project root (Todo+ / Todo extension: set `todo.file.name` to `features.todo` or include `**/features.todo`)
 - **Format** (TaskPaper-style, 2-space indent):
   ```
   ProjectName:

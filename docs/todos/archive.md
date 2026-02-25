@@ -1,6 +1,6 @@
 # Todo archive (completed items)
 
-Completed tasks are kept here for history. The main task list is the root `TODO` file.
+Completed tasks are kept here for history. The main task list is the root `features.todo` file.
 
 ---
 

@@ -16,14 +16,14 @@ Three MCP servers are available and should be used proactively:
 
 **First steps:**
 
-1. Read `TODO` — current tasks (mark `☐` → `✔` when done). Backlog: `docs/todos/later.md`. History: `docs/todos/archive.md`.
+1. Read `features.todo` — current tasks (mark `☐` → `✔` when done). Backlog: `docs/todos/later.md`. History: `docs/todos/archive.md`.
 2. Read `docs/next_steps.md` — roadmap and context
 3. Read `docs/DEBUGGING_PATTERNS.md` — debugging patterns
 4. Read `docs/CODE_STYLE.md` — naming, imports, formatting for readable PRs
 
 **Project:** Monorepo (`apps/web` Next.js, `apps/backend` NestJS, `packages/core` shared). Auth via Supabase (`proxy.ts` handles redirects). Recent: `getAuthToken()` → `apps/web/src/lib/api/auth.ts`, date helpers → `@gotrippin/core`.
 
-**Workflow:** Always double ask before coding. Get explicit approval ("yes implement it", "go ahead"). Mark todos complete in `TODO` when done.
+**Workflow:** Always double ask before coding. Get explicit approval ("yes implement it", "go ahead"). Mark todos complete in `features.todo` when done.
 
 **Cross-platform:** Design for web + mobile (React Native). Same data, same business logic, different UI. Keep platform-specific code in UI layer only. See `docs/BACKEND_FRONTEND_MOBILE_AUDIT.md` for current state.
 
@@ -31,7 +31,7 @@ Three MCP servers are available and should be used proactively:
 
 **Todos & planning**
 
-- When a task in the root `TODO` file is completed, always mark it there (change `☐` to `✔`) in addition to any internal tracking.
+- When a task in the root `features.todo` file is completed, always mark it there (change `☐` to `✔`) in addition to any internal tracking.
 - Work on todos one-by-one: complete a task, verify/test it, then move to the next. User stays in control of the pace.
 
 ## Workflow & communication

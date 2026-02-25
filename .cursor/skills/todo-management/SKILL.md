@@ -1,22 +1,27 @@
 ---
 name: todo-management
-description: Manages the root TODO file for Go Trippin. Use when completing a task (mark done), adding a new todo item, or when the user asks to update or create TODO entries.
+description: Manages the root todo file (features.todo) for Go Trippin. Use when completing a task (mark done), adding a new todo item, or when the user asks to update or create TODO entries.
 ---
 
 # TODO File Management
 
+Compatible with the **Todo** extension (TaskPaper-style): file name `features.todo` (extension supports `*.todo`), symbols ☐ ✔ ✘, 2-space indent, projects like `Todo:` and `Archive:`. Use **Todo: Archive** in the command palette to move done items into the Archive section. Set `todo.file.name` to `features.todo` or add `**/features.todo` to `todo.file.include` so the extension opens it.
+
 ## File location
 
-- **Current tasks:** Root `TODO` file (no extension). Keep it short; only active items.
-- **Later / backlog:** `docs/todos/later.md` (e.g. Phase 6 public sharing).
-- **Completed history:** `docs/todos/archive.md` (for reference; move items here when done if the root TODO would get too long).
+- **Current tasks:** Root `features.todo`. Keep active items under `Todo:`.
+- **Archive (in-file):** Section `Archive:` in the same file — use extension’s **Todo: Archive** to move ✔ items here so root stays minimal.
+- **Backlog:** `docs/todos/later.md` (e.g. Phase 6). Not parsed by the Todo extension (it’s .md); open manually.
+- **Long-term history:** `docs/todos/archive.md` (optional; for reference when you want to keep a full history outside the root file).
 
-## Format
+## Format (extension-compatible)
 
-- **Phases:** `Todo:`, `Phase 2 — Architecture:`, `Phase 4+:` — preserve existing phases.
-- **Done:** `✔` (checkmark)
-- **Pending:** `☐` (empty checkbox)
-- **Entry format:** `  ✔` or `  ☐` followed by space, then short description, then optional ` — detail` or reference (e.g. `MAPS_IMPLEMENTATION.md`).
+- **Projects:** `Todo:` for active work, `Archive:` for completed (extension moves ✔ items here).
+- **Box (pending):** `☐`
+- **Done:** `✔`
+- **Cancelled:** `✘` (use when a task is dropped, not done).
+- **Indent:** 2 spaces under each project.
+- **Entry format:** `  ☐` or `  ✔` or `  ✘` followed by space, then description, then optional ` — detail` or reference (e.g. `docs/MAPS_IMPLEMENTATION.md`).
 
 ## When to update
 
