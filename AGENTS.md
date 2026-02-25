@@ -1,5 +1,7 @@
 # Agent rules
 
+**Code style:** Read `docs/CODE_STYLE.md` for naming, punctuation, imports, types, and React/Next conventions so changes align with project rules and future PRs.
+
 ## Available MCPs
 
 Three MCP servers are available and should be used proactively:
@@ -14,9 +16,10 @@ Three MCP servers are available and should be used proactively:
 
 **First steps:**
 
-1. Read `TODO` — see current task (mark `☐` → `✔` when done)
+1. Read `TODO` — current tasks (mark `☐` → `✔` when done). Backlog: `docs/todos/later.md`. History: `docs/todos/archive.md`.
 2. Read `docs/next_steps.md` — roadmap and context
 3. Read `docs/DEBUGGING_PATTERNS.md` — debugging patterns
+4. Read `docs/CODE_STYLE.md` — naming, imports, formatting for readable PRs
 
 **Project:** Monorepo (`apps/web` Next.js, `apps/backend` NestJS, `packages/core` shared). Auth via Supabase (`proxy.ts` handles redirects). Recent: `getAuthToken()` → `apps/web/src/lib/api/auth.ts`, date helpers → `@gotrippin/core`.
 

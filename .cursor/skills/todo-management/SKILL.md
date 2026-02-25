@@ -7,7 +7,9 @@ description: Manages the root TODO file for Go Trippin. Use when completing a ta
 
 ## File location
 
-The project's central task list is the root `TODO` file (no extension).
+- **Current tasks:** Root `TODO` file (no extension). Keep it short; only active items.
+- **Later / backlog:** `docs/todos/later.md` (e.g. Phase 6 public sharing).
+- **Completed history:** `docs/todos/archive.md` (for reference; move items here when done if the root TODO would get too long).
 
 ## Format
 
