@@ -1,7 +1,8 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Calendar, Star, Palette } from "lucide-react";
+import { Mail, Calendar, Star } from "lucide-react";
+import { ColorPicker } from "@/components/color-picker";
 import { Input } from "@/components/ui/input";
 import { AvatarUpload } from "@/components/auth/AvatarUpload";
 import type { UserProfileData } from "./UserProfile";
@@ -85,27 +86,17 @@ export default function ProfileHero({
             {isEditing && (
               <motion.div
                 key="color-picker"
-                className="flex gap-2"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
               >
-              <label
-                htmlFor="avatar-color"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 cursor-pointer transition text-sm text-white/80"
-              >
-                <Palette className="w-4 h-4" />
-                {t("profile.change_color")}
-              </label>
-              <input
-                id="avatar-color"
-                type="color"
-                value={displayData.avatarColor}
-                onChange={(e) => onChange("avatarColor", e.target.value)}
-                className="absolute opacity-0 w-0 h-0"
-              />
-            </motion.div>
+                <ColorPicker
+                  value={displayData.avatarColor}
+                  onChange={(hex) => onChange("avatarColor", hex)}
+                  label={t("profile.change_color")}
+                />
+              </motion.div>
             )}
           </AnimatePresence>
         </div>

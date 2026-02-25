@@ -1,0 +1,28 @@
+/* Theme overrides for react-colorful in Custom tab */
+.wrapper :global(.react-colorful) {
+  width: 100%;
+  height: 180px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.wrapper :global(.react-colorful__saturation) {
+  border-radius: 12px 12px 0 0;
+  border-bottom-width: 10px;
+}
+
+.wrapper :global(.react-colorful__hue) {
+  height: 20px;
+  border-radius: 0 0 12px 12px;
+}
+
+.wrapper :global(.react-colorful__pointer) {
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.wrapper :global(.react-colorful__interactive:focus .react-colorful__pointer) {
+  transform: translate(-50%, -50%) scale(1.1);
+}
