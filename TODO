@@ -90,8 +90,8 @@ Phase 4.2 — One NestJS endpoint per screen (web server component + mobile reus
   ✔ Activity route (/trips/[id]/activity/route) — server component; fetch trip server-side, pass to client
 
 Phase 5 — Public Trip Sharing (later):
-  ☐ Add color picker — replace native input[type=color] in profile (shadcn has no built-in; use Popover + react-colorful or similar)
-  ☐ Add newest drawer element from shadcn/ui 
+  ✔ Add color picker — replace native input[type=color] in profile (shadcn has no built-in; use Popover + react-colorful or similar) @done(26-02-25 03:06)
+  ✔ Add newest drawer element from shadcn/ui
   ☐ Per-trip visibility toggle — Private (auth required) vs Anyone with link (view without login)
   ☐ DB: add visibility field to trips
   ☐ NestJS: GET /trips/share/:shareCode returns public trips without auth
