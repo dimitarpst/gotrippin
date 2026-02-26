@@ -3,11 +3,11 @@
 **Code style:** Read `docs/CODE_STYLE.md` for naming, punctuation, imports, types, and React/Next conventions so changes align with project rules and future PRs.
 **Todo workflow:** Read `docs/TODO_WORKFLOW.md` for the preferred todo workflow with Todo+ - formatting, symbols and shortcuts.
 
-## Available MCPs
+## Available MCPs & UI primitives
 
 Three MCP servers are available and should be used proactively:
 
-- **`user-shadcn`** — Browse, search and install shadcn components (`skeleton`, `spinner`, `alert`, `sonner`, etc.). Always check shadcn before writing custom UI primitives.
+- **`user-shadcn`** — Browse, search and install shadcn components (`skeleton`, `spinner`, `alert`, `sonner`, etc.). Always check shadcn before writing custom UI primitives. **Bottom sheets / drawers (like the route map sheet) must use the shared `Drawer` component in `components/ui/drawer.tsx`, not custom absolutely-positioned divs.**
 - **`user-context7`** — Fetch up-to-date library docs and code examples. Use when unsure about an API or checking for breaking changes.
 - **`user-supabase`** — Query Supabase (schema, data, RLS, RPCs). Use to verify tables, inspect data, or check RLS policies without leaving the editor.
 

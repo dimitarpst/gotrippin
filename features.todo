@@ -1,5 +1,11 @@
 Todo:
   ☐ Maps integration — Mapbox + coordinates (docs/MAPS_IMPLEMENTATION.md)
+  ☐ Route screen — map-first layout with bottom sheet editor (docs/MAPS_IMPLEMENTATION.md, docs/route-based-trip-planning-architecture.md)
+    ☐ Phase 1 — Map + bottom sheet scaffolding (read-only route; no editing)
+    ☐ Phase 2 — Edit existing stops in sheet (reorder, rename, dates) synced to map
+    ☐ Phase 3 — Add stops via search (Google Places) and map click
+    ☐ Phase 4 — Draggable markers, map interactions polish, animations
+  ☐ Map UX research — dynamic markers, popups, clicks & draggable markers via react-map-gl / Mapbox docs (Context7)
 
 Archive:
   See docs/todos/later.md for Phase 6 backlog.

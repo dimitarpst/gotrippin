@@ -69,6 +69,8 @@ function DrawerContent({
         )}
         {...props}
       >
+        {/* Accessible title so Radix/Dialog has a label; can be overridden by callers with a visible title if needed */}
+        <VaulDrawer.Title className="sr-only">Drawer</VaulDrawer.Title>
         <div className="mx-auto mt-4 h-2 w-[100px] shrink-0 rounded-full bg-muted" />
         {children}
       </VaulDrawer.Content>
