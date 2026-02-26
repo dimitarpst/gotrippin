@@ -25,6 +25,7 @@ import {
   Trash2,
   Share2,
   Pencil,
+  Map as MapIcon,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -48,9 +49,10 @@ import { resolveTripCoverUrl } from "@/lib/r2"
 import { updateTripCoverDominantColor } from "@/lib/api/trips"
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 import { toast } from "sonner"
+import { MapView, tripLocationsToWaypoints } from "@/components/maps"
 
 export interface TripOverviewActions {
-  onNavigate: (screen: "activity" | "flight" | "timeline" | "weather") => void
+  onNavigate: (screen: "activity" | "flight" | "timeline" | "weather" | "map") => void
   onOpenLocation?: (locationId: string) => void
   onBack: () => void
   onEdit?: () => void
@@ -729,6 +731,52 @@ export default function TripOverview({
               </button>
             </Card>
           </motion.div>
+
+          {/* Route Map */}
+          {!loadingRoute && hasRoute && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.52 }}>
+              <div onClick={() => onNavigate("map" as any)}>
+                <Card className="relative overflow-hidden border-white/[0.08] rounded-2xl h-48 cursor-pointer group shadow-xl bg-[var(--color-card)]">
+                  {/* Map Background */}
+                  <div className="absolute inset-0 z-0 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity duration-500">
+                    <MapView
+                      waypoints={tripLocationsToWaypoints(routeLocations)}
+                      fitToRoute
+                      fitPadding={40}
+                      interactive={false}
+                    />
+                    {/* Dark gradient overlay to ensure text is readable */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent" />
+                  </div>
+
+                  {/* Content on top of map */}
+                  <div className="relative z-10 h-full flex flex-col justify-end p-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-black/40 backdrop-blur-md border border-white/10 shadow-lg group-hover:border-[#ff6b6b]/50 transition-colors">
+                          <MapIcon className="w-5 h-5 text-white group-hover:text-[#ff6b6b] transition-colors" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs uppercase tracking-wide text-white/80 drop-shadow-md">
+                            {t("trip_overview.route_map_title")}
+                          </span>
+                          <span className="text-sm font-semibold text-white drop-shadow-md group-hover:text-[#ff6b6b] transition-colors">
+                            {trip.destination || trip.title || t("trips.untitled_trip")}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center gap-2 shadow-lg group-hover:bg-black/70 transition-colors">
+                        <span className="text-[11px] font-semibold text-white uppercase tracking-wider">Expand Map</span>
+                        <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                          <MapIcon className="w-3 h-3 text-white" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            </motion.div>
+          )}
 
           {/* Weather Widget */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>

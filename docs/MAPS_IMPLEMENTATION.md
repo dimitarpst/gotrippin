@@ -493,6 +493,11 @@ export async function getPlaceDetails(placeId: string) {
 
 ## 📝 Notes
 
+- **Console warnings (expected, harmless):**
+  - **WEBGL_debug_renderer_info deprecated** – Firefox/browser WebGL; cannot fix in app code.
+  - **WebGL texSubImage Alpha-premult / y-flip** – Mapbox GL texture uploads; safe to ignore.
+  - **CORS to events.mapbox.com** – Mapbox telemetry; often blocked by ad blockers or privacy extensions. The map still works; no action needed.
+
 - **Mapbox vs Google Maps**: We chose Mapbox for web because it offers better customization and modern React support. Google Places API works independently, so we get the best of both worlds.
 
 - **Mobile Strategy**: Using `react-native-maps` initially (free, mature). Can migrate to `@rnmapbox/maps` later if we want unified styling.

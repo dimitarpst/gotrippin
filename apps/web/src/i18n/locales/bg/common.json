@@ -162,6 +162,7 @@
     "route_today": "Днес, {{date}}",
     "route_add_stop": "Добави спирка",
     "route_empty_title": "Все още няма спирки",
+    "route_map_title": "Карта",
     "weather_loading": "Зареждане на времето...",
     "weather_unavailable": "Няма данни за времето",
     "weather_refresh": "Опитай отново",

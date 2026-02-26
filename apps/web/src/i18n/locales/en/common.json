@@ -162,6 +162,7 @@
     "route_today": "Today, {{date}}",
     "route_add_stop": "Add stop",
     "route_empty_title": "No stops yet",
+    "route_map_title": "Map",
     "weather_loading": "Loading weather...",
     "weather_unavailable": "Weather unavailable",
     "weather_refresh": "Retry",

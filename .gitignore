@@ -18,6 +18,8 @@ node_modules
 # Builds / Outputs
 .next
 **/.next
+# Next.js regenerates this; path differs for dev vs build, so ignore to avoid flip when switching machines
+apps/web/next-env.d.ts
 dist
 build
 out

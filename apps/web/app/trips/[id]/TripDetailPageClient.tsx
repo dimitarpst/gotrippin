@@ -49,6 +49,7 @@ export default function TripDetailPageClient({
           flight: `/trips/${shareCode}/activity/flight`,
           timeline: `/trips/${shareCode}/timeline`,
           weather: `/trips/${shareCode}/weather`,
+          map: `/trips/${shareCode}/map`,
         };
         if (routes[screen]) router.push(routes[screen]);
       },
