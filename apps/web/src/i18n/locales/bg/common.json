@@ -164,6 +164,8 @@
     "route_empty_title": "Все още няма спирки",
     "route_map_title": "Карта",
     "route_edit_cta": "Докосни, за да редактираш",
+    "route_search_placeholder": "Търси места (кафенета, забележителности, хотели...)",
+    "route_search_loading": "Търсене на места…",
     "weather_loading": "Зареждане на времето...",
     "weather_unavailable": "Няма данни за времето",
     "weather_refresh": "Опитай отново",

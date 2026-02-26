@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Map as MapIcon } from "lucide-react";
+import { ArrowLeft, Calendar, Map as MapIcon, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
@@ -10,7 +10,12 @@ import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import * as Sortable from "@/components/ui/sortable";
 import { DatePicker } from "@/components/trips/date-picker";
 import type { DateRange } from "react-day-picker";
-import { updateLocation as apiUpdateLocation, reorderLocations as apiReorderLocations } from "@/lib/api/trip-locations";
+import {
+  addLocation as apiAddLocation,
+  updateLocation as apiUpdateLocation,
+  reorderLocations as apiReorderLocations,
+} from "@/lib/api/trip-locations";
+import { useGooglePlaces } from "@/hooks";
 import { toast } from "sonner";
 
 interface RouteMapPageClientProps {
@@ -29,6 +34,8 @@ export default function RouteMapPageClient({
   const [open, setOpen] = useState(true);
   const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
   const [, setSavingOrder] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
 
   const waypoints = tripLocationsToWaypoints(locations);
 
@@ -37,6 +44,26 @@ export default function RouteMapPageClient({
     .filter(Boolean);
   const routeSummary =
     stopNames.length > 1 ? `${stopNames[0]} \u2192 ${stopNames[stopNames.length - 1]}` : stopNames[0] ?? "";
+
+  const handlePlaceSelect = async (placeId: string) => {
+    const selected = placeResults.find((place) => place.id === placeId);
+    if (!selected) {
+      return;
+    }
+
+    try {
+      const created = await apiAddLocation(trip.id, {
+        location_name: selected.name,
+        latitude: selected.lat,
+        longitude: selected.lng,
+        order_index: locations.length + 1,
+      });
+      setLocations((prev) => [...prev, created]);
+    } catch (error) {
+      console.error("Failed to add location from place", error);
+      toast.error("Failed to add stop from search");
+    }
+  };
   const handleNameCommit = async (id: string, name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -106,21 +133,76 @@ export default function RouteMapPageClient({
 
         <DrawerContent className="border-none bg-black/80 backdrop-blur-2xl max-h-[70vh] max-w-5xl mx-auto mb-4 px-0">
           {/* Header */}
-          <div className="px-4 pb-3 flex items-center justify-between gap-3">
-            <div className="flex flex-col">
-              <span className="text-xs uppercase tracking-wide text-white/60">
-                {t("trip_overview.route_title")}
-              </span>
-              <span className="text-sm font-semibold text-white">
-                {routeSummary || trip.destination || trip.title || t("trips.untitled_trip")}
-              </span>
+          <div className="px-4 pb-3 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <span className="text-xs uppercase tracking-wide text-white/60">
+                  {t("trip_overview.route_title")}
+                </span>
+                <span className="text-sm font-semibold text-white">
+                  {routeSummary || trip.destination || trip.title || t("trips.untitled_trip")}
+                </span>
+              </div>
+              <div className="text-xs text-white/60">
+                {locations.length === 0
+                  ? t("trip_overview.route_empty_title")
+                  : locations.length === 1
+                  ? "1 stop"
+                  : `${locations.length} stops`}
+              </div>
             </div>
-            <div className="text-xs text-white/60">
-              {locations.length === 0
-                ? t("trip_overview.route_empty_title")
-                : locations.length === 1
-                ? "1 stop"
-                : `${locations.length} stops`}
+
+            {/* Google Places search */}
+            <div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      search(searchQuery);
+                    }
+                  }}
+                  placeholder={t("trip_overview.route_search_placeholder") ?? "Search places..."}
+                  className="w-full rounded-full bg-white/5 border border-white/15 py-2 pl-9 pr-3 text-xs text-white placeholder:text-white/35 outline-none focus:border-white/40 focus:ring-0"
+                />
+              </div>
+
+              {placesError && (
+                <p className="mt-2 text-xs text-red-400">
+                  {placesError}
+                </p>
+              )}
+
+              {placesLoading && (
+                <p className="mt-2 text-xs text-white/60">
+                  {t("trip_overview.route_search_loading") ?? "Searching places…"}
+                </p>
+              )}
+
+              {!placesLoading && placeResults.length > 0 && (
+                <ul className="mt-2 max-h-40 overflow-y-auto space-y-1">
+                  {placeResults.map((place) => (
+                    <li key={place.id}>
+                      <button
+                        type="button"
+                        onClick={() => handlePlaceSelect(place.id)}
+                        className="w-full text-left rounded-xl px-3 py-2 bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/15 transition-colors"
+                      >
+                        <div className="text-xs font-semibold text-white truncate">
+                          {place.name}
+                        </div>
+                        {place.address && (
+                          <div className="text-[11px] text-white/55 truncate">
+                            {place.address}
+                          </div>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
