@@ -26,7 +26,7 @@ export default async function UserPage() {
         email: user.email ?? "",
         created_at: user.created_at,
         last_sign_in_at: user.last_sign_in_at ?? null,
-        identities: (user.identities ?? []) as Array<{ provider: string; [key: string]: unknown }>,
+        identities: user.identities ?? [],
         user_metadata: user.user_metadata ?? {},
         display_name: profile?.display_name ?? null,
         avatar_color: profile?.avatar_color ?? null,

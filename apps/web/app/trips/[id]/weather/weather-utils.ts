@@ -32,7 +32,7 @@ export function formatStopDateRange(arrival?: string | null, departure?: string 
 }
 
 export function getUpdatedLabel(
-  t: (key: string, options?: object) => string,
+  t: (key: string, options?: Record<string, unknown>) => string,
   updatedAt?: number | null
 ): string | null {
   if (typeof updatedAt !== "number" || !Number.isFinite(updatedAt)) return null

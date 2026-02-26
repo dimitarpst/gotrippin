@@ -1,6 +1,7 @@
 # Agent rules
 
 **Code style:** Read `docs/CODE_STYLE.md` for naming, punctuation, imports, types, and React/Next conventions so changes align with project rules and future PRs.
+**Todo workflow:** Read `docs/TODO_WORKFLOW.md` for the preferred todo workflow with Todo+ - formatting, symbols and shortcuts.
 
 ## Available MCPs
 

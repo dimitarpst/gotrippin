@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
 import { fetchTripDetail } from "@/lib/api/trips";
-import { normalizeTimelineData } from "@/lib/api/activities";
+import { normalizeTimelineData, type GroupedActivitiesResponse } from "@/lib/api/activities";
 import type { Activity, TripLocation } from "@gotrippin/core";
 import TripDetailPageClient from "./TripDetailPageClient";
 
@@ -46,7 +46,7 @@ export default async function TripDetailPage({
   const weatherError = detail.weather_error ?? null;
 
   const timelineRaw = detail.grouped_activities
-    ? normalizeTimelineData(detail.grouped_activities as { locations: unknown[]; unassigned: unknown[] })
+    ? normalizeTimelineData(detail.grouped_activities as GroupedActivitiesResponse)
     : {
         locations: [],
         activitiesByLocation: {} as Record<string, Activity[]>,

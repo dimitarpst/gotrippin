@@ -15,17 +15,19 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
-  const frontendOrigins = [
+  const rawOrigins = [
     config.get<string>("FRONTEND_ORIGIN_DEV"),
     config.get<string>("FRONTEND_ORIGIN_PROD"),
   ].filter((value): value is string => Boolean(value));
+  // Normalize so they match browser Origin (no trailing slash); trim env whitespace
+  const frontendOrigins = rawOrigins.map((o) => o.trim().replace(/\/+$/, ""));
 
   // Enable CORS for frontend communication
   app.enableCors({
-    origin: frontendOrigins.length > 0 ? frontendOrigins : undefined,
+    origin: frontendOrigins.length > 0 ? frontendOrigins : true,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   });
   // Global validation pipe with Zod integration
   app.useGlobalPipes(

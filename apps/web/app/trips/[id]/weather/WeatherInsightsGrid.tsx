@@ -2,11 +2,11 @@
 
 import { motion } from "framer-motion"
 import { Wind, Droplets, Cloud, Sun } from "lucide-react"
-import type { TripLocationWeather } from "@gotrippin/core"
+import type { WeatherData } from "@gotrippin/core"
 import { useTranslation } from "react-i18next"
 
 export interface WeatherInsightsGridProps {
-  current: TripLocationWeather["weather"]["current"] | null
+  current: NonNullable<WeatherData["current"]> | null
   themeHex: string
 }
 

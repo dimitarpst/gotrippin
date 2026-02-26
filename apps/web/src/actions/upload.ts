@@ -156,7 +156,8 @@ export async function listAvatarsAction(): Promise<ListResult> {
       );
 
       const contents = result.Contents ?? [];
-      allContents.push(...contents);
+      const withKey = contents.filter((c): c is { Key: string; Size?: number; LastModified?: Date } => typeof c.Key === "string");
+      allContents.push(...withKey);
 
       continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
     } while (continuationToken);

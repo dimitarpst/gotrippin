@@ -1,11 +1,11 @@
 "use client"
 
 import { motion } from "framer-motion"
-import type { TripLocationWeather } from "@gotrippin/core"
+import type { WeatherData } from "@gotrippin/core"
 import { getWeatherIcon, formatTemp, formatDayLabel } from "./weather-utils"
 
 export interface WeatherForecastPillsProps {
-  forecast: TripLocationWeather["weather"]["forecast"]
+  forecast: NonNullable<WeatherData["forecast"]>
 }
 
 export default function WeatherForecastPills({ forecast }: WeatherForecastPillsProps) {

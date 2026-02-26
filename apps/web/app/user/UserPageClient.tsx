@@ -14,7 +14,7 @@ export interface InitialUserData {
   email: string;
   created_at: string;
   last_sign_in_at: string | null;
-  identities: Array<{ provider: string; [key: string]: unknown }>;
+  identities: Array<{ provider: string }>;
   user_metadata: Record<string, unknown>;
   display_name: string | null;
   avatar_color: string | null;

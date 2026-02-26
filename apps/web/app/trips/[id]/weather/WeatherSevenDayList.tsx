@@ -1,12 +1,12 @@
 "use client"
 
 import { motion } from "framer-motion"
-import type { TripLocationWeather } from "@gotrippin/core"
+import type { WeatherData } from "@gotrippin/core"
 import { getWeatherIcon, formatTemp, formatDayLabel } from "./weather-utils"
 import { useTranslation } from "react-i18next"
 
 export interface WeatherSevenDayListProps {
-  forecast: TripLocationWeather["weather"]["forecast"]
+  forecast: NonNullable<WeatherData["forecast"]>
   themeHex: string
 }
 
