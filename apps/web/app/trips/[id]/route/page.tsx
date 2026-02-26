@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
-import { fetchTripDetail } from "@/lib/api/trips";
+import { fetchTripDetail, ApiError } from "@/lib/api/trips";
 import type { TripLocation } from "@gotrippin/core";
 import RouteMapPageClient from "./RouteMapPageClient";
 
@@ -30,8 +30,11 @@ export default async function RoutePage({
   let detail;
   try {
     detail = await fetchTripDetail(shareCode, token);
-  } catch {
-    notFound();
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode === 404) {
+      notFound();
+    }
+    throw error;
   }
 
   if (!detail?.trip) {

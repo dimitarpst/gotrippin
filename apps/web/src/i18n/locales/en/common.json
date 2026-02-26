@@ -166,6 +166,7 @@
     "route_edit_cta": "Tap to edit",
     "route_search_placeholder": "Search places (cafes, sights, hotels...)",
     "route_search_loading": "Searching places…",
+    "route_focus_map": "Zoom map to this stop",
     "weather_loading": "Loading weather...",
     "weather_unavailable": "Weather unavailable",
     "weather_refresh": "Retry",

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Map as MapIcon, Search } from "lucide-react";
+import { ArrowLeft, Calendar, Map as MapIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
@@ -15,7 +15,6 @@ import {
   updateLocation as apiUpdateLocation,
   reorderLocations as apiReorderLocations,
 } from "@/lib/api/trip-locations";
-import { useGooglePlaces } from "@/hooks";
 import { toast } from "sonner";
 
 interface RouteMapPageClientProps {
@@ -34,8 +33,7 @@ export default function RouteMapPageClient({
   const [open, setOpen] = useState(true);
   const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
   const [, setSavingOrder] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
+  const [focusLngLat, setFocusLngLat] = useState<{ lng: number; lat: number } | null>(null);
 
   const waypoints = tripLocationsToWaypoints(locations);
 
@@ -45,25 +43,6 @@ export default function RouteMapPageClient({
   const routeSummary =
     stopNames.length > 1 ? `${stopNames[0]} \u2192 ${stopNames[stopNames.length - 1]}` : stopNames[0] ?? "";
 
-  const handlePlaceSelect = async (placeId: string) => {
-    const selected = placeResults.find((place) => place.id === placeId);
-    if (!selected) {
-      return;
-    }
-
-    try {
-      const created = await apiAddLocation(trip.id, {
-        location_name: selected.name,
-        latitude: selected.lat,
-        longitude: selected.lng,
-        order_index: locations.length + 1,
-      });
-      setLocations((prev) => [...prev, created]);
-    } catch (error) {
-      console.error("Failed to add location from place", error);
-      toast.error("Failed to add stop from search");
-    }
-  };
   const handleNameCommit = async (id: string, name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -89,10 +68,22 @@ export default function RouteMapPageClient({
     }
   };
 
+  const handleFocusOnStop = (loc: TripLocation) => {
+    if (loc.latitude != null && loc.longitude != null && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) {
+      setFocusLngLat({ lng: loc.longitude, lat: loc.latitude });
+    }
+  };
+
   return (
     <div className="h-screen w-full bg-[#0a0a0a] relative overflow-hidden">
       {/* Map background */}
-      <MapView waypoints={waypoints} fitToRoute fitPadding={80} className="absolute inset-0" />
+      <MapView
+        waypoints={waypoints}
+        fitToRoute
+        fitPadding={80}
+        className="absolute inset-0"
+        focusLngLat={focusLngLat}
+      />
 
       {/* Top overlay header */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-safe-top bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
@@ -132,7 +123,7 @@ export default function RouteMapPageClient({
         </DrawerTrigger>
 
         <DrawerContent className="border-none bg-black/80 backdrop-blur-2xl max-h-[70vh] max-w-5xl mx-auto mb-4 px-0">
-          {/* Header */}
+          {/* Header + Add stop control */}
           <div className="px-4 pb-3 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-col">
@@ -143,70 +134,19 @@ export default function RouteMapPageClient({
                   {routeSummary || trip.destination || trip.title || t("trips.untitled_trip")}
                 </span>
               </div>
-              <div className="text-xs text-white/60">
-                {locations.length === 0
-                  ? t("trip_overview.route_empty_title")
-                  : locations.length === 1
-                  ? "1 stop"
-                  : `${locations.length} stops`}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-white/60">
+                  {locations.length === 0
+                    ? t("trip_overview.route_empty_title")
+                    : locations.length === 1
+                    ? "1 stop"
+                    : `${locations.length} stops`}
+                </span>
               </div>
-            </div>
-
-            {/* Google Places search */}
-            <div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-                <input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      search(searchQuery);
-                    }
-                  }}
-                  placeholder={t("trip_overview.route_search_placeholder") ?? "Search places..."}
-                  className="w-full rounded-full bg-white/5 border border-white/15 py-2 pl-9 pr-3 text-xs text-white placeholder:text-white/35 outline-none focus:border-white/40 focus:ring-0"
-                />
-              </div>
-
-              {placesError && (
-                <p className="mt-2 text-xs text-red-400">
-                  {placesError}
-                </p>
-              )}
-
-              {placesLoading && (
-                <p className="mt-2 text-xs text-white/60">
-                  {t("trip_overview.route_search_loading") ?? "Searching places…"}
-                </p>
-              )}
-
-              {!placesLoading && placeResults.length > 0 && (
-                <ul className="mt-2 max-h-40 overflow-y-auto space-y-1">
-                  {placeResults.map((place) => (
-                    <li key={place.id}>
-                      <button
-                        type="button"
-                        onClick={() => handlePlaceSelect(place.id)}
-                        className="w-full text-left rounded-xl px-3 py-2 bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/15 transition-colors"
-                      >
-                        <div className="text-xs font-semibold text-white truncate">
-                          {place.name}
-                        </div>
-                        {place.address && (
-                          <div className="text-[11px] text-white/55 truncate">
-                            {place.address}
-                          </div>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
           </div>
 
-          {/* Editable, reorderable route list (Phase 2) */}
+          {/* Editable, reorderable route list */}
           <div className="flex-1 overflow-y-auto px-4 pb-4">
             {locations.length === 0 ? (
               <p className="text-sm text-white/60">{t("trip_overview.route_empty")}</p>
@@ -242,6 +182,7 @@ export default function RouteMapPageClient({
                         allLocations={locations}
                         onNameCommit={handleNameCommit}
                         onDatesCommit={handleDatesCommit}
+                        onFocusMap={handleFocusOnStop}
                       />
                     </Sortable.Item>
                   ))}
@@ -261,6 +202,7 @@ interface RouteLocationRowProps {
   allLocations: TripLocation[];
   onNameCommit: (id: string, name: string) => void;
   onDatesCommit: (id: string, range: DateRange | undefined) => void;
+  onFocusMap?: (location: TripLocation) => void;
 }
 
 function RouteLocationRow({
@@ -269,10 +211,16 @@ function RouteLocationRow({
   allLocations,
   onNameCommit,
   onDatesCommit,
+  onFocusMap,
 }: RouteLocationRowProps) {
   const { t } = useTranslation();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [draftName, setDraftName] = useState(location.location_name || "");
+  const hasCoords =
+    location.latitude != null &&
+    location.longitude != null &&
+    Number.isFinite(location.latitude) &&
+    Number.isFinite(location.longitude);
 
   const selectedRange: DateRange | undefined = location.arrival_date
     ? {
@@ -296,9 +244,15 @@ function RouteLocationRow({
     <>
       <div className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 px-3 py-3">
         <div className="flex flex-col items-center mr-1">
-          <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-semibold text-white/80 border border-white/10">
+          <button
+            type="button"
+            onClick={() => onFocusMap?.(location)}
+            disabled={!hasCoords || !onFocusMap}
+            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-semibold text-white/80 border border-white/10 hover:bg-white/20 hover:border-white/20 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            title={hasCoords ? t("trip_overview.route_focus_map") : undefined}
+          >
             {index + 1}
-          </div>
+          </button>
           {index < allLocations.length - 1 && <div className="flex-1 w-px bg-white/10 mt-1" />}
         </div>
 

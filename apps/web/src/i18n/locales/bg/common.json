@@ -166,6 +166,7 @@
     "route_edit_cta": "Докосни, за да редактираш",
     "route_search_placeholder": "Търси места (кафенета, забележителности, хотели...)",
     "route_search_loading": "Търсене на места…",
+    "route_focus_map": "Приближи картата до тази спирка",
     "weather_loading": "Зареждане на времето...",
     "weather_unavailable": "Няма данни за времето",
     "weather_refresh": "Опитай отново",

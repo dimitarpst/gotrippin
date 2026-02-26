@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { Train, Calendar, Clock, Plus, DollarSign, FileText, LinkIcon, StickyNote } from "lucide-react"
+import { Train, Calendar, Clock, Plus, DollarSign, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ImageIcon, Camera } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { useTripLocations } from "@/hooks/useTripLocations"
 import { createActivity } from "@/lib/api/activities"
 import { useAuth } from "@/contexts/AuthContext"
@@ -19,7 +18,6 @@ interface TrainRouteFormProps {
 }
 
 export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) {
-  const [showDocumentModal, setShowDocumentModal] = useState(false)
   const { locations, loading: locationsLoading, error: locationsError, refetch } = useTripLocations(tripId)
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -392,41 +390,10 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
         >
           <ActionButton icon={DollarSign} label="Total Cost" iconColor="#FFD93D" />
           <ActionButton icon={FileText} label="Write a note" iconColor="#95E1D3" />
-          <ActionButton
-            icon={LinkIcon}
-            label="Add File, Photo or Link"
-            iconColor="#FFA07A"
-            onClick={() => setShowDocumentModal(true)}
-          />
         </motion.div>
         </>
         )}
       </div>
-
-      {/* Add Document Modal */}
-      <Dialog open={showDocumentModal} onOpenChange={setShowDocumentModal}>
-        <DialogContent
-          className="rounded-3xl p-0 overflow-hidden max-w-sm backdrop-blur-xl border-white/[0.08]"
-          style={{ backgroundColor: "var(--surface)" }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2 }}
-          >
-            <DialogHeader className="p-6 pb-4">
-              <DialogTitle className="text-white text-center">Add Document</DialogTitle>
-            </DialogHeader>
-            <div className="px-4 pb-6 space-y-2">
-              <ModalOption icon={FileText} label="Import Document" />
-              <ModalOption icon={LinkIcon} label="Save Link" />
-              <ModalOption icon={ImageIcon} label="Choose Photo from Library" />
-              <ModalOption icon={Camera} label="Take a Photo" />
-              <ModalOption icon={StickyNote} label="New Note" />
-            </div>
-          </motion.div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
@@ -474,18 +441,3 @@ function ActionButton({
     </motion.button>
   )
 }
-
-function ModalOption({ icon: Icon, label }: { icon: any; label: string }) {
-  return (
-    <motion.button
-      className="w-full rounded-xl p-4 flex items-center gap-3 transition-colors"
-      style={{ backgroundColor: "var(--surface-alt)" }}
-      whileHover={{ x: 4 }}
-      whileTap={{ scale: 0.98 }}
-    >
-      <Icon className="w-5 h-5" style={{ color: "var(--accent)" }} />
-      <span className="text-white text-sm">{label}</span>
-    </motion.button>
-  )
-}
-

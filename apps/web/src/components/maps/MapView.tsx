@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import Map, { Marker, Source, Layer, AttributionControl } from "react-map-gl/mapbox";
+import { useEffect, useMemo } from "react";
+import Map, { Marker, Source, Layer, useMap } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 // Console: WEBGL_debug_renderer_info, texSubImage, and CORS to events.mapbox.com are expected/harmless (see docs/MAPS_IMPLEMENTATION.md).
@@ -15,6 +15,26 @@ export interface MapWaypoint {
 const DEFAULT_CENTER = { longitude: 23.32, latitude: 42.7 };
 const DEFAULT_ZOOM = 3;
 const MAPBOX_DARK_STYLE = "mapbox://styles/mapbox/dark-v11";
+const FOCUS_ZOOM = 14;
+const FLY_DURATION_MS = 1200;
+
+/** When focusLngLat is set, flies the map to that point. Rendered inside Map so useMap() works. */
+function MapFlyTo({
+  focusLngLat,
+}: {
+  focusLngLat: { lng: number; lat: number } | null;
+}) {
+  const { current: map } = useMap();
+  useEffect(() => {
+    if (!focusLngLat || !map) return;
+    map.flyTo({
+      center: [focusLngLat.lng, focusLngLat.lat],
+      zoom: FOCUS_ZOOM,
+      duration: FLY_DURATION_MS,
+    });
+  }, [focusLngLat, map]);
+  return null;
+}
 
 function getBounds(waypoints: MapWaypoint[]): [[number, number], [number, number]] | null {
   if (waypoints.length === 0) return null;
@@ -57,6 +77,8 @@ interface MapViewProps {
   fitPadding?: number;
   /** Whether the map responds to user interaction (drag, zoom). Default true. */
   interactive?: boolean;
+  /** When set, map flies to this point (e.g. when user taps a route stop). */
+  focusLngLat?: { lng: number; lat: number } | null;
 }
 
 export default function MapView({
@@ -65,6 +87,7 @@ export default function MapView({
   fitToRoute = true,
   fitPadding = 60,
   interactive = true,
+  focusLngLat = null,
 }: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -107,6 +130,7 @@ export default function MapView({
         style={{ width: "100%", height: "100%" }}
         interactive={interactive}
       >
+        <MapFlyTo focusLngLat={focusLngLat} />
       {lineGeo && (
         <Source id="route-line" type="geojson" data={lineGeo}>
           <Layer
