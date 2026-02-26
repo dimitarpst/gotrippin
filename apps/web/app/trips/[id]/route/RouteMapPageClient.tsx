@@ -1,11 +1,17 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Map as MapIcon } from "lucide-react";
+import { ArrowLeft, Calendar, Map as MapIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Trip, TripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import * as Sortable from "@/components/ui/sortable";
+import { DatePicker } from "@/components/trips/date-picker";
+import type { DateRange } from "react-day-picker";
+import { updateLocation as apiUpdateLocation, reorderLocations as apiReorderLocations } from "@/lib/api/trip-locations";
+import { toast } from "sonner";
 
 interface RouteMapPageClientProps {
   trip: Trip;
@@ -21,14 +27,40 @@ export default function RouteMapPageClient({
   const router = useRouter();
   const { t } = useTranslation();
   const [open, setOpen] = useState(true);
+  const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
+  const [savingOrder, setSavingOrder] = useState(false);
 
-  const waypoints = tripLocationsToWaypoints(routeLocations);
+  const waypoints = tripLocationsToWaypoints(locations);
 
-  const stopNames = routeLocations
+  const stopNames = locations
     .map((loc) => loc.location_name)
     .filter(Boolean);
   const routeSummary =
     stopNames.length > 1 ? `${stopNames[0]} \u2192 ${stopNames[stopNames.length - 1]}` : stopNames[0] ?? "";
+  const handleNameCommit = async (id: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    try {
+      const updated = await apiUpdateLocation(trip.id, id, { location_name: trimmed });
+      setLocations((prev) => prev.map((loc) => (loc.id === id ? { ...loc, ...updated } : loc)));
+    } catch (error) {
+      console.error("Failed to update stop name", error);
+      toast.error("Failed to update stop name");
+    }
+  };
+
+  const handleDatesCommit = async (id: string, range: DateRange | undefined) => {
+    try {
+      const payload: Partial<{ arrival_date: string | null; departure_date: string | null }> = {};
+      if (range?.from) payload.arrival_date = range.from.toISOString();
+      if (range?.to) payload.departure_date = range.to.toISOString();
+      const updated = await apiUpdateLocation(trip.id, id, payload as any);
+      setLocations((prev) => prev.map((loc) => (loc.id === id ? { ...loc, ...updated } : loc)));
+    } catch (error) {
+      console.error("Failed to update stop dates", error);
+      toast.error("Failed to update stop dates");
+    }
+  };
 
   return (
     <div className="h-screen w-full bg-[#0a0a0a] relative overflow-hidden">
@@ -84,69 +116,55 @@ export default function RouteMapPageClient({
               </span>
             </div>
             <div className="text-xs text-white/60">
-              {routeLocations.length === 0
+              {locations.length === 0
                 ? t("trip_overview.route_empty_title")
-                : routeLocations.length === 1
+                : locations.length === 1
                 ? "1 stop"
-                : `${routeLocations.length} stops`}
+                : `${locations.length} stops`}
             </div>
           </div>
 
-          {/* Route list (read-only for Phase 1) */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
-            {routeLocations.length === 0 ? (
-              <p className="text-sm text-white/60">
-                {t("trip_overview.route_empty")}
-              </p>
+          {/* Editable, reorderable route list (Phase 2) */}
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
+            {locations.length === 0 ? (
+              <p className="text-sm text-white/60">{t("trip_overview.route_empty")}</p>
             ) : (
-              routeLocations.map((loc, index) => {
-                const hasArrival = !!loc.arrival_date;
-                const hasDeparture = !!loc.departure_date;
-
-                let dateLabel = "";
-                if (hasArrival) {
-                  const from = new Date(loc.arrival_date as string);
-                  const to = hasDeparture ? new Date(loc.departure_date as string) : null;
-                  const fromStr = from.toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  });
-                  const toStr = to
-                    ? ` \u2192 ${to.toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      })}`
-                    : "";
-                  dateLabel = `${fromStr}${toStr}`;
-                }
-
-                return (
-                  <div
-                    key={loc.id}
-                    className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 px-3 py-3"
-                  >
-                    <div className="flex flex-col items-center mr-1">
-                      <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-semibold text-white/80 border border-white/10">
-                        {index + 1}
-                      </div>
-                      {index < routeLocations.length - 1 && (
-                        <div className="flex-1 w-px bg-white/10 mt-1" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-white truncate">
-                        {loc.location_name || t("trips.untitled_trip")}
-                      </div>
-                      {dateLabel && (
-                        <div className="text-xs text-white/60 mt-0.5">
-                          {dateLabel}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
+              <Sortable.Root
+                value={locations}
+                onValueChange={(next) => setLocations(next)}
+                getItemValue={(item) => item.id}
+                orientation="vertical"
+                onMove={async ({ activeIndex, overIndex }) => {
+                  if (activeIndex === overIndex) return;
+                  const newOrder = [...locations];
+                  const [moved] = newOrder.splice(activeIndex, 1);
+                  newOrder.splice(overIndex, 0, moved);
+                  setSavingOrder(true);
+                  try {
+                    await apiReorderLocations(trip.id, { location_ids: newOrder.map((l) => l.id) });
+                    setLocations(newOrder);
+                  } catch (error) {
+                    console.error("Failed to reorder locations", error);
+                    toast.error("Failed to reorder stops");
+                  } finally {
+                    setSavingOrder(false);
+                  }
+                }}
+              >
+                <Sortable.Content className="space-y-3">
+                  {locations.map((loc, index) => (
+                    <Sortable.Item key={loc.id} value={loc.id} asChild>
+                      <RouteLocationRow
+                        location={loc}
+                        index={index}
+                        allLocations={locations}
+                        onNameCommit={handleNameCommit}
+                        onDatesCommit={handleDatesCommit}
+                      />
+                    </Sortable.Item>
+                  ))}
+                </Sortable.Content>
+              </Sortable.Root>
             )}
           </div>
         </DrawerContent>
@@ -154,4 +172,82 @@ export default function RouteMapPageClient({
     </div>
   );
 }
+
+interface RouteLocationRowProps {
+  location: TripLocation;
+  index: number;
+  allLocations: TripLocation[];
+  onNameCommit: (id: string, name: string) => void;
+  onDatesCommit: (id: string, range: DateRange | undefined) => void;
+}
+
+function RouteLocationRow({
+  location,
+  index,
+  allLocations,
+  onNameCommit,
+  onDatesCommit,
+}: RouteLocationRowProps) {
+  const { t } = useTranslation();
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [draftName, setDraftName] = useState(location.location_name || "");
+
+  const selectedRange: DateRange | undefined = location.arrival_date
+    ? {
+        from: new Date(location.arrival_date),
+        to: location.departure_date ? new Date(location.departure_date) : undefined,
+      }
+    : undefined;
+
+  const formatDateLabel = (range: DateRange | undefined): string => {
+    if (!range?.from) return t("date_picker.title");
+    const fromStr = range.from.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const toStr = range.to
+      ? ` \u2192 ${range.to.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+      : "";
+    return `${fromStr}${toStr}`;
+  };
+
+  const dateLabel = formatDateLabel(selectedRange);
+
+  return (
+    <>
+      <div className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 px-3 py-3">
+        <div className="flex flex-col items-center mr-1">
+          <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-semibold text-white/80 border border-white/10">
+            {index + 1}
+          </div>
+          {index < allLocations.length - 1 && <div className="flex-1 w-px bg-white/10 mt-1" />}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <input
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onBlur={() => onNameCommit(location.id, draftName)}
+            placeholder={t("trips.untitled_trip")}
+            className="w-full bg-transparent text-sm font-semibold text-white placeholder:text-white/30 outline-none border-none p-0 focus:ring-0"
+          />
+
+          <button
+            type="button"
+            onClick={() => setShowDatePicker(true)}
+            className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[#ff6b6b] hover:text-[#ff8585] transition-colors"
+          >
+            <Calendar className="w-3 h-3" />
+            <span>{dateLabel}</span>
+          </button>
+        </div>
+      </div>
+
+      <DatePicker
+        open={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onSelect={(range) => onDatesCommit(location.id, range)}
+        selectedDateRange={selectedRange}
+      />
+    </>
+  );
+}
+
 
