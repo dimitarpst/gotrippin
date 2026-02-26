@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Map as MapIcon, Navigation } from "lucide-react";
+import { ArrowLeft, ChevronRight, Map as MapIcon, Navigation } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Trip, TripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
@@ -64,7 +64,7 @@ export default function MapPageClient({
         )}
       </div>
 
-      {/* Optional: Floating Route Legend / Info Panel */}
+      {/* Floating Route Legend / Info Panel that links to the route editor */}
       {routeLocations.length > 0 && (
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -73,19 +73,25 @@ export default function MapPageClient({
           className="absolute bottom-6 left-4 right-4 z-10 pointer-events-none"
         >
           <div className="max-w-md mx-auto">
-            <div className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex items-center gap-4 shadow-2xl pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => router.push(`/trips/${shareCode}/route`)}
+              className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex items-center gap-4 shadow-2xl pointer-events-auto w-full text-left hover:bg-black/70 active:scale-[0.98] transition-transform transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              aria-label={t("trip_overview.route_title")}
+            >
               <div className="w-10 h-10 rounded-full bg-[#ff6b6b]/20 flex items-center justify-center flex-shrink-0 border border-[#ff6b6b]/30">
                 <Navigation className="w-5 h-5 text-[#ff6b6b]" />
               </div>
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="text-sm font-medium text-white truncate">
-                  {routeLocations.length} Stops
+                  {routeLocations.length} Stops · {t("trip_overview.route_edit_cta")}
                 </span>
                 <span className="text-xs text-white/60 truncate">
-                  {routeLocations.map(l => l.location_name).filter(Boolean).join(" → ")}
+                  {routeLocations.map((l) => l.location_name).filter(Boolean).join(" → ")}
                 </span>
               </div>
-            </div>
+              <ChevronRight className="w-4 h-4 text-white/60 flex-shrink-0" />
+            </button>
           </div>
         </motion.div>
       )}

@@ -163,6 +163,7 @@
     "route_add_stop": "Add stop",
     "route_empty_title": "No stops yet",
     "route_map_title": "Map",
+    "route_edit_cta": "Tap to edit",
     "weather_loading": "Loading weather...",
     "weather_unavailable": "Weather unavailable",
     "weather_refresh": "Retry",

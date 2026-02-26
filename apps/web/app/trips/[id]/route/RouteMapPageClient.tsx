@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Calendar, Map as MapIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { Trip, TripLocation } from "@gotrippin/core";
+import type { Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import * as Sortable from "@/components/ui/sortable";
@@ -28,7 +28,7 @@ export default function RouteMapPageClient({
   const { t } = useTranslation();
   const [open, setOpen] = useState(true);
   const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
-  const [savingOrder, setSavingOrder] = useState(false);
+  const [, setSavingOrder] = useState(false);
 
   const waypoints = tripLocationsToWaypoints(locations);
 
@@ -51,10 +51,10 @@ export default function RouteMapPageClient({
 
   const handleDatesCommit = async (id: string, range: DateRange | undefined) => {
     try {
-      const payload: Partial<{ arrival_date: string | null; departure_date: string | null }> = {};
+      const payload: UpdateTripLocation = {};
       if (range?.from) payload.arrival_date = range.from.toISOString();
       if (range?.to) payload.departure_date = range.to.toISOString();
-      const updated = await apiUpdateLocation(trip.id, id, payload as any);
+      const updated = await apiUpdateLocation(trip.id, id, payload);
       setLocations((prev) => prev.map((loc) => (loc.id === id ? { ...loc, ...updated } : loc)));
     } catch (error) {
       console.error("Failed to update stop dates", error);
