@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Map as MapIcon } from "lucide-react";
+import { ArrowLeft, Calendar, Map as MapIcon, Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
@@ -15,6 +15,7 @@ import {
   updateLocation as apiUpdateLocation,
   reorderLocations as apiReorderLocations,
 } from "@/lib/api/trip-locations";
+import { useGooglePlaces } from "@/hooks";
 import { toast } from "sonner";
 
 interface RouteMapPageClientProps {
@@ -33,7 +34,10 @@ export default function RouteMapPageClient({
   const [open, setOpen] = useState(true);
   const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
   const [, setSavingOrder] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [focusLngLat, setFocusLngLat] = useState<{ lng: number; lat: number } | null>(null);
+  const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
 
   const waypoints = tripLocationsToWaypoints(locations);
 
@@ -43,6 +47,25 @@ export default function RouteMapPageClient({
   const routeSummary =
     stopNames.length > 1 ? `${stopNames[0]} \u2192 ${stopNames[stopNames.length - 1]}` : stopNames[0] ?? "";
 
+  const handlePlaceSelect = async (placeId: string) => {
+    const selected = placeResults.find((place) => place.id === placeId);
+    if (!selected) {
+      return;
+    }
+
+    try {
+      const created = await apiAddLocation(trip.id, {
+        location_name: selected.name,
+        latitude: selected.lat,
+        longitude: selected.lng,
+        order_index: locations.length + 1,
+      });
+      setLocations((prev) => [...prev, created]);
+    } catch (error) {
+      console.error("Failed to add location from place", error);
+      toast.error("Failed to add stop from search");
+    }
+  };
   const handleNameCommit = async (id: string, name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -134,15 +157,72 @@ export default function RouteMapPageClient({
                   {routeSummary || trip.destination || trip.title || t("trips.untitled_trip")}
                 </span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-white/60">
-                  {locations.length === 0
-                    ? t("trip_overview.route_empty_title")
-                    : locations.length === 1
-                    ? "1 stop"
-                    : `${locations.length} stops`}
-                </span>
+              <div className="text-xs text-white/60">
+                {locations.length === 0
+                  ? t("trip_overview.route_empty_title")
+                  : locations.length === 1
+                  ? "1 stop"
+                  : `${locations.length} stops`}
               </div>
+            </div>
+
+            {/* Add stop: button toggles search panel */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSearch((s) => !s)}
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 py-2 px-4 text-xs font-medium text-white transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{t("trip_overview.route_add_stop")}</span>
+              </button>
+
+              {showSearch && (
+                <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") search(searchQuery);
+                      }}
+                      placeholder={t("trip_overview.route_search_placeholder") ?? "Search places..."}
+                      className="w-full rounded-full bg-white/5 border border-white/15 py-2 pl-9 pr-3 text-xs text-white placeholder:text-white/35 outline-none focus:border-white/40 focus:ring-0"
+                    />
+                  </div>
+                  {placesError && <p className="text-xs text-red-400">{placesError}</p>}
+                  {placesLoading && (
+                    <p className="text-xs text-white/60">
+                      {t("trip_overview.route_search_loading") ?? "Searching places…"}
+                    </p>
+                  )}
+                  {!placesLoading && placeResults.length > 0 && (
+                    <ul className="max-h-36 overflow-y-auto space-y-1">
+                      {placeResults.map((place) => (
+                        <li key={place.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handlePlaceSelect(place.id);
+                              setShowSearch(false);
+                              setSearchQuery("");
+                            }}
+                            className="w-full text-left rounded-lg px-3 py-2 bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/15 text-xs font-medium text-white truncate"
+                          >
+                            <span className="block truncate">{place.name}</span>
+                            {place.address && (
+                              <span className="block text-[11px] text-white/55 truncate">
+                                {place.address}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

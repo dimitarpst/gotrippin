@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tailwind-animate";
 
 /* Aurora × Coral Dark Theme */
 @theme {
@@ -52,15 +53,4 @@
   --accent: var(--color-accent);
   --accent-hover: var(--color-primary);
   --muted: var(--color-muted-foreground);
-}
-
-/* Remove focus ring/outline site-wide (no visible focus indicator) */
-@layer base {
-  *:focus {
-    outline: none;
-  }
-  *:focus-visible {
-    outline: none;
-    box-shadow: none;
-  }
 }
