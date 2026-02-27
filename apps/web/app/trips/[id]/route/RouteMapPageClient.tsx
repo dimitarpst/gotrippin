@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Check, Compass, Loader2, Map as MapIcon, Search, Star, Utensils, Bed } from "lucide-react";
+import { ArrowLeft, Calendar, Check, Compass, Loader2, Map as MapIcon, Search, Star, Utensils, Bed, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { CreateTripLocation, Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
