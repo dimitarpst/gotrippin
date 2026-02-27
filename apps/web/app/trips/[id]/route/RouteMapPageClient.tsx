@@ -25,12 +25,14 @@ interface RouteMapPageClientProps {
   trip: Trip;
   routeLocations: TripLocation[];
   shareCode: string;
+  isWizard?: boolean;
 }
 
 export default function RouteMapPageClient({
   trip,
   routeLocations,
   shareCode,
+  isWizard = false,
 }: RouteMapPageClientProps) {
   const router = useRouter();
   const { t } = useTranslation();
@@ -82,6 +84,7 @@ export default function RouteMapPageClient({
     .filter(Boolean);
   const routeSummary =
     stopNames.length > 1 ? `${stopNames[0]} \u2192 ${stopNames[stopNames.length - 1]}` : stopNames[0] ?? "";
+  const canExitWizard = locations.length >= 2;
 
   const handleConfirmAddPlace = useCallback(
     async () => {
@@ -181,16 +184,31 @@ export default function RouteMapPageClient({
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-safe-top bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
         <div className="flex items-center gap-4 max-w-5xl mx-auto">
           <button
-            onClick={() => router.push(`/trips/${shareCode}`)}
-            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors pointer-events-auto shadow-lg"
+            onClick={() => {
+              if (isWizard && !canExitWizard) return;
+              router.push(`/trips/${shareCode}`);
+            }}
+            disabled={isWizard && !canExitWizard}
+            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors pointer-events-auto shadow-lg disabled:opacity-40 disabled:hover:bg-black/40 disabled:border-white/10"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
           <div className="flex-1 flex flex-col min-w-0">
-            <span className="text-xs uppercase tracking-wide text-white/80 font-medium drop-shadow-md">
-              {t("trip_overview.route_map_title")}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase tracking-wide text-white/80 font-medium drop-shadow-md">
+                {t("trip_overview.route_map_title")}
+              </span>
+              {isWizard && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/80">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                  <span className="ml-1">
+                    {t("trips.route_step_label", { defaultValue: "Step 2 of 2" })}
+                  </span>
+                </span>
+              )}
+            </div>
             <span className="text-sm font-semibold text-white truncate drop-shadow-md">
               {trip.destination || trip.title || t("trips.untitled_trip")}
             </span>

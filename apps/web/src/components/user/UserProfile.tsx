@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useMemo, useState, useCallback, useRef } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileHeader from "./ProfileHeader";
 import ProfileHero from "./ProfileHero";
@@ -15,6 +15,7 @@ import EmailConfirmationBanner from "./EmailConfirmationBanner";
 import { useTranslation } from "react-i18next";
 import { ExtendedUser } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
+import { Button } from "@/components/ui/button";
 
 export type UserProfileData = {
   uid: string;
@@ -34,6 +35,7 @@ export default function UserProfile({
   saving,
   error,
   clearError,
+  onShowTipsAgain,
 }: {
   data: UserProfileData;
   user: ExtendedUser | null;
@@ -46,9 +48,10 @@ export default function UserProfile({
   saving?: boolean;
   error?: string | null;
   clearError?: () => void;
+  onShowTipsAgain?: () => void;
 }) {
   const { t } = useTranslation();
-  const { signOut } = useAuth();
+  const { signOut, refreshProfile, user: authUser } = useAuth();
   const [editSessionId, setEditSessionId] = useState(0);
   const [editRefreshing, setEditRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -166,6 +169,40 @@ export default function UserProfile({
     setPendingChanges((prev) => ({ ...prev, avatarUrl: url }));
   };
 
+  const [resettingTips, setResettingTips] = useState(false);
+
+  const handleResetCreateTripTour = async () => {
+    if (!authUser) return;
+    setResettingTips(true);
+    try {
+      const existing =
+        ((authUser.user_metadata?.ui_tours as Record<string, unknown> | undefined) ?? {});
+      // Remove create_trip_v1 flag while preserving any other tour keys
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { create_trip_v1: _removed, ...rest } = existing;
+
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          ui_tours: rest,
+        },
+      });
+
+      if (error) {
+        console.error("Failed to reset create trip tour flag:", error);
+        return;
+      }
+
+      await refreshProfile();
+      if (onShowTipsAgain) {
+        onShowTipsAgain();
+      }
+    } catch (err) {
+      console.error("Unexpected error while resetting create trip tour flag:", err);
+    } finally {
+      setResettingTips(false);
+    }
+  };
+
   return (
     <div className="min-h-screen relative pb-32 overflow-y-auto scrollbar-hide">
       <ProfileHeader
@@ -209,6 +246,41 @@ export default function UserProfile({
             hasGoogle={hasGoogle}
             googleEmail={googleEmail}
           />
+          <motion.div
+            className="relative rounded-3xl overflow-hidden border border-white/8"
+            style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 800, damping: 25, delay: 0.25 }}
+          >
+            <div className="px-4 sm:px-6 py-5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-[var(--accent)]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white">
+                    {t("profile.tips_title", { defaultValue: "Tips & onboarding" })}
+                  </p>
+                  <p className="text-xs text-white/60">
+                    {t("profile.tips_description", {
+                      defaultValue: "Replay the create trip walkthrough from the start.",
+                    })}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={resettingTips}
+                onClick={handleResetCreateTripTour}
+                className="shrink-0 bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer"
+              >
+                {t("profile.show_tips_again", { defaultValue: "Show tips again" })}
+              </Button>
+            </div>
+          </motion.div>
         </div>
 
         {/* Logout button — plain button to avoid Framer Motion mount interference */}

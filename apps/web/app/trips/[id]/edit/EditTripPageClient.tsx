@@ -7,7 +7,6 @@ import { toast } from "sonner"
 import { updateTripAction } from "@/actions/trips"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
-import type { RouteLocation } from "@/components/trips/route/route-builder"
 import type { Trip } from "@gotrippin/core"
 
 interface EditTripPageClientProps {
@@ -24,7 +23,6 @@ export default function EditTripPageClient({ trip, shareCode }: EditTripPageClie
     coverPhoto?: import("@gotrippin/core").CoverPhotoInput
     color?: string
     dateRange?: DateRange
-    locations?: RouteLocation[]
   }) => {
     try {
       const tripData: Record<string, unknown> = {}

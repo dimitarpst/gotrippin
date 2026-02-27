@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Dock } from "@/components/ui/dock";
 
-import { Home, Compass, Plus, Settings } from "lucide-react";
+import { Home, Compass, Plus, Bot } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,9 +16,10 @@ const accentClass =
 
 interface DockBarProps {
   onCreateTrip?: () => void;
+  onExplore?: () => void;
 }
 
-export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
+export default function DockBar({ onCreateTrip, onExplore }: DockBarProps = {}) {
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
@@ -28,7 +29,7 @@ export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
     { key: "home", icon: Home },
     { key: "explore", icon: Compass },
     { key: "add_trip", icon: Plus },
-    { key: "settings", icon: Settings },
+    { key: "settings", icon: Bot },
   ];
 
   // Map standard icons
@@ -44,6 +45,8 @@ export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
     onClick: () => {
       if (key === "add_trip" && onCreateTrip) {
         onCreateTrip();
+      } else if (key === "explore" && onExplore) {
+        onExplore();
       } else if (key === "settings") {
         router.push("/settings");
       }

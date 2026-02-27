@@ -5,19 +5,25 @@ Todo:
     ✔ Phase 3 — Fix LinkedAccountsCard bg-(--accent) typo
     ✔ Phase 4 — Replace muted text (var(--muted)) → text-muted-foreground across all files
   ✔ Maps integration — Mapbox + coordinates (docs/MAPS_IMPLEMENTATION.md)
-  ☐ Route screen — map-first layout with bottom sheet editor (docs/MAPS_IMPLEMENTATION.md, docs/route-based-trip-planning-architecture.md)
+  ✔ Route screen — map-first layout with bottom sheet editor (docs/MAPS_IMPLEMENTATION.md, docs/route-based-trip-planning-architecture.md)
     ✔ Phase 1 — Map + bottom sheet scaffolding (read-only route; no editing)
     ✔ Phase 2 — Edit existing stops in sheet (reorder, rename, dates) synced to map
     ✔ Phase 3 — Add stops via search (Google Places)
     ✔ Phase 3b — Add stops via map click
-    ☐ Phase 4 — Draggable markers, map interactions polish, animations
+    ✘ Phase 4 — Draggable markers, extra map polish, animations (moved to later backlog / nice-to-have)
     ✔ Phase 4a — Basemap: switch to Mapbox Standard (or streets) for POI/label richness (Option 1)
-    ☐ Phase 4b — Basemap style toggle (e.g. Night ↔ Streets ↔ Satellite)
+    ✘ Phase 4b — Basemap style toggle (e.g. Night ↔ Streets ↔ Satellite) — move to later backlog
     ✘ Phase 4c — Nearby POIs overlay (cut after experiment; keep text search + dropped pins for now)
     ✔ Phase 4d — Along-route POIs helper: sample route from waypoints, query nearby per segment midpoint, dedupe + small list in drawer
-    ☐ Phase 4e — Unify map + edit mode: keep Route page as primary; map page redirects/aliases (can split later)
-    ☐ Phase 5 — Align Create Trip route step with map-first route editor (shared RouteEditor UX)
+    ✘ Phase 4e — Unify map + edit mode: keep Route page as primary; map page redirects/aliases (defer for now)
+    ✔ Phase 5 — Align Create Trip route step with map-first route editor (shared RouteEditor UX) — create wizard now: Step 1 (details) → Step 2 (map route editor at /trips/{share_code}/route)
   ✔ Map UX research — dynamic markers, popups, clicks & draggable markers via react-map-gl / Mapbox docs (Context7)
+  ☐ AI operator — glm-5 via OpenRouter (docs/AI_TRIP_PLANNER.md, docs/plan.md, docs/AI_OPERATOR_IMPLEMENTATION.md)
+    ☐ Phase 1 — AI backend foundations (DB session model, tools catalog, OpenRouter client)
+    ☐ Phase 2 — Turn orchestration & tool execution (single- and multi-tool calls) in NestJS ai module
+    ☐ Phase 3 — Web chat UI (global + trip-scoped) wired to AI endpoints, with basic cards/quick replies
+    ☐ Phase 4 — Logging, metrics, rate limits and error handling for AI calls
+    ☐ Phase 5 — Collaboration features and advanced planning behaviours (multi-user chat, locks, refinements)
 
 Archive:
   See docs/todos/later.md for Phase 6 backlog.

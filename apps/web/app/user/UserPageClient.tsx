@@ -144,6 +144,7 @@ export default function UserPageClient({ initialUser }: UserPageClientProps) {
       saving={saving}
       error={error}
       clearError={() => setError(null)}
+      onShowTipsAgain={() => router.push("/trips/create?tour=create_trip_v1")}
     />
   );
 }

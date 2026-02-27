@@ -7,41 +7,52 @@ import CreateTrip from "@/components/trips/create-trip"
 import { toast } from "sonner"
 import { useTrips } from "@/hooks/useTrips"
 import { createTripAction } from "@/actions/trips"
-import { useAuth } from "@/contexts/AuthContext"
 import { useState, useEffect } from "react"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
-import { addLocation } from "@/lib/api/trip-locations"
 import { getRandomRouteColor } from "@/lib/route-colors"
-import type { RouteLocation } from "@/components/trips/route/route-builder"
 
 export default function CreateTripPageClient() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { accessToken } = useAuth()
   const { refetch } = useTrips()
   const [mounted, setMounted] = useState(false)
+  const [step, setStep] = useState<1 | 2>(1)
+  const [pendingData, setPendingData] = useState<{
+    title: string
+    coverPhoto?: import("@gotrippin/core").CoverPhotoInput
+    color?: string
+    dateRange?: DateRange
+  } | null>(null)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const handleSave = async (data: {
+  const handleDetailsNext = async (data: {
     title: string
     coverPhoto?: import("@gotrippin/core").CoverPhotoInput
     color?: string
     dateRange?: DateRange
-    locations?: RouteLocation[]
   }) => {
+    setPendingData(data)
+    setStep(2)
+  }
+
+  const handleCreateTrip = async () => {
+    if (!pendingData) {
+      return
+    }
+
     try {
       const tripData: Record<string, unknown> = {
-        title: data.title,
+        title: pendingData.title,
       }
 
-      if (data.coverPhoto) tripData.cover_photo = data.coverPhoto
-      tripData.color = data.color ?? getRandomRouteColor()
-      if (data.dateRange?.from) tripData.start_date = data.dateRange.from.toISOString()
-      if (data.dateRange?.to) tripData.end_date = data.dateRange.to.toISOString()
+      if (pendingData.coverPhoto) tripData.cover_photo = pendingData.coverPhoto
+      tripData.color = pendingData.color ?? getRandomRouteColor()
+      if (pendingData.dateRange?.from) tripData.start_date = pendingData.dateRange.from.toISOString()
+      if (pendingData.dateRange?.to) tripData.end_date = pendingData.dateRange.to.toISOString()
 
       const result = await createTripAction(tripData as import("@gotrippin/core").TripCreateData)
 
@@ -55,31 +66,12 @@ export default function CreateTripPageClient() {
       const newTrip = result.data
       toast.success(t("trips.create_success", { defaultValue: "Trip created successfully!" }))
 
-      if (newTrip?.id && data.locations && data.locations.length > 0 && accessToken) {
-        try {
-          for (let i = 0; i < data.locations.length; i++) {
-            const loc = data.locations[i]
-            if (!loc.name) continue
-            await addLocation(
-              newTrip.id,
-              {
-                location_name: loc.name,
-                order_index: i + 1,
-                arrival_date: loc.arrivalDate || undefined,
-                departure_date: loc.departureDate || undefined,
-              },
-              accessToken
-            )
-          }
-        } catch (locError) {
-          console.error("Failed to add one or more locations:", locError)
-        }
-      }
-
       if (newTrip) {
         await refetch()
         if (newTrip.share_code) {
-          router.push(`/trips/${newTrip.share_code}`)
+          // After creating a trip, jump straight into the full route editor
+          // in wizard mode (step 2 of 2).
+          router.push(`/trips/${newTrip.share_code}/route?wizard=1`)
         } else {
           router.push("/")
         }
@@ -95,8 +87,8 @@ export default function CreateTripPageClient() {
     router.push("/")
   }
 
-  if (!mounted || !accessToken) {
-    return <PageLoader message={mounted ? t("trips.loading") : undefined} />
+  if (!mounted) {
+    return <PageLoader message={t("trips.loading")} />
   }
 
   return (
@@ -104,7 +96,39 @@ export default function CreateTripPageClient() {
       <AuroraBackground />
 
       <div className="flex-1 relative z-10">
-        <CreateTrip onBack={handleBack} onSave={handleSave} />
+        {step === 1 ? (
+          <CreateTrip onBack={handleBack} onSave={handleDetailsNext} />
+        ) : (
+          <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+            <div className="max-w-md space-y-4">
+              <h1 className="text-2xl font-semibold">
+                {t("trips.route_step_ready_title", { defaultValue: "Ready to plan your route?" })}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {t("trips.route_step_ready_body", {
+                  defaultValue:
+                    "Next we’ll open the map-based route editor so you can sketch your trip from A to B. When you’re done there, your trip will be saved.",
+                })}
+              </p>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="px-4 py-2 rounded-full border border-white/20 text-sm text-[var(--color-foreground)] bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  {t("common.back", { defaultValue: "Back" })}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateTrip}
+                  className="px-6 py-2 rounded-full bg-white text-black text-sm font-semibold hover:bg-white/90 transition-colors"
+                >
+                  {t("trips.route_step_ready_cta", { defaultValue: "Open route editor" })}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   )

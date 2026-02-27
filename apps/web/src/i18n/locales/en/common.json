@@ -111,7 +111,10 @@
     "confirm_your_email": "Confirm Your Email",
     "confirm_email_description": "Please check your inbox to complete your registration.",
     "resend_confirmation": "Resend Confirmation",
-    "confirmation_sent": "Sent!"
+    "confirmation_sent": "Sent!",
+    "tips_title": "Tips & onboarding",
+    "tips_description": "Replay the create-trip walkthrough from the beginning.",
+    "show_tips_again": "Show tips again"
   },
   "dock": {
     "home": "Home",
@@ -148,7 +151,12 @@
     "day_trip": "{{count}}-day trip",
     "duration_tbd": "Duration TBD",
     "untitled_trip": "Untitled Trip",
-    "edit": "Edit"
+    "edit": "Edit",
+    "create_tour_name_body": "Give your trip a short, memorable name. You can change it later.",
+    "create_tour_map_title": "Continue to the map",
+    "route_step_ready_title": "Ready to plan your route?",
+    "route_step_ready_body": "Next we’ll open the map-based route editor so you can sketch your trip from A to B. When you’re done there, your trip will be saved.",
+    "route_step_ready_cta": "Open route editor"
   },
   "trip_overview": {
     "add_first_activity": "Add First Activity",

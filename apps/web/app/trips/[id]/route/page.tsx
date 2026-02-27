@@ -20,10 +20,13 @@ async function fetchTripDetailWithRetry(shareCode: string, token: string) {
 
 export default async function RoutePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: { wizard?: string };
 }) {
   const { id: shareCode } = await params;
+  const isWizard = searchParams?.wizard === "1";
 
   const supabase = await createServerSupabaseClient();
   const {
@@ -60,6 +63,7 @@ export default async function RoutePage({
       trip={detail.trip}
       routeLocations={routeLocations}
       shareCode={shareCode}
+      isWizard={isWizard}
     />
   );
 }
