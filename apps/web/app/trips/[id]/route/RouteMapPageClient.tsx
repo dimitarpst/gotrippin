@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, Check, Loader2, Map as MapIcon, Search, X } from "
 import { useTranslation } from "react-i18next";
 import type { CreateTripLocation, Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
+import { useRouteDirections } from "@/hooks";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import * as Sortable from "@/components/ui/sortable";
@@ -67,6 +68,7 @@ export default function RouteMapPageClient({
   }, [searchOpen, searchQuery, search]);
 
   const waypoints = tripLocationsToWaypoints(locations);
+  const { routeGeo } = useRouteDirections(waypoints);
 
   const stopNames = locations
     .map((loc) => loc.location_name)
@@ -144,6 +146,7 @@ export default function RouteMapPageClient({
       {/* Map background */}
       <MapView
         waypoints={waypoints}
+        routeLineGeo={routeGeo}
         fitToRoute
         fitPadding={80}
         className="absolute inset-0"

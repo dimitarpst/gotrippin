@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import Map, { Marker, Source, Layer, useMap } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
+import type { RouteLineFeature } from "@/lib/mapbox-directions";
 
 // Console: WEBGL_debug_renderer_info, texSubImage, and CORS to events.mapbox.com are expected/harmless (see docs/MAPS_IMPLEMENTATION.md).
 
@@ -81,6 +82,8 @@ interface MapViewProps {
   focusLngLat?: { lng: number; lat: number } | null;
   /** When set, shows a highlight marker at this point (e.g. preview before adding a stop). */
   previewLngLat?: { lng: number; lat: number } | null;
+  /** Road route geometry from Mapbox Directions; when set, drawn instead of straight segments. */
+  routeLineGeo?: RouteLineFeature | null;
 }
 
 export default function MapView({
@@ -91,13 +94,15 @@ export default function MapView({
   interactive = true,
   focusLngLat = null,
   previewLngLat = null,
+  routeLineGeo = null,
 }: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
   const { initialViewState, lineGeo } = useMemo(() => {
     const withCoords = waypoints.filter((w) => Number.isFinite(w.lat) && Number.isFinite(w.lng));
     const bounds = withCoords.length > 0 ? getBounds(withCoords) : null;
-    const lineGeo = withCoords.length >= 2 ? waypointsToLineGeometry(withCoords) : null;
+    const straightLine = withCoords.length >= 2 ? waypointsToLineGeometry(withCoords) : null;
+    const lineGeo = routeLineGeo ?? straightLine;
     const initialViewState =
       fitToRoute && bounds
         ? {
@@ -109,7 +114,7 @@ export default function MapView({
             zoom: DEFAULT_ZOOM,
           };
     return { initialViewState, lineGeo };
-  }, [waypoints, fitToRoute, fitPadding]);
+  }, [waypoints, fitToRoute, fitPadding, routeLineGeo]);
 
   if (!token) {
     return (

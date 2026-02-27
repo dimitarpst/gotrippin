@@ -5,7 +5,22 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Map as MapIcon, Navigation } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Trip, TripLocation } from "@gotrippin/core";
+import type { MapWaypoint } from "@/components/maps";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
+import { useRouteDirections } from "@/hooks";
+
+function MapViewWithRoute({ waypoints }: { waypoints: MapWaypoint[] }) {
+  const { routeGeo } = useRouteDirections(waypoints);
+  return (
+    <MapView
+      waypoints={waypoints}
+      routeLineGeo={routeGeo}
+      fitToRoute
+      fitPadding={80}
+      className="w-full h-full"
+    />
+  );
+}
 
 interface MapPageClientProps {
   trip: Trip;
@@ -47,12 +62,7 @@ export default function MapPageClient({
       {/* Map Content */}
       <div className="absolute inset-0 z-0">
         {routeLocations.length > 0 ? (
-          <MapView
-            waypoints={tripLocationsToWaypoints(routeLocations)}
-            fitToRoute
-            fitPadding={80}
-            className="w-full h-full"
-          />
+          <MapViewWithRoute waypoints={tripLocationsToWaypoints(routeLocations)} />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a] text-center p-6 pointer-events-auto">
             <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4 border border-white/10">

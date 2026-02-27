@@ -50,6 +50,7 @@ import { updateTripCoverDominantColor } from "@/lib/api/trips"
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 import { toast } from "sonner"
 import { MapView, tripLocationsToWaypoints } from "@/components/maps"
+import { useRouteDirections } from "@/hooks"
 
 export interface TripOverviewActions {
   onNavigate: (screen: "activity" | "flight" | "timeline" | "weather" | "map") => void
@@ -150,6 +151,8 @@ export default function TripOverview({
   const derivedLocations = timelineLocations.length ? timelineLocations : routeLocations
   const loadingRoute = timelineLoading || routeLoading
   const hasRoute = derivedLocations.length > 0
+  const routeWaypoints = useMemo(() => tripLocationsToWaypoints(routeLocations), [routeLocations])
+  const { routeGeo } = useRouteDirections(routeWaypoints)
   const primaryWeatherEntry = hasRoute ? weatherByLocation[derivedLocations[0].id] : undefined
   const primaryWeather = primaryWeatherEntry?.weather
   const todayLabel = useMemo(() => {
@@ -741,6 +744,7 @@ export default function TripOverview({
                   <div className="absolute inset-0 z-0 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity duration-500">
                     <MapView
                       waypoints={tripLocationsToWaypoints(routeLocations)}
+                      routeLineGeo={routeGeo}
                       fitToRoute
                       fitPadding={40}
                       interactive={false}
