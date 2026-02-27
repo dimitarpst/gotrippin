@@ -24,6 +24,8 @@ export class WeatherService {
   private readonly cache = new Map<string, CacheEntry>();
   private readonly cacheTTL = 10 * 60 * 1000; // 10 minutes
   private readonly maxForecastDays = 14;
+  // Tomorrow.io free plan restriction: endTime cannot be more than 5 days ahead.
+  private readonly maxPlanDaysAhead = 5;
 
   constructor(
     private readonly httpService: HttpService,
@@ -95,6 +97,29 @@ export class WeatherService {
             if (endMs - startMs > maxWindowMs) {
               normalizedEnd = new Date(startMs + maxWindowMs).toISOString();
             }
+          }
+        }
+
+        // Respect plan restriction: never send a request when endTime is more than
+        // `maxPlanDaysAhead` days in the future, otherwise Tomorrow.io returns a 403.
+        if (normalizedEnd) {
+          const endMs = Date.parse(normalizedEnd);
+          const nowMs = Date.now();
+          const maxAheadMs = this.maxPlanDaysAhead * 24 * 60 * 60 * 1000;
+          if (Number.isFinite(endMs) && endMs - nowMs > maxAheadMs) {
+            // Skip calling the API for this far-future stop; surface a soft error instead.
+            return {
+              locationId: loc.id,
+              locationName: loc.location_name,
+              orderIndex: loc.order_index,
+              arrivalDate: loc.arrival_date,
+              departureDate: loc.departure_date,
+              latitude: loc.latitude ?? null,
+              longitude: loc.longitude ?? null,
+              weather: null,
+              error:
+                'Weather forecast is only available up to 5 days from today with the current plan.',
+            } as TripLocationWeather;
           }
         }
 

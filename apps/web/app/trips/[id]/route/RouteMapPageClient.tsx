@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Calendar, Check, Compass, Loader2, Map as MapIcon, Search, Star, Utensils, Bed, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -48,7 +49,10 @@ export default function RouteMapPageClient({
   const [previewDateRange, setPreviewDateRange] = useState<DateRange | undefined>(undefined);
   const [showPreviewDatePicker, setShowPreviewDatePicker] = useState(false);
   const [addingPlaceId, setAddingPlaceId] = useState<string | null>(null);
+  const [previewSource, setPreviewSource] = useState<"map" | "search" | "along" | null>(null);
   const [focusLngLat, setFocusLngLat] = useState<{ lng: number; lat: number } | null>(null);
+  const [showAlongPanel, setShowAlongPanel] = useState(false);
+  const [alongCategory, setAlongCategory] = useState<"food" | "sights" | "stays" | "other" | "all">("food");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
 
@@ -70,6 +74,8 @@ export default function RouteMapPageClient({
   const waypoints = tripLocationsToWaypoints(locations);
   const { routeGeo } = useRouteDirections(waypoints);
   const alongRoute = useAlongRoutePlaces(waypoints);
+  const filteredAlongPlaces =
+    alongRoute.places.filter((p) => alongCategory === "all" || p.category === alongCategory);
 
   const stopNames = locations
     .map((loc) => loc.location_name)
@@ -99,6 +105,7 @@ export default function RouteMapPageClient({
         toast.success(t("trip_overview.route_stop_added"));
         setPreviewPlace(null);
         setPreviewDateRange(undefined);
+        setPreviewSource(null);
         setSearchOpen(false);
         setSearchQuery("");
         setFocusLngLat(null);
@@ -165,6 +172,7 @@ export default function RouteMapPageClient({
             lng,
           });
           setPreviewDateRange(undefined);
+          setPreviewSource("map");
           setFocusLngLat({ lng, lat });
         }}
       />
@@ -192,11 +200,7 @@ export default function RouteMapPageClient({
             {alongRoute.places.length > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  setOpen(true);
-                  const el = document.getElementById("along-route-section");
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
+                onClick={() => setShowAlongPanel((prev) => !prev)}
                 className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors shadow-lg"
                 aria-label={t("trip_overview.route_along_label", { defaultValue: "Along this route" })}
               >
@@ -224,6 +228,7 @@ export default function RouteMapPageClient({
             setSearchQuery("");
             setFocusLngLat(null);
             setPreviewDateRange(undefined);
+            setPreviewSource(null);
           }
         }}
       >
@@ -279,7 +284,7 @@ export default function RouteMapPageClient({
               </p>
             )}
             {!placesLoading && placeResults.length > 0 && !previewPlace && (
-              <ul className="max-h-48 overflow-y-auto overflow-x-hidden space-y-1 min-w-0 -mx-1 px-1" role="listbox">
+              <ul className="max-h-48 overflow-y-auto overflow-x-hidden space-y-1 min-w-0 -mx-1 px-1">
                 {placeResults.map((place) => (
                   <li key={place.id} className="min-w-0">
                     <button
@@ -292,11 +297,11 @@ export default function RouteMapPageClient({
                           lat: place.lat,
                           lng: place.lng,
                         });
+                        setPreviewSource("search");
                         setFocusLngLat({ lng: place.lng, lat: place.lat });
                         setSearchOpen(false);
                       }}
                       className="w-full min-w-0 text-left rounded-lg px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/15 text-xs font-medium text-white flex flex-col gap-0.5 overflow-hidden"
-                      role="option"
                     >
                       <span className="block truncate min-w-0">{place.name}</span>
                       {place.address && (
@@ -313,97 +318,111 @@ export default function RouteMapPageClient({
         </DialogContent>
       </Dialog>
 
-      {/* Floating confirm card: location + timeframe then confirm */}
-      {previewPlace && (
-        <>
-          <div
-            className="fixed left-4 right-4 z-30 bottom-24 max-w-lg mx-auto p-3 rounded-xl bg-black/90 border border-white/15 shadow-xl backdrop-blur-md flex flex-col gap-3"
-            role="dialog"
-            aria-label={t("trip_overview.route_search_confirm_hint")}
-          >
-            <p className="text-xs text-white/70">
-              {t("trip_overview.route_search_confirm_hint")}
-            </p>
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <span className="font-medium text-white truncate text-sm">{previewPlace.name}</span>
-              {previewPlace.address && (
-                <span className="text-[11px] text-white/55 truncate block">{previewPlace.address}</span>
-              )}
-            </div>
-            {/* When will you be here? (optional but encouraged) */}
-            <button
-              type="button"
-              onClick={() => setShowPreviewDatePicker(true)}
-              className="w-full inline-flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 py-2.5 px-3 text-left text-xs font-medium text-white transition-colors"
-            >
-              <Calendar className="w-3.5 h-3.5 shrink-0 text-[#ff6b6b]" />
-              <span>
-                {previewDateRange?.from
-                  ? previewDateRange.to
-                    ? `${previewDateRange.from.toLocaleDateString(undefined, { month: "short", day: "numeric" })} → ${previewDateRange.to.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-                    : previewDateRange.from.toLocaleDateString(undefined, { month: "short", day: "numeric" })
-                  : t("trip_overview.route_search_when", { defaultValue: "When will you be here?" })}
-              </span>
-            </button>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setPreviewPlace(null);
-                  setPreviewDateRange(undefined);
-                  setFocusLngLat(null);
-                  setSearchOpen(true);
-                }}
-                className="flex-1 rounded-lg border border-white/20 py-2.5 px-3 text-xs font-medium text-white/90 hover:bg-white/10 transition-colors"
+      {/* Bottom overlay stack: confirm card + along-route panel */}
+      <div className="fixed bottom-4 left-0 right-0 z-30 px-4 space-y-3 pointer-events-none">
+        {/* Floating confirm card: location + timeframe then confirm */}
+        <AnimatePresence>
+          {previewPlace && (
+            <>
+              <motion.div
+                key="route-confirm-card"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+                className="max-w-lg mx-auto p-3 rounded-xl bg-black/90 border border-white/15 shadow-xl backdrop-blur-md flex flex-col gap-3 pointer-events-auto"
+                role="dialog"
+                aria-label={t("trip_overview.route_search_confirm_hint")}
               >
-                {t("trip_overview.route_search_choose_another", { defaultValue: "Choose another" })}
-              </button>
-              <button
-                type="button"
-                disabled={!!addingPlaceId}
-                onClick={() => {
-                  if (!previewDateRange?.from) {
-                    // Act as cancel when no date selected
-                    setPreviewPlace(null);
-                    setPreviewDateRange(undefined);
-                    setFocusLngLat(null);
-                    return;
-                  }
-                  void handleConfirmAddPlace();
+                <p className="text-xs text-white/70">
+                  {t("trip_overview.route_search_confirm_hint")}
+                </p>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="font-medium text-white truncate text-sm">{previewPlace.name}</span>
+                  {previewPlace.address && (
+                    <span className="text-[11px] text-white/55 truncate block">{previewPlace.address}</span>
+                  )}
+                </div>
+                {/* When will you be here? (optional but encouraged) */}
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewDatePicker(true)}
+                  className="w-full inline-flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 py-2.5 px-3 text-left text-xs font-medium text-white transition-colors"
+                >
+                  <Calendar className="w-3.5 h-3.5 shrink-0 text-[#ff6b6b]" />
+                  <span>
+                    {previewDateRange?.from
+                      ? previewDateRange.to
+                        ? `${previewDateRange.from.toLocaleDateString(undefined, { month: "short", day: "numeric" })} → ${previewDateRange.to.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                        : previewDateRange.from.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+                      : t("trip_overview.route_search_when", { defaultValue: "When will you be here?" })}
+                  </span>
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewPlace(null);
+                      setPreviewDateRange(undefined);
+                      setFocusLngLat(null);
+                      setPreviewSource(null);
+                      setSearchOpen(true);
+                    }}
+                    className="flex-1 rounded-lg border border-white/20 py-2.5 px-3 text-xs font-medium text-white/90 hover:bg-white/10 transition-colors"
+                  >
+                    {t("trip_overview.route_search_choose_another", { defaultValue: "Choose another" })}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!!addingPlaceId}
+                    onClick={() => {
+                      if (!previewDateRange?.from) {
+                        // Act as cancel when no date selected
+                        setPreviewPlace(null);
+                        setPreviewDateRange(undefined);
+                        setFocusLngLat(null);
+                        if (previewSource === "along") {
+                          setShowAlongPanel(true);
+                        }
+                        setPreviewSource(null);
+                        return;
+                      }
+                      void handleConfirmAddPlace();
+                    }}
+                    className={`flex-1 rounded-lg border py-2.5 px-3 text-xs font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:pointer-events-none ${
+                      previewDateRange?.from
+                        ? "bg-white/20 hover:bg-white/25 border-white/20 text-white"
+                        : "bg-white/5 border-white/15 text-white/70 hover:bg-white/10"
+                    }`}
+                  >
+                    {addingPlaceId ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {t("trip_overview.route_search_adding", { defaultValue: "Adding…" })}
+                      </>
+                    ) : previewDateRange?.from ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" />
+                        {t("trip_overview.route_search_add_to_route", { defaultValue: "Add to route" })}
+                      </>
+                    ) : (
+                      <span>{t("common.cancel", { defaultValue: "Cancel" })}</span>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+              <DatePicker
+                open={showPreviewDatePicker}
+                onClose={() => setShowPreviewDatePicker(false)}
+                onSelect={(range) => {
+                  setPreviewDateRange(range);
+                  setShowPreviewDatePicker(false);
                 }}
-                className={`flex-1 rounded-lg border py-2.5 px-3 text-xs font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:pointer-events-none ${
-                  previewDateRange?.from
-                    ? "bg-white/20 hover:bg-white/25 border-white/20 text-white"
-                    : "bg-white/5 border-white/15 text-white/70 hover:bg-white/10"
-                }`}
-              >
-                {addingPlaceId ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {t("trip_overview.route_search_adding", { defaultValue: "Adding…" })}
-                  </>
-                ) : previewDateRange?.from ? (
-                  <>
-                    <Check className="h-3.5 w-3.5" />
-                    {t("trip_overview.route_search_add_to_route", { defaultValue: "Add to route" })}
-                  </>
-                ) : (
-                  <span>{t("common.cancel", { defaultValue: "Cancel" })}</span>
-                )}
-              </button>
-            </div>
-          </div>
-          <DatePicker
-            open={showPreviewDatePicker}
-            onClose={() => setShowPreviewDatePicker(false)}
-            onSelect={(range) => {
-              setPreviewDateRange(range);
-              setShowPreviewDatePicker(false);
-            }}
-            selectedDateRange={previewDateRange}
-          />
-        </>
-      )}
+                selectedDateRange={previewDateRange}
+              />
+            </>
+          )}
+        </AnimatePresence>
 
       {/* Bottom sheet via shared Drawer.
           When closed, a small floating pill (DrawerTrigger) stays at bottom center to reopen it. */}
@@ -412,7 +431,9 @@ export default function RouteMapPageClient({
           <button
             type="button"
             className={`fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 bg-black/70 backdrop-blur-md border border-white/15 text-xs font-semibold text-white flex items-center gap-2 shadow-lg transition-all ${
-              open ? "opacity-0 pointer-events-none translate-y-2" : "opacity-100 translate-y-0"
+              open || previewPlace || showAlongPanel
+                ? "opacity-0 pointer-events-none translate-y-2"
+                : "opacity-100 translate-y-0"
             }`}
             aria-label={t("trip_overview.route_title")}
           >
@@ -442,58 +463,6 @@ export default function RouteMapPageClient({
               </div>
             </div>
           </div>
-
-          {alongRoute.places.length > 0 && (
-            <div id="along-route-section" className="px-4 pb-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] uppercase tracking-wide text-white/60 flex items-center gap-1">
-                  <Compass className="w-3 h-3" />
-                  {t("trip_overview.route_along_label", { defaultValue: "Along this route" })}
-                </span>
-                {alongRoute.loading && (
-                  <Loader2 className="h-3 w-3 animate-spin text-white/50" />
-                )}
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {alongRoute.places.slice(0, 8).map((place) => {
-                  const icon =
-                    place.category === "food"
-                      ? Utensils
-                      : place.category === "stays"
-                      ? Bed
-                      : place.category === "sights"
-                      ? Star
-                      : MapIcon;
-                  const Icon = icon;
-                  return (
-                    <button
-                      key={place.id}
-                      type="button"
-                      onClick={() => {
-                        setPreviewPlace({
-                          id: place.id,
-                          name: place.name,
-                          address: place.address,
-                          lat: place.lat,
-                          lng: place.lng,
-                        });
-                        setPreviewDateRange(undefined);
-                        setFocusLngLat({ lng: place.lng, lat: place.lat });
-                      }}
-                      className="shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 px-3 py-2 min-w-[72px]"
-                    >
-                      <div className="w-7 h-7 rounded-full bg-black/60 flex items-center justify-center border border-white/20">
-                        <Icon className="w-4 h-4 text-white" />
-                      </div>
-                      <span className="text-[10px] text-white/80 text-center line-clamp-2">
-                        {place.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* Editable, reorderable route list */}
           <div className="flex-1 overflow-y-auto px-4 pb-4">
@@ -541,6 +510,119 @@ export default function RouteMapPageClient({
           </div>
         </DrawerContent>
       </Drawer>
+
+        {/* Along-route mini panel (separate from itinerary drawer) */}
+        <AnimatePresence>
+          {showAlongPanel && (
+            <motion.div
+              key="along-route-panel"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="mx-auto max-w-5xl rounded-2xl bg-black/85 border border-white/15 backdrop-blur-xl p-3 space-y-3 shadow-2xl pointer-events-auto"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Compass className="w-4 h-4 text-white/80" />
+                  <span className="text-xs uppercase tracking-wide text-white/70 truncate">
+                    {t("trip_overview.route_along_label", { defaultValue: "Along this route" })}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAlongPanel(false)}
+                  className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:bg-white/20"
+                  aria-label={t("common.close", { defaultValue: "Close" })}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+
+              <div className="flex gap-2 text-[11px] text-white/75">
+                {[
+                  { id: "food" as const, icon: Utensils, label: t("trip_overview.route_along_food", { defaultValue: "Food" }) },
+                  { id: "sights" as const, icon: Star, label: t("trip_overview.route_along_sights", { defaultValue: "Sights" }) },
+                  { id: "stays" as const, icon: Bed, label: t("trip_overview.route_along_stays", { defaultValue: "Stays" }) },
+                  { id: "all" as const, icon: MapIcon, label: t("trip_overview.route_along_all", { defaultValue: "All" }) },
+                ].map((chip) => {
+                  const Icon = chip.icon;
+                  const active = alongCategory === chip.id;
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      onClick={() => setAlongCategory(chip.id)}
+                      className={`flex items-center gap-1 rounded-full px-2 py-1 border text-[11px] ${
+                        active
+                          ? "bg-white text-black border-white"
+                          : "bg-white/5 text-white/80 border-white/20 hover:bg-white/10"
+                      }`}
+                    >
+                      <Icon className="w-3 h-3" />
+                      <span>{chip.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {alongRoute.loading && (
+                <div className="flex items-center gap-2 text-xs text-white/70">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{t("common.loading", { defaultValue: "Loading…" })}</span>
+                </div>
+              )}
+              {!alongRoute.loading && filteredAlongPlaces.length === 0 && (
+                <p className="text-xs text-white/60">
+                  {t("trip_overview.route_along_empty", {
+                    defaultValue: "No suggestions yet for this part of the route.",
+                  })}
+                </p>
+              )}
+
+              {!alongRoute.loading && filteredAlongPlaces.length > 0 && (
+                <div className="grid grid-cols-4 gap-3">
+                  {filteredAlongPlaces.slice(0, 8).map((place) => {
+                    const Icon =
+                      place.category === "food"
+                        ? Utensils
+                        : place.category === "stays"
+                        ? Bed
+                        : place.category === "sights"
+                        ? Star
+                        : MapIcon;
+                    return (
+                      <button
+                        key={place.id}
+                        type="button"
+                        onClick={() => {
+                          setPreviewPlace({
+                            id: place.id,
+                            name: place.name,
+                            address: place.address,
+                            lat: place.lat,
+                            lng: place.lng,
+                          });
+                          setPreviewDateRange(undefined);
+                          setPreviewSource("along");
+                          setFocusLngLat({ lng: place.lng, lat: place.lat });
+                          setShowAlongPanel(false);
+                        }}
+                        className="flex flex-col items-center justify-center gap-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 px-2 py-3 text-[10px] text-white/80"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-black/60 flex items-center justify-center border border-white/20">
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className="truncate w-full text-center line-clamp-2">{place.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
