@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Check, Loader2, Map as MapIcon, Search, X } from "lucide-react";
+import { ArrowLeft, Calendar, Check, Compass, Loader2, Map as MapIcon, Search, Star, Utensils, Bed } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { CreateTripLocation, Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
-import { useNearbyPlaces, useRouteDirections } from "@/hooks";
+import { useAlongRoutePlaces, useRouteDirections } from "@/hooks";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import * as Sortable from "@/components/ui/sortable";
@@ -49,9 +49,6 @@ export default function RouteMapPageClient({
   const [showPreviewDatePicker, setShowPreviewDatePicker] = useState(false);
   const [addingPlaceId, setAddingPlaceId] = useState<string | null>(null);
   const [focusLngLat, setFocusLngLat] = useState<{ lng: number; lat: number } | null>(null);
-  const [mapCenter, setMapCenter] = useState<{ lng: number; lat: number } | null>(null);
-  const [mapZoom, setMapZoom] = useState<number | null>(null);
-  const [showNearby, setShowNearby] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
 
@@ -72,12 +69,7 @@ export default function RouteMapPageClient({
 
   const waypoints = tripLocationsToWaypoints(locations);
   const { routeGeo } = useRouteDirections(waypoints);
-  const nearby = useNearbyPlaces({
-    enabled: showNearby,
-    center: mapCenter ? { lat: mapCenter.lat, lng: mapCenter.lng } : null,
-    zoom: mapZoom,
-    includedTypes: ["restaurant", "cafe", "tourist_attraction", "lodging"],
-  });
+  const alongRoute = useAlongRoutePlaces(waypoints);
 
   const stopNames = locations
     .map((loc) => loc.location_name)
@@ -162,11 +154,6 @@ export default function RouteMapPageClient({
         focusLngLat={focusLngLat}
         focusZoom={previewPlace?.id.startsWith("pin:") ? 16 : 14}
         previewLngLat={previewPlace ? { lng: previewPlace.lng, lat: previewPlace.lat } : null}
-        // track center for nearby POIs (Option 2)
-        onMoveEnd={({ center, zoom }) => {
-          setMapCenter(center);
-          setMapZoom(zoom);
-        }}
         onMapClick={({ lng, lat }) => {
           if (searchOpen) return;
           if (addingPlaceId) return;
@@ -180,21 +167,7 @@ export default function RouteMapPageClient({
           setPreviewDateRange(undefined);
           setFocusLngLat({ lng, lat });
         }}
-      >
-        {showNearby &&
-          nearby.results.map((place) => (
-            <Marker
-              key={place.id}
-              longitude={place.lng}
-              latitude={place.lat}
-              anchor="bottom"
-            >
-              <div className="flex flex-col items-center gap-1">
-                <div className="h-4 w-4 rounded-full bg-emerald-400 border border-white shadow-md" />
-              </div>
-            </Marker>
-          ))}
-      </MapView>
+      />
 
       {/* Top overlay header */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-safe-top bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
@@ -216,19 +189,20 @@ export default function RouteMapPageClient({
           </div>
 
           <div className="pointer-events-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowNearby((prev) => !prev)}
-              className={`w-10 h-10 rounded-full border flex items-center justify-center text-xs font-semibold shadow-lg transition-colors ${
-                showNearby
-                  ? "bg-white text-black border-white"
-                  : "bg-black/40 text-white border-white/10 hover:bg-black/60"
-              }`}
-              aria-pressed={showNearby}
-              aria-label={t("trip_overview.route_nearby_toggle", { defaultValue: "Toggle nearby places" })}
-            >
-              *
-            </button>
+            {alongRoute.places.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(true);
+                  const el = document.getElementById("along-route-section");
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors shadow-lg"
+                aria-label={t("trip_overview.route_along_label", { defaultValue: "Along this route" })}
+              >
+                <Compass className="w-5 h-5" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
@@ -468,6 +442,58 @@ export default function RouteMapPageClient({
               </div>
             </div>
           </div>
+
+          {alongRoute.places.length > 0 && (
+            <div id="along-route-section" className="px-4 pb-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] uppercase tracking-wide text-white/60 flex items-center gap-1">
+                  <Compass className="w-3 h-3" />
+                  {t("trip_overview.route_along_label", { defaultValue: "Along this route" })}
+                </span>
+                {alongRoute.loading && (
+                  <Loader2 className="h-3 w-3 animate-spin text-white/50" />
+                )}
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {alongRoute.places.slice(0, 8).map((place) => {
+                  const icon =
+                    place.category === "food"
+                      ? Utensils
+                      : place.category === "stays"
+                      ? Bed
+                      : place.category === "sights"
+                      ? Star
+                      : MapIcon;
+                  const Icon = icon;
+                  return (
+                    <button
+                      key={place.id}
+                      type="button"
+                      onClick={() => {
+                        setPreviewPlace({
+                          id: place.id,
+                          name: place.name,
+                          address: place.address,
+                          lat: place.lat,
+                          lng: place.lng,
+                        });
+                        setPreviewDateRange(undefined);
+                        setFocusLngLat({ lng: place.lng, lat: place.lat });
+                      }}
+                      className="shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 px-3 py-2 min-w-[72px]"
+                    >
+                      <div className="w-7 h-7 rounded-full bg-black/60 flex items-center justify-center border border-white/20">
+                        <Icon className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-[10px] text-white/80 text-center line-clamp-2">
+                        {place.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Editable, reorderable route list */}
           <div className="flex-1 overflow-y-auto px-4 pb-4">

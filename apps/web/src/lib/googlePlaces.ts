@@ -4,6 +4,7 @@ export interface GooglePlaceResult {
   address?: string;
   lat: number;
   lng: number;
+  primaryType?: string;
 }
 
 interface NewPlacesLocation {
@@ -20,6 +21,7 @@ interface NewPlacesPlace {
   formattedAddress?: string;
   location?: NewPlacesLocation;
   displayName?: NewPlacesDisplayName;
+  primaryType?: string;
 }
 
 interface NewPlacesSearchResponse {
@@ -56,6 +58,7 @@ export async function searchPlaces(
     "places.displayName",
     "places.formattedAddress",
     "places.location",
+    "places.primaryType",
   ].join(",");
 
   const body: { textQuery: string; locationBias?: { circle: { center: NewPlacesLocation; radius: number } } } = {
@@ -99,6 +102,7 @@ export async function searchPlaces(
       address: place.formattedAddress,
       lat: place.location ? place.location.latitude : 0,
       lng: place.location ? place.location.longitude : 0,
+      primaryType: place.primaryType,
     }));
 }
 
@@ -112,6 +116,7 @@ export async function searchNearbyPlaces(
     "places.displayName",
     "places.formattedAddress",
     "places.location",
+    "places.primaryType",
   ].join(",");
 
   const body: {
@@ -162,6 +167,7 @@ export async function searchNearbyPlaces(
       address: place.formattedAddress,
       lat: place.location ? place.location.latitude : 0,
       lng: place.location ? place.location.longitude : 0,
+       primaryType: place.primaryType,
     }));
 }
 
