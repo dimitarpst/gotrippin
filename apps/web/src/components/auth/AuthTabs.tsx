@@ -26,7 +26,7 @@ export function AuthTabs({
         )}
         <span
           className={`relative z-10 ${
-            isLogin ? "text-white" : "text-[var(--muted)]"
+            isLogin ? "text-white" : "text-muted-foreground"
           }`}
         >
           {t("auth.sign_in")}
@@ -45,7 +45,7 @@ export function AuthTabs({
         )}
         <span
           className={`relative z-10 ${
-            !isLogin ? "text-white" : "text-[var(--muted)]"
+            !isLogin ? "text-white" : "text-muted-foreground"
           }`}
         >
           {t("auth.create_account")}

@@ -19,7 +19,7 @@ export function AuthHeader({ isLogin }: { isLogin: boolean }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.15 }}
-        className="text-[var(--muted)]"
+        className="text-muted-foreground"
       >
         {isLogin ? t("app.welcome_back") : t("app.start_journey")}
       </motion.p>

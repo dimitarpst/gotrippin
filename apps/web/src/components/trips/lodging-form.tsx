@@ -197,7 +197,7 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
             style={{ backgroundColor: "var(--surface)" }}
           >
             <div>
-              <label className="text-xs mb-2 block" style={{ color: "var(--muted)" }}>
+              <label className="text-xs mb-2 block text-muted-foreground">
                 Name
               </label>
               <Input
@@ -208,7 +208,7 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
               />
             </div>
             <div>
-              <label className="text-xs mb-2 block" style={{ color: "var(--muted)" }}>
+              <label className="text-xs mb-2 block text-muted-foreground">
                 Address
               </label>
               <Input
@@ -331,7 +331,7 @@ export default function LodgingForm({ tripId, onBack }: LodgingFormProps) {
 function FieldRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between group cursor-pointer">
-      <span className="text-sm" style={{ color: "var(--muted)" }}>
+      <span className="text-sm text-muted-foreground">
         {label}
       </span>
       <span className="text-white text-base group-hover:text-opacity-80 transition-colors">{value}</span>

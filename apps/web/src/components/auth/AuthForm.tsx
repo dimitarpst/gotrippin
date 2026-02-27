@@ -188,7 +188,7 @@ import { supabase } from "@/lib/supabaseClient";
             />
           </div>
 
-          <p className="text-center text-sm text-[var(--muted)] mt-6">
+          <p className="text-center text-sm text-muted-foreground mt-6">
             {isLogin ? t("auth.no_account") : t("auth.have_account")}
             <button
               type="button"

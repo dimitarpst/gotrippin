@@ -26,7 +26,7 @@ export default function EmptyState({ onCreateTrip }: EmptyStateProps) {
         <MapPin className="w-10 h-10" style={{ color: "#ff6b6b" }} />
       </div>
       <h2 className="text-2xl font-bold text-white mb-2">{t('trips.no_trips')}</h2>
-      <p className="text-[var(--muted)] mb-6 text-center max-w-md">
+      <p className="text-muted-foreground mb-6 text-center max-w-md">
         {t('trips.no_trips_description')}
       </p>
       <Button

@@ -45,7 +45,7 @@ export default function TripFilters({
               className="px-5 py-2.5 rounded-xl font-medium text-sm transition-all relative overflow-hidden"
               style={{
                 background: activeFilter === filter ? "#ff6b6b" : "rgba(255, 255, 255, 0.08)",
-                color: activeFilter === filter ? "white" : "var(--muted)",
+                color: activeFilter === filter ? "white" : "var(--muted-foreground)",
               }}
               whileHover={{
                 scale: 1.05,

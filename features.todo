@@ -1,4 +1,9 @@
 Todo:
+  ✔ shadcn theme alignment — native variable semantics, custom colors only (no overwrites)
+    ✔ Phase 1 — globals.css: single :root, shadcn semantics, add --surface-alt
+    ✔ Phase 2 — tailwind.config.js: align theme colors to CSS (oklch/vars)
+    ✔ Phase 3 — Fix LinkedAccountsCard bg-(--accent) typo
+    ✔ Phase 4 — Replace muted text (var(--muted)) → text-muted-foreground across all files
   ☐ Maps integration — Mapbox + coordinates (docs/MAPS_IMPLEMENTATION.md)
   ☐ Route screen — map-first layout with bottom sheet editor (docs/MAPS_IMPLEMENTATION.md, docs/route-based-trip-planning-architecture.md)
     ✔ Phase 1 — Map + bottom sheet scaffolding (read-only route; no editing)

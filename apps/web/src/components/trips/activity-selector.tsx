@@ -112,7 +112,7 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
             whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 107, 107, 0.1)" }}
             whileTap={{ scale: 0.95 }}
           >
-            <X className="w-5 h-5" style={{ color: "var(--muted)" }} />
+            <X className="w-5 h-5 text-muted-foreground" />
           </motion.button>
         </div>
 
@@ -177,7 +177,7 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
               >
                 <category.icon className="w-7 h-7" style={{ color: category.color }} />
               </motion.div>
-              <span className="text-xs group-hover:text-white transition-colors" style={{ color: "var(--muted)" }}>
+              <span className="text-xs group-hover:text-white transition-colors text-muted-foreground">
                 {category.label}
               </span>
             </motion.button>
@@ -198,7 +198,7 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
               stiffness: 100,
             }}
           >
-            <h2 className="text-sm font-semibold uppercase tracking-wide mb-4" style={{ color: "var(--muted)" }}>
+            <h2 className="text-sm font-semibold uppercase tracking-wide mb-4 text-muted-foreground">
               {section.section}
             </h2>
             <motion.div

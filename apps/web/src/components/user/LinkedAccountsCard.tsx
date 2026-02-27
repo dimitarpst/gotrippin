@@ -410,7 +410,7 @@ export default function LinkedAccountsCard({
                   type="submit"
                   disabled={loading || !newPassword || !confirmPassword}
                   size="sm"
-                  className="bg-(--accent) hover:bg-(--accent-hover) text-white cursor-pointer"
+                  className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white cursor-pointer"
                 >
                   {t("profile.set_password")}
                 </Button>

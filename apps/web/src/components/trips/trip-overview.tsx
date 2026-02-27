@@ -894,7 +894,7 @@ export default function TripOverview({
                 <LinkIcon className="w-6 h-6 text-white/40" />
               </div>
 
-              <p className="text-[var(--muted)] text-sm text-center mb-4">
+              <p className="text-muted-foreground text-sm text-center mb-4">
                 {t('trip_overview.add_documents_description')}
               </p>
 
@@ -916,7 +916,7 @@ export default function TripOverview({
                 <h2 className="text-base font-semibold text-white">{t('trip_overview.invite_guests')}</h2>
               </div>
 
-              <p className="text-[var(--muted)] text-sm mb-4">
+              <p className="text-muted-foreground text-sm mb-4">
                 {t('trip_overview.invite_guests_description')}
               </p>
 

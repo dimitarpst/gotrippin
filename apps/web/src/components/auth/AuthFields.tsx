@@ -46,7 +46,7 @@ export function AuthFields({
           {t("auth.name")}
         </Label>
         <div className="relative">
-          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--muted)]" />
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             id="name"
             type="text"
@@ -56,7 +56,7 @@ export function AuthFields({
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setName(e.target.value)
             }
-            className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-[var(--muted)] focus:border-[var(--accent)] transition-colors"
+            className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-muted-foreground focus:border-[var(--accent)] transition-colors"
           />
         </div>
       </motion.div>
@@ -67,7 +67,7 @@ export function AuthFields({
           {t("auth.email")}
         </Label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--muted)]" />
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             id="email"
             type="email"
@@ -77,7 +77,7 @@ export function AuthFields({
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setEmail(e.target.value)
             }
-            className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-[var(--muted)] focus:border-[var(--accent)] transition-colors"
+            className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-muted-foreground focus:border-[var(--accent)] transition-colors"
           />
         </div>
       </div>
@@ -88,7 +88,7 @@ export function AuthFields({
           {t("auth.password")}
         </Label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--muted)]" />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             id="password"
             type="password"
@@ -98,7 +98,7 @@ export function AuthFields({
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setPassword(e.target.value)
             }
-            className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-[var(--muted)] focus:border-[var(--accent)] transition-colors"
+            className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-muted-foreground focus:border-[var(--accent)] transition-colors"
           />
         </div>
       </div>
@@ -114,7 +114,7 @@ export function AuthFields({
             {t("auth.confirm_password")}
           </Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--muted)]" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
               id="confirmPassword"
               type="password"
@@ -124,7 +124,7 @@ export function AuthFields({
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setConfirmPassword(e.target.value)
               }
-              className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-[var(--muted)] focus:border-[var(--accent)] transition-colors"
+              className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-muted-foreground focus:border-[var(--accent)] transition-colors"
             />
           </div>
         </motion.div>

@@ -69,7 +69,7 @@ export default function FlightEditor({ tripId, flightId, onBack, onSave }: Fligh
                 <Plane className="w-6 h-6" style={{ color: "var(--accent)" }} />
               </div>
               <div className="flex-1">
-                <p className="text-xs mb-1" style={{ color: "var(--muted)" }}>
+                <p className="text-xs mb-1 text-muted-foreground">
                   Departure
                 </p>
                 <p className="text-2xl font-bold text-white mb-3">{departure.code}</p>
@@ -111,7 +111,7 @@ export default function FlightEditor({ tripId, flightId, onBack, onSave }: Fligh
                 <Plane className="w-6 h-6 rotate-90" style={{ color: "#4ECDC4" }} />
               </div>
               <div className="flex-1">
-                <p className="text-xs mb-1" style={{ color: "var(--muted)" }}>
+                <p className="text-xs mb-1 text-muted-foreground">
                   Arrival
                 </p>
                 <p className="text-2xl font-bold text-white mb-3">{arrival.code}</p>
@@ -207,7 +207,7 @@ export default function FlightEditor({ tripId, flightId, onBack, onSave }: Fligh
 function FieldRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between group cursor-pointer">
-      <span className="text-sm" style={{ color: "var(--muted)" }}>
+      <span className="text-sm text-muted-foreground">
         {label}
       </span>
       <span className="text-white text-base group-hover:text-opacity-80 transition-colors">{value}</span>
