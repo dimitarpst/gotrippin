@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 import Map, { Marker, Source, Layer, useMap } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { EventData, MapMouseEvent } from "mapbox-gl";
@@ -17,7 +17,9 @@ export interface MapWaypoint {
 
 const DEFAULT_CENTER = { longitude: 23.32, latitude: 42.7 };
 const DEFAULT_ZOOM = 3;
-const MAPBOX_DARK_STYLE = "mapbox://styles/mapbox/dark-v11";
+// Use a label- and POI-rich basemap so the map never feels empty.
+// Standard requires a different SDK; stick to streets-v12 for GL JS.
+const MAPBOX_BASE_STYLE = "mapbox://styles/mapbox/streets-v12";
 const FOCUS_ZOOM = 14;
 const FLY_DURATION_MS = 1200;
 
@@ -89,8 +91,12 @@ interface MapViewProps {
   previewLngLat?: { lng: number; lat: number } | null;
   /** Called when user clicks the map (useful for adding stops by dropping a pin). */
   onMapClick?: ((lngLat: { lng: number; lat: number }) => void) | null;
+  /** Optional callback when map stops moving; used for nearby POIs. */
+  onMoveEnd?: ((state: { center: { lng: number; lat: number }; zoom: number }) => void) | null;
   /** Per-leg route geometry from Mapbox Directions; when set, drawn instead of straight segments. */
   routeLineGeo?: RouteLegsGeoJSON | null;
+  /** Optional extra content rendered inside the map (e.g. POI markers). */
+  children?: ReactNode;
 }
 
 export default function MapView({
@@ -103,7 +109,9 @@ export default function MapView({
   focusZoom = FOCUS_ZOOM,
   previewLngLat = null,
   onMapClick = null,
+  onMoveEnd = null,
   routeLineGeo = null,
+  children,
 }: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -151,12 +159,18 @@ export default function MapView({
       <Map
         mapboxAccessToken={token}
         initialViewState={initialViewState}
-        mapStyle={MAPBOX_DARK_STYLE}
+        mapStyle={MAPBOX_BASE_STYLE}
         style={{ width: "100%", height: "100%" }}
         interactive={interactive}
         onClick={(e: MapMouseEvent & EventData) => {
           if (!onMapClick) return;
           onMapClick({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+        }}
+        onMoveEnd={(e) => {
+          if (!onMoveEnd) return;
+          const center = e.target.getCenter();
+          const zoom = e.target.getZoom();
+          onMoveEnd({ center: { lng: center.lng, lat: center.lat }, zoom });
         }}
       >
         <MapFlyTo focusLngLat={focusLngLat} focusZoom={focusZoom} />
@@ -190,6 +204,7 @@ export default function MapView({
             />
           </Marker>
         ))}
+      {children}
       </Map>
     </div>
   );

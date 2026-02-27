@@ -11,9 +11,9 @@ Todo:
     ✔ Phase 3 — Add stops via search (Google Places)
     ✔ Phase 3b — Add stops via map click
     ☐ Phase 4 — Draggable markers, map interactions polish, animations
-    ☐ Phase 4a — Basemap: switch to Mapbox Standard (or streets) for POI/label richness (Option 1)
+    ✔ Phase 4a — Basemap: switch to Mapbox Standard (or streets) for POI/label richness (Option 1)
     ☐ Phase 4b — Basemap style toggle (e.g. Night ↔ Streets ↔ Satellite)
-    ☐ Phase 4c — Nearby POIs overlay (Google Places nearby) behind a toggle: debounce on idle, cache+dedupe, tap preview + “Add stop” (Option 2)
+    ✔ Phase 4c — Nearby POIs overlay (Google Places nearby) behind a toggle: debounce on idle (Option 2, basic markers)
     ☐ Phase 4d — Along-route POIs overlay behind a toggle: sample route polyline, query nearby per sample, cache+dedupe + list UI (Option 3)
     ☐ Phase 4e — Unify map + edit mode: keep Route page as primary; map page redirects/aliases (can split later)
     ☐ Phase 5 — Align Create Trip route step with map-first route editor (shared RouteEditor UX)

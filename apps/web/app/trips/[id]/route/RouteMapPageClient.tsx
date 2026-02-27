@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar, Check, Loader2, Map as MapIcon, Search, X } from "
 import { useTranslation } from "react-i18next";
 import type { CreateTripLocation, Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
-import { useRouteDirections } from "@/hooks";
+import { useNearbyPlaces, useRouteDirections } from "@/hooks";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import * as Sortable from "@/components/ui/sortable";
@@ -49,6 +49,9 @@ export default function RouteMapPageClient({
   const [showPreviewDatePicker, setShowPreviewDatePicker] = useState(false);
   const [addingPlaceId, setAddingPlaceId] = useState<string | null>(null);
   const [focusLngLat, setFocusLngLat] = useState<{ lng: number; lat: number } | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ lng: number; lat: number } | null>(null);
+  const [mapZoom, setMapZoom] = useState<number | null>(null);
+  const [showNearby, setShowNearby] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
 
@@ -69,6 +72,12 @@ export default function RouteMapPageClient({
 
   const waypoints = tripLocationsToWaypoints(locations);
   const { routeGeo } = useRouteDirections(waypoints);
+  const nearby = useNearbyPlaces({
+    enabled: showNearby,
+    center: mapCenter ? { lat: mapCenter.lat, lng: mapCenter.lng } : null,
+    zoom: mapZoom,
+    includedTypes: ["restaurant", "cafe", "tourist_attraction", "lodging"],
+  });
 
   const stopNames = locations
     .map((loc) => loc.location_name)
@@ -153,6 +162,11 @@ export default function RouteMapPageClient({
         focusLngLat={focusLngLat}
         focusZoom={previewPlace?.id.startsWith("pin:") ? 16 : 14}
         previewLngLat={previewPlace ? { lng: previewPlace.lng, lat: previewPlace.lat } : null}
+        // track center for nearby POIs (Option 2)
+        onMoveEnd={({ center, zoom }) => {
+          setMapCenter(center);
+          setMapZoom(zoom);
+        }}
         onMapClick={({ lng, lat }) => {
           if (searchOpen) return;
           if (addingPlaceId) return;
@@ -166,7 +180,21 @@ export default function RouteMapPageClient({
           setPreviewDateRange(undefined);
           setFocusLngLat({ lng, lat });
         }}
-      />
+      >
+        {showNearby &&
+          nearby.results.map((place) => (
+            <Marker
+              key={place.id}
+              longitude={place.lng}
+              latitude={place.lat}
+              anchor="bottom"
+            >
+              <div className="flex flex-col items-center gap-1">
+                <div className="h-4 w-4 rounded-full bg-emerald-400 border border-white shadow-md" />
+              </div>
+            </Marker>
+          ))}
+      </MapView>
 
       {/* Top overlay header */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-safe-top bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
@@ -187,7 +215,20 @@ export default function RouteMapPageClient({
             </span>
           </div>
 
-          <div className="pointer-events-auto">
+          <div className="pointer-events-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowNearby((prev) => !prev)}
+              className={`w-10 h-10 rounded-full border flex items-center justify-center text-xs font-semibold shadow-lg transition-colors ${
+                showNearby
+                  ? "bg-white text-black border-white"
+                  : "bg-black/40 text-white border-white/10 hover:bg-black/60"
+              }`}
+              aria-pressed={showNearby}
+              aria-label={t("trip_overview.route_nearby_toggle", { defaultValue: "Toggle nearby places" })}
+            >
+              *
+            </button>
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
@@ -345,12 +386,21 @@ export default function RouteMapPageClient({
               </button>
               <button
                 type="button"
-                disabled={!!addingPlaceId || !previewDateRange?.from}
-                onClick={handleConfirmAddPlace}
+                disabled={!!addingPlaceId}
+                onClick={() => {
+                  if (!previewDateRange?.from) {
+                    // Act as cancel when no date selected
+                    setPreviewPlace(null);
+                    setPreviewDateRange(undefined);
+                    setFocusLngLat(null);
+                    return;
+                  }
+                  void handleConfirmAddPlace();
+                }}
                 className={`flex-1 rounded-lg border py-2.5 px-3 text-xs font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:pointer-events-none ${
                   previewDateRange?.from
                     ? "bg-white/20 hover:bg-white/25 border-white/20 text-white"
-                    : "bg-white/5 border-white/15 text-white/50"
+                    : "bg-white/5 border-white/15 text-white/70 hover:bg-white/10"
                 }`}
               >
                 {addingPlaceId ? (
@@ -358,11 +408,13 @@ export default function RouteMapPageClient({
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     {t("trip_overview.route_search_adding", { defaultValue: "Adding…" })}
                   </>
-                ) : (
+                ) : previewDateRange?.from ? (
                   <>
                     <Check className="h-3.5 w-3.5" />
                     {t("trip_overview.route_search_add_to_route", { defaultValue: "Add to route" })}
                   </>
+                ) : (
+                  <span>{t("common.cancel", { defaultValue: "Cancel" })}</span>
                 )}
               </button>
             </div>
