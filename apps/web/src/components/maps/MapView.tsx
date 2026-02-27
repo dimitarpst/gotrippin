@@ -79,6 +79,8 @@ interface MapViewProps {
   interactive?: boolean;
   /** When set, map flies to this point (e.g. when user taps a route stop). */
   focusLngLat?: { lng: number; lat: number } | null;
+  /** When set, shows a highlight marker at this point (e.g. preview before adding a stop). */
+  previewLngLat?: { lng: number; lat: number } | null;
 }
 
 export default function MapView({
@@ -88,6 +90,7 @@ export default function MapView({
   fitPadding = 60,
   interactive = true,
   focusLngLat = null,
+  previewLngLat = null,
 }: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -131,6 +134,17 @@ export default function MapView({
         interactive={interactive}
       >
         <MapFlyTo focusLngLat={focusLngLat} />
+      {previewLngLat && (
+        <Marker
+          longitude={previewLngLat.lng}
+          latitude={previewLngLat.lat}
+          anchor="bottom"
+        >
+          <div
+            className="h-8 w-8 rounded-full border-2 border-white bg-amber-400/90 shadow-lg ring-4 ring-amber-400/30"
+          />
+        </Marker>
+      )}
       {lineGeo && (
         <Source id="route-line" type="geojson" data={lineGeo}>
           <Layer

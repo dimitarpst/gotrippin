@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Map as MapIcon, Plus, Search } from "lucide-react";
+import { ArrowLeft, Calendar, Check, Loader2, Map as MapIcon, Search, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
+import type { CreateTripLocation, Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import * as Sortable from "@/components/ui/sortable";
 import { DatePicker } from "@/components/trips/date-picker";
@@ -34,10 +35,36 @@ export default function RouteMapPageClient({
   const [open, setOpen] = useState(true);
   const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
   const [, setSavingOrder] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [previewPlace, setPreviewPlace] = useState<{
+    id: string;
+    name: string;
+    address?: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [previewDateRange, setPreviewDateRange] = useState<DateRange | undefined>(undefined);
+  const [showPreviewDatePicker, setShowPreviewDatePicker] = useState(false);
+  const [addingPlaceId, setAddingPlaceId] = useState<string | null>(null);
   const [focusLngLat, setFocusLngLat] = useState<{ lng: number; lat: number } | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
+
+  useEffect(() => {
+    if (searchOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [searchOpen]);
+
+  // Debounced search as you type (300ms)
+  useEffect(() => {
+    if (!searchOpen) return;
+    const q = searchQuery.trim();
+    if (!q) return;
+    const t = setTimeout(() => search(q), 300);
+    return () => clearTimeout(t);
+  }, [searchOpen, searchQuery, search]);
 
   const waypoints = tripLocationsToWaypoints(locations);
 
@@ -47,25 +74,40 @@ export default function RouteMapPageClient({
   const routeSummary =
     stopNames.length > 1 ? `${stopNames[0]} \u2192 ${stopNames[stopNames.length - 1]}` : stopNames[0] ?? "";
 
-  const handlePlaceSelect = async (placeId: string) => {
-    const selected = placeResults.find((place) => place.id === placeId);
-    if (!selected) {
-      return;
-    }
-
-    try {
-      const created = await apiAddLocation(trip.id, {
-        location_name: selected.name,
-        latitude: selected.lat,
-        longitude: selected.lng,
-        order_index: locations.length + 1,
-      });
-      setLocations((prev) => [...prev, created]);
-    } catch (error) {
-      console.error("Failed to add location from place", error);
-      toast.error("Failed to add stop from search");
-    }
-  };
+  const handleConfirmAddPlace = useCallback(
+    async () => {
+      if (!previewPlace || addingPlaceId) return;
+      setAddingPlaceId(previewPlace.id);
+      try {
+        const payload: Omit<CreateTripLocation, "trip_id"> = {
+          location_name: previewPlace.name,
+          latitude: previewPlace.lat,
+          longitude: previewPlace.lng,
+          order_index: locations.length + 1,
+        };
+        if (previewDateRange?.from) {
+          payload.arrival_date = previewDateRange.from.toISOString();
+          payload.departure_date = previewDateRange.to
+            ? previewDateRange.to.toISOString()
+            : previewDateRange.from.toISOString();
+        }
+        const created = await apiAddLocation(trip.id, payload);
+        setLocations((prev) => [...prev, created]);
+        toast.success(t("trip_overview.route_stop_added"));
+        setPreviewPlace(null);
+        setPreviewDateRange(undefined);
+        setSearchOpen(false);
+        setSearchQuery("");
+        setFocusLngLat(null);
+      } catch (error) {
+        console.error("Failed to add location from place", error);
+        toast.error(t("trip_overview.route_add_stop_failed"));
+      } finally {
+        setAddingPlaceId(null);
+      }
+    },
+    [previewPlace, previewDateRange, addingPlaceId, trip.id, locations.length, t]
+  );
   const handleNameCommit = async (id: string, name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -106,6 +148,7 @@ export default function RouteMapPageClient({
         fitPadding={80}
         className="absolute inset-0"
         focusLngLat={focusLngLat}
+        previewLngLat={previewPlace ? { lng: previewPlace.lng, lat: previewPlace.lat } : null}
       />
 
       {/* Top overlay header */}
@@ -118,7 +161,7 @@ export default function RouteMapPageClient({
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-w-0">
             <span className="text-xs uppercase tracking-wide text-white/80 font-medium drop-shadow-md">
               {t("trip_overview.route_map_title")}
             </span>
@@ -126,8 +169,198 @@ export default function RouteMapPageClient({
               {trip.destination || trip.title || t("trips.untitled_trip")}
             </span>
           </div>
+
+          <div className="pointer-events-auto">
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors shadow-lg"
+              aria-label={t("trip_overview.route_search_dialog_title")}
+            >
+              <Search className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Search modal: Add stop */}
+      <Dialog
+        open={searchOpen}
+        onOpenChange={(open) => {
+          setSearchOpen(open);
+          if (!open) {
+            setSearchQuery("");
+            setFocusLngLat(null);
+            setPreviewDateRange(undefined);
+          }
+        }}
+      >
+        <DialogContent
+          className="bg-black/90 border border-white/10 rounded-xl text-white gap-4 max-w-[calc(100%-2rem)] sm:max-w-lg p-5 overflow-hidden grid"
+          showCloseButton={true}
+        >
+          <DialogHeader className="min-w-0 pr-8">
+            <DialogTitle className="text-white truncate">
+              {t("trip_overview.route_search_dialog_title")}
+            </DialogTitle>
+            <DialogDescription className="text-white/60 text-sm break-words">
+              {t("trip_overview.route_search_hint")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 min-w-0 overflow-hidden">
+            <div className="relative min-w-0">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40 pointer-events-none shrink-0" />
+              <input
+                ref={searchInputRef}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    search(searchQuery.trim());
+                  }
+                }}
+                placeholder={t("trip_overview.route_search_placeholder") ?? "Search places..."}
+                className="w-full min-w-0 rounded-full bg-white/5 border border-white/15 py-2.5 pl-9 pr-9 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/40 focus:ring-0 box-border"
+              />
+              {searchQuery.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                  aria-label={t("common.clear", { defaultValue: "Clear" })}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {placesError && <p className="text-xs text-red-400 break-words">{placesError}</p>}
+            {placesLoading && (
+              <p className="text-xs text-white/60 flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                <span className="min-w-0">{t("trip_overview.route_search_loading") ?? "Searching places…"}</span>
+              </p>
+            )}
+            {!placesLoading && searchQuery.trim() && placeResults.length === 0 && (
+              <p className="text-sm text-white/50 py-2 break-words">
+                {t("trip_overview.route_search_no_results")}
+              </p>
+            )}
+            {!placesLoading && placeResults.length > 0 && !previewPlace && (
+              <ul className="max-h-48 overflow-y-auto overflow-x-hidden space-y-1 min-w-0 -mx-1 px-1" role="listbox">
+                {placeResults.map((place) => (
+                  <li key={place.id} className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewPlace({
+                          id: place.id,
+                          name: place.name,
+                          address: place.address,
+                          lat: place.lat,
+                          lng: place.lng,
+                        });
+                        setFocusLngLat({ lng: place.lng, lat: place.lat });
+                        setSearchOpen(false);
+                      }}
+                      className="w-full min-w-0 text-left rounded-lg px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/15 text-xs font-medium text-white flex flex-col gap-0.5 overflow-hidden"
+                      role="option"
+                    >
+                      <span className="block truncate min-w-0">{place.name}</span>
+                      {place.address && (
+                        <span className="block text-[11px] text-white/55 truncate min-w-0">
+                          {place.address}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Floating confirm card: location + timeframe then confirm */}
+      {previewPlace && (
+        <>
+          <div
+            className="fixed left-4 right-4 z-30 bottom-24 max-w-lg mx-auto p-3 rounded-xl bg-black/90 border border-white/15 shadow-xl backdrop-blur-md flex flex-col gap-3"
+            role="dialog"
+            aria-label={t("trip_overview.route_search_confirm_hint")}
+          >
+            <p className="text-xs text-white/70">
+              {t("trip_overview.route_search_confirm_hint")}
+            </p>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="font-medium text-white truncate text-sm">{previewPlace.name}</span>
+              {previewPlace.address && (
+                <span className="text-[11px] text-white/55 truncate block">{previewPlace.address}</span>
+              )}
+            </div>
+            {/* When will you be here? (optional but encouraged) */}
+            <button
+              type="button"
+              onClick={() => setShowPreviewDatePicker(true)}
+              className="w-full inline-flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 py-2.5 px-3 text-left text-xs font-medium text-white transition-colors"
+            >
+              <Calendar className="w-3.5 h-3.5 shrink-0 text-[#ff6b6b]" />
+              <span>
+                {previewDateRange?.from
+                  ? previewDateRange.to
+                    ? `${previewDateRange.from.toLocaleDateString(undefined, { month: "short", day: "numeric" })} → ${previewDateRange.to.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                    : previewDateRange.from.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+                  : t("trip_overview.route_search_when", { defaultValue: "When will you be here?" })}
+              </span>
+            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewPlace(null);
+                  setPreviewDateRange(undefined);
+                  setFocusLngLat(null);
+                  setSearchOpen(true);
+                }}
+                className="flex-1 rounded-lg border border-white/20 py-2.5 px-3 text-xs font-medium text-white/90 hover:bg-white/10 transition-colors"
+              >
+                {t("trip_overview.route_search_choose_another", { defaultValue: "Choose another" })}
+              </button>
+              <button
+                type="button"
+                disabled={!!addingPlaceId || !previewDateRange?.from}
+                onClick={handleConfirmAddPlace}
+                className={`flex-1 rounded-lg border py-2.5 px-3 text-xs font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:pointer-events-none ${
+                  previewDateRange?.from
+                    ? "bg-white/20 hover:bg-white/25 border-white/20 text-white"
+                    : "bg-white/5 border-white/15 text-white/50"
+                }`}
+              >
+                {addingPlaceId ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {t("trip_overview.route_search_adding", { defaultValue: "Adding…" })}
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    {t("trip_overview.route_search_add_to_route", { defaultValue: "Add to route" })}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          <DatePicker
+            open={showPreviewDatePicker}
+            onClose={() => setShowPreviewDatePicker(false)}
+            onSelect={(range) => {
+              setPreviewDateRange(range);
+              setShowPreviewDatePicker(false);
+            }}
+            selectedDateRange={previewDateRange}
+          />
+        </>
+      )}
 
       {/* Bottom sheet via shared Drawer.
           When closed, a small floating pill (DrawerTrigger) stays at bottom center to reopen it. */}
@@ -146,83 +379,24 @@ export default function RouteMapPageClient({
         </DrawerTrigger>
 
         <DrawerContent className="border-none bg-black/80 backdrop-blur-2xl max-h-[70vh] max-w-5xl mx-auto mb-4 px-0">
-          {/* Header + Add stop control */}
-          <div className="px-4 pb-3 space-y-3">
+          {/* Header: route title + N stops */}
+          <div className="px-4 pb-3">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex flex-col">
+              <div className="flex flex-col min-w-0">
                 <span className="text-xs uppercase tracking-wide text-white/60">
                   {t("trip_overview.route_title")}
                 </span>
-                <span className="text-sm font-semibold text-white">
+                <span className="text-sm font-semibold text-white truncate">
                   {routeSummary || trip.destination || trip.title || t("trips.untitled_trip")}
                 </span>
               </div>
-              <div className="text-xs text-white/60">
+              <div className="text-xs text-white/60 shrink-0">
                 {locations.length === 0
                   ? t("trip_overview.route_empty_title")
                   : locations.length === 1
                   ? "1 stop"
                   : `${locations.length} stops`}
               </div>
-            </div>
-
-            {/* Add stop: button toggles search panel */}
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => setShowSearch((s) => !s)}
-                className="inline-flex items-center gap-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 py-2 px-4 text-xs font-medium text-white transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t("trip_overview.route_add_stop")}</span>
-              </button>
-
-              {showSearch && (
-                <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
-                    <input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") search(searchQuery);
-                      }}
-                      placeholder={t("trip_overview.route_search_placeholder") ?? "Search places..."}
-                      className="w-full rounded-full bg-white/5 border border-white/15 py-2 pl-9 pr-3 text-xs text-white placeholder:text-white/35 outline-none focus:border-white/40 focus:ring-0"
-                    />
-                  </div>
-                  {placesError && <p className="text-xs text-red-400">{placesError}</p>}
-                  {placesLoading && (
-                    <p className="text-xs text-white/60">
-                      {t("trip_overview.route_search_loading") ?? "Searching places…"}
-                    </p>
-                  )}
-                  {!placesLoading && placeResults.length > 0 && (
-                    <ul className="max-h-36 overflow-y-auto space-y-1">
-                      {placeResults.map((place) => (
-                        <li key={place.id}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handlePlaceSelect(place.id);
-                              setShowSearch(false);
-                              setSearchQuery("");
-                            }}
-                            className="w-full text-left rounded-lg px-3 py-2 bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/15 text-xs font-medium text-white truncate"
-                          >
-                            <span className="block truncate">{place.name}</span>
-                            {place.address && (
-                              <span className="block text-[11px] text-white/55 truncate">
-                                {place.address}
-                              </span>
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
