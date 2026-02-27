@@ -3,7 +3,8 @@
 import { useEffect, useMemo } from "react";
 import Map, { Marker, Source, Layer, useMap } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
-import type { RouteLineFeature } from "@/lib/mapbox-directions";
+import { straightLineLegs, type RouteLegsGeoJSON } from "@/lib/mapbox-directions";
+import { getLegColor } from "@/lib/route-colors";
 
 // Console: WEBGL_debug_renderer_info, texSubImage, and CORS to events.mapbox.com are expected/harmless (see docs/MAPS_IMPLEMENTATION.md).
 
@@ -19,7 +20,17 @@ const MAPBOX_DARK_STYLE = "mapbox://styles/mapbox/dark-v11";
 const FOCUS_ZOOM = 14;
 const FLY_DURATION_MS = 1200;
 
-/** When focusLngLat is set, flies the map to that point. Rendered inside Map so useMap() works. */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const LINE_PAINT: Record<string, any> = {
+  "line-color": ["get", "color"],
+  "line-width": 3,
+};
+const LINE_LAYOUT: Record<string, any> = {
+  "line-join": "round",
+  "line-cap": "round",
+};
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 function MapFlyTo({
   focusLngLat,
 }: {
@@ -58,17 +69,6 @@ function getBounds(waypoints: MapWaypoint[]): [[number, number], [number, number
   ];
 }
 
-function waypointsToLineGeometry(waypoints: MapWaypoint[]) {
-  return {
-    type: "Feature" as const,
-    properties: {},
-    geometry: {
-      type: "LineString" as const,
-      coordinates: waypoints.map((w) => [w.lng, w.lat]),
-    },
-  };
-}
-
 interface MapViewProps {
   waypoints: MapWaypoint[];
   className?: string;
@@ -82,8 +82,8 @@ interface MapViewProps {
   focusLngLat?: { lng: number; lat: number } | null;
   /** When set, shows a highlight marker at this point (e.g. preview before adding a stop). */
   previewLngLat?: { lng: number; lat: number } | null;
-  /** Road route geometry from Mapbox Directions; when set, drawn instead of straight segments. */
-  routeLineGeo?: RouteLineFeature | null;
+  /** Per-leg route geometry from Mapbox Directions; when set, drawn instead of straight segments. */
+  routeLineGeo?: RouteLegsGeoJSON | null;
 }
 
 export default function MapView({
@@ -101,8 +101,11 @@ export default function MapView({
   const { initialViewState, lineGeo } = useMemo(() => {
     const withCoords = waypoints.filter((w) => Number.isFinite(w.lat) && Number.isFinite(w.lng));
     const bounds = withCoords.length > 0 ? getBounds(withCoords) : null;
-    const straightLine = withCoords.length >= 2 ? waypointsToLineGeometry(withCoords) : null;
-    const lineGeo = routeLineGeo ?? straightLine;
+    const fallback =
+      withCoords.length >= 2
+        ? straightLineLegs(withCoords.map((w) => ({ lng: w.lng, lat: w.lat })))
+        : null;
+    const lineGeo = routeLineGeo ?? fallback;
     const initialViewState =
       fitToRoute && bounds
         ? {
@@ -129,6 +132,11 @@ export default function MapView({
     );
   }
 
+  const validWaypoints = waypoints.filter(
+    (w) => Number.isFinite(w.lat) && Number.isFinite(w.lng)
+  );
+  const numLegs = Math.max(validWaypoints.length - 1, 0);
+
   return (
     <div className={className} style={{ width: "100%", height: "100%" }}>
       <Map
@@ -152,19 +160,10 @@ export default function MapView({
       )}
       {lineGeo && (
         <Source id="route-line" type="geojson" data={lineGeo}>
-          <Layer
-            id="route-line-layer"
-            type="line"
-            paint={{
-              "line-color": "#ff6b6b",
-              "line-width": 3,
-            }}
-          />
+          <Layer id="route-line-layer" type="line" paint={LINE_PAINT} layout={LINE_LAYOUT} />
         </Source>
       )}
-      {waypoints
-        .filter((w) => Number.isFinite(w.lat) && Number.isFinite(w.lng))
-        .map((w, i) => (
+      {validWaypoints.map((w, i) => (
           <Marker
             key={`${w.lng}-${w.lat}-${i}`}
             longitude={w.lng}
@@ -172,7 +171,8 @@ export default function MapView({
             anchor="bottom"
           >
             <div
-              className="h-6 w-6 rounded-full border-2 border-white bg-[#ff6b6b] shadow-lg"
+              className="h-6 w-6 rounded-full border-2 border-white shadow-lg"
+              style={{ backgroundColor: getLegColor(Math.min(i, numLegs - 1)) }}
               title={w.name}
             />
           </Marker>

@@ -12,6 +12,7 @@ import { useState, useEffect } from "react"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
 import { addLocation } from "@/lib/api/trip-locations"
+import { getRandomRouteColor } from "@/lib/route-colors"
 import type { RouteLocation } from "@/components/trips/route/route-builder"
 
 export default function CreateTripPageClient() {
@@ -38,7 +39,7 @@ export default function CreateTripPageClient() {
       }
 
       if (data.coverPhoto) tripData.cover_photo = data.coverPhoto
-      if (data.color) tripData.color = data.color
+      tripData.color = data.color ?? getRandomRouteColor()
       if (data.dateRange?.from) tripData.start_date = data.dateRange.from.toISOString()
       if (data.dateRange?.to) tripData.end_date = data.dateRange.to.toISOString()
 
