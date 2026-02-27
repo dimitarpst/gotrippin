@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import Map, { Marker, Source, Layer, useMap } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
+import type { EventData, MapMouseEvent } from "mapbox-gl";
 import { straightLineLegs, type RouteLegsGeoJSON } from "@/lib/mapbox-directions";
 import { getLegColor } from "@/lib/route-colors";
 
@@ -33,18 +34,20 @@ const LINE_LAYOUT: Record<string, any> = {
 
 function MapFlyTo({
   focusLngLat,
+  focusZoom,
 }: {
   focusLngLat: { lng: number; lat: number } | null;
+  focusZoom: number;
 }) {
   const { current: map } = useMap();
   useEffect(() => {
     if (!focusLngLat || !map) return;
     map.flyTo({
       center: [focusLngLat.lng, focusLngLat.lat],
-      zoom: FOCUS_ZOOM,
+      zoom: focusZoom,
       duration: FLY_DURATION_MS,
     });
-  }, [focusLngLat, map]);
+  }, [focusLngLat, focusZoom, map]);
   return null;
 }
 
@@ -80,8 +83,12 @@ interface MapViewProps {
   interactive?: boolean;
   /** When set, map flies to this point (e.g. when user taps a route stop). */
   focusLngLat?: { lng: number; lat: number } | null;
+  /** Optional zoom level used when focusLngLat is set. Default 14. */
+  focusZoom?: number;
   /** When set, shows a highlight marker at this point (e.g. preview before adding a stop). */
   previewLngLat?: { lng: number; lat: number } | null;
+  /** Called when user clicks the map (useful for adding stops by dropping a pin). */
+  onMapClick?: ((lngLat: { lng: number; lat: number }) => void) | null;
   /** Per-leg route geometry from Mapbox Directions; when set, drawn instead of straight segments. */
   routeLineGeo?: RouteLegsGeoJSON | null;
 }
@@ -93,7 +100,9 @@ export default function MapView({
   fitPadding = 60,
   interactive = true,
   focusLngLat = null,
+  focusZoom = FOCUS_ZOOM,
   previewLngLat = null,
+  onMapClick = null,
   routeLineGeo = null,
 }: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -145,8 +154,12 @@ export default function MapView({
         mapStyle={MAPBOX_DARK_STYLE}
         style={{ width: "100%", height: "100%" }}
         interactive={interactive}
+        onClick={(e: MapMouseEvent & EventData) => {
+          if (!onMapClick) return;
+          onMapClick({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+        }}
       >
-        <MapFlyTo focusLngLat={focusLngLat} />
+        <MapFlyTo focusLngLat={focusLngLat} focusZoom={focusZoom} />
       {previewLngLat && (
         <Marker
           longitude={previewLngLat.lng}

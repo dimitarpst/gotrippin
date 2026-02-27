@@ -151,7 +151,21 @@ export default function RouteMapPageClient({
         fitPadding={80}
         className="absolute inset-0"
         focusLngLat={focusLngLat}
+        focusZoom={previewPlace?.id.startsWith("pin:") ? 16 : 14}
         previewLngLat={previewPlace ? { lng: previewPlace.lng, lat: previewPlace.lat } : null}
+        onMapClick={({ lng, lat }) => {
+          if (searchOpen) return;
+          if (addingPlaceId) return;
+          const id = `pin:${lng.toFixed(6)},${lat.toFixed(6)}`;
+          setPreviewPlace({
+            id,
+            name: t("trip_overview.route_dropped_pin", { defaultValue: "Dropped pin" }),
+            lat,
+            lng,
+          });
+          setPreviewDateRange(undefined);
+          setFocusLngLat({ lng, lat });
+        }}
       />
 
       {/* Top overlay header */}

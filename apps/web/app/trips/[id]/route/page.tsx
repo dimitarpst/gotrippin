@@ -1,10 +1,22 @@
 import { redirect, notFound } from "next/navigation";
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
-import { fetchTripDetail } from "@/lib/api/trips";
+import { ApiError, fetchTripDetail } from "@/lib/api/trips";
 import type { TripLocation } from "@gotrippin/core";
 import RouteMapPageClient from "./RouteMapPageClient";
 
 export const dynamic = "force-dynamic";
+
+async function fetchTripDetailWithRetry(shareCode: string, token: string) {
+  try {
+    return await fetchTripDetail(shareCode, token);
+  } catch (err) {
+    if (err instanceof ApiError && (err.statusCode === 500 || err.statusCode === 503)) {
+      await new Promise((r) => setTimeout(r, 200));
+      return await fetchTripDetail(shareCode, token);
+    }
+    throw err;
+  }
+}
 
 export default async function RoutePage({
   params,
@@ -29,9 +41,12 @@ export default async function RoutePage({
 
   let detail;
   try {
-    detail = await fetchTripDetail(shareCode, token);
-  } catch {
-    notFound();
+    detail = await fetchTripDetailWithRetry(shareCode, token);
+  } catch (err) {
+    // Only show 404 when backend truly says “not found”.
+    if (err instanceof ApiError && err.statusCode === 404) notFound();
+    console.error("RoutePage: fetchTripDetail failed", err);
+    throw err;
   }
 
   if (!detail?.trip) {
