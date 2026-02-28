@@ -209,7 +209,8 @@
     "menu_change_background": "Change Background",
     "menu_notifications_on": "Turn On Notifications",
     "menu_notifications_off": "Turn Off Notifications",
-    "menu_remove_trip": "Remove Trip"
+    "menu_remove_trip": "Remove Trip",
+    "show_route_tips_again": "Show guide again"
   },
   "background_picker": {
     "title": "Choose Image",

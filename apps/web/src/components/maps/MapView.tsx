@@ -95,6 +95,10 @@ interface MapViewProps {
   onMoveEnd?: ((state: { center: { lng: number; lat: number }; zoom: number }) => void) | null;
   /** Per-leg route geometry from Mapbox Directions; when set, drawn instead of straight segments. */
   routeLineGeo?: RouteLegsGeoJSON | null;
+  /** When waypoints is empty, use this center for initial view (e.g. wizard first step). */
+  defaultCenter?: { lng: number; lat: number };
+  /** When waypoints is empty, use this zoom for initial view. Ignored if defaultCenter not set. */
+  defaultZoom?: number;
   /** Optional extra content rendered inside the map (e.g. POI markers). */
   children?: ReactNode;
 }
@@ -111,6 +115,8 @@ export default function MapView({
   onMapClick = null,
   onMoveEnd = null,
   routeLineGeo = null,
+  defaultCenter,
+  defaultZoom = 10,
   children,
 }: MapViewProps) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -123,18 +129,26 @@ export default function MapView({
         ? straightLineLegs(withCoords.map((w) => ({ lng: w.lng, lat: w.lat })))
         : null;
     const lineGeo = routeLineGeo ?? fallback;
-    const initialViewState =
-      fitToRoute && bounds
-        ? {
-            bounds: bounds as [[number, number], [number, number]],
-            fitBoundsOptions: { padding: fitPadding, maxZoom: 14 },
-          }
-        : {
-            ...DEFAULT_CENTER,
-            zoom: DEFAULT_ZOOM,
-          };
+    let initialViewState: { longitude: number; latitude: number; zoom: number } | { bounds: [[number, number], [number, number]]; fitBoundsOptions: { padding: number; maxZoom: number } };
+    if (fitToRoute && bounds) {
+      initialViewState = {
+        bounds: bounds as [[number, number], [number, number]],
+        fitBoundsOptions: { padding: fitPadding, maxZoom: 14 },
+      };
+    } else if (withCoords.length === 0 && defaultCenter) {
+      initialViewState = {
+        longitude: defaultCenter.lng,
+        latitude: defaultCenter.lat,
+        zoom: defaultZoom,
+      };
+    } else {
+      initialViewState = {
+        ...DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+      };
+    }
     return { initialViewState, lineGeo };
-  }, [waypoints, fitToRoute, fitPadding, routeLineGeo]);
+  }, [waypoints, fitToRoute, fitPadding, routeLineGeo, defaultCenter, defaultZoom]);
 
   if (!token) {
     return (

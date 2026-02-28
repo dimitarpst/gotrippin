@@ -20,6 +20,24 @@ import {
 } from "@/lib/api/trip-locations";
 import { useGooglePlaces } from "@/hooks";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
+import {
+  Tour,
+  TourPortal,
+  TourSpotlight,
+  TourSpotlightRing,
+  TourStep,
+  TourArrow,
+  TourClose,
+  TourHeader,
+  TourTitle,
+  TourDescription,
+  TourFooter,
+  TourStepCounter,
+  TourPrev,
+  TourNext,
+} from "@/components/ui/tour";
 
 interface RouteMapPageClientProps {
   trip: Trip;
@@ -36,6 +54,7 @@ export default function RouteMapPageClient({
 }: RouteMapPageClientProps) {
   const router = useRouter();
   const { t } = useTranslation();
+  const { user, refreshProfile } = useAuth();
   const [open, setOpen] = useState(true);
   const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
   const [, setSavingOrder] = useState(false);
@@ -57,6 +76,11 @@ export default function RouteMapPageClient({
   const [alongCategory, setAlongCategory] = useState<"food" | "sights" | "stays" | "other" | "all">("food");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
+  const [routeTourOpen, setRouteTourOpen] = useState(false);
+  const [routeTourStep, setRouteTourStep] = useState(0);
+  const hasMarkedRouteTourRef = useRef(false);
+  const hasAutoOpenedRouteTourRef = useRef(false);
+  const hasAutoOpenedSearchRef = useRef(false);
 
   useEffect(() => {
     if (searchOpen) {
@@ -73,8 +97,76 @@ export default function RouteMapPageClient({
     return () => clearTimeout(t);
   }, [searchOpen, searchQuery, search]);
 
+  // Wizard with 0 stops: auto-open search and prefill; zoom map in a bit.
+  useEffect(() => {
+    if (!isWizard || locations.length > 0) return;
+    if (hasAutoOpenedSearchRef.current) return;
+    hasAutoOpenedSearchRef.current = true;
+    setSearchOpen(true);
+    const prefill = trip.destination || trip.title || "";
+    setSearchQuery(prefill);
+  }, [isWizard, locations.length, trip.destination, trip.title]);
+
+  // Route editor tour (wizard mode only), stored in Supabase user_metadata.ui_tours.route_editor_v1.
+  // Only starts after the user has added at least one stop. Open only once per session to avoid freeze.
+  useEffect(() => {
+    if (!isWizard) return;
+    if (!user) return;
+    if (locations.length === 0) return;
+    if (hasAutoOpenedRouteTourRef.current) return;
+
+    const uiTours =
+      (user.user_metadata?.ui_tours as Record<string, unknown> | undefined) ?? {};
+    const hasSeenRouteTour = uiTours["route_editor_v1"] === true;
+
+    if (!hasSeenRouteTour) {
+      hasAutoOpenedRouteTourRef.current = true;
+      setRouteTourOpen(true);
+    }
+  }, [isWizard, user, locations.length]);
+
+  const markRouteTourSeen = async () => {
+    if (!user) return;
+    if (hasMarkedRouteTourRef.current) return;
+    hasMarkedRouteTourRef.current = true;
+
+    try {
+      const existing =
+        ((user.user_metadata?.ui_tours as Record<string, boolean> | undefined) ??
+          {});
+
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          ui_tours: {
+            ...existing,
+            route_editor_v1: true,
+          },
+        },
+      });
+
+      if (error) {
+        console.error("Failed to persist route editor tour flag:", error);
+        return;
+      }
+
+      void refreshProfile();
+    } catch (error) {
+      console.error("Unexpected error while persisting route editor tour flag:", error);
+    }
+  };
+
+  const handleRouteTourOpenChange = (openTour: boolean) => {
+    setRouteTourOpen(openTour);
+    if (!openTour) {
+      setRouteTourStep(0);
+      void markRouteTourSeen();
+    }
+  };
+
   const waypoints = tripLocationsToWaypoints(locations);
   const { routeGeo } = useRouteDirections(waypoints);
+  const tripMinDate = trip.start_date ? new Date(trip.start_date) : undefined;
+  const tripMaxDate = trip.end_date ? new Date(trip.end_date) : undefined;
   const alongRoute = useAlongRoutePlaces(waypoints);
   const filteredAlongPlaces =
     alongRoute.places.filter((p) => alongCategory === "all" || p.category === alongCategory);
@@ -85,6 +177,12 @@ export default function RouteMapPageClient({
   const routeSummary =
     stopNames.length > 1 ? `${stopNames[0]} \u2192 ${stopNames[stopNames.length - 1]}` : stopNames[0] ?? "";
   const canExitWizard = locations.length >= 2;
+
+  const handleShowRouteTourAgain = () => {
+    if (!isWizard) return;
+    setRouteTourStep(0);
+    setRouteTourOpen(true);
+  };
 
   const handleConfirmAddPlace = useCallback(
     async () => {
@@ -164,6 +262,8 @@ export default function RouteMapPageClient({
         focusLngLat={focusLngLat}
         focusZoom={previewPlace?.id.startsWith("pin:") ? 16 : 14}
         previewLngLat={previewPlace ? { lng: previewPlace.lng, lat: previewPlace.lat } : null}
+        defaultCenter={isWizard && locations.length === 0 ? { lng: 23.32, lat: 42.7 } : undefined}
+        defaultZoom={isWizard && locations.length === 0 ? 10 : undefined}
         onMapClick={({ lng, lat }) => {
           if (searchOpen) return;
           if (addingPlaceId) return;
@@ -200,13 +300,22 @@ export default function RouteMapPageClient({
                 {t("trip_overview.route_map_title")}
               </span>
               {isWizard && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/80">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                  <span className="ml-1">
-                    {t("trips.route_step_label", { defaultValue: "Step 2 of 2" })}
+                <div className="inline-flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/80">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                    <span className="ml-1">
+                      {t("trips.route_step_label", { defaultValue: "Step 2 of 2" })}
+                    </span>
                   </span>
-                </span>
+                  <button
+                    type="button"
+                    onClick={handleShowRouteTourAgain}
+                    className="text-[10px] text-white/70 hover:text-white underline-offset-2 hover:underline transition-colors pointer-events-auto"
+                  >
+                    {t("trip_overview.show_route_tips_again", { defaultValue: "Show guide again" })}
+                  </button>
+                </div>
               )}
             </div>
             <span className="text-sm font-semibold text-white truncate drop-shadow-md">
@@ -227,8 +336,10 @@ export default function RouteMapPageClient({
             )}
             <button
               type="button"
+              id="route-search-button"
               onClick={() => setSearchOpen(true)}
-              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors shadow-lg"
+              disabled={routeTourOpen}
+              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors shadow-lg disabled:opacity-40 disabled:hover:bg-black/40"
               aria-label={t("trip_overview.route_search_dialog_title")}
             >
               <Search className="w-5 h-5" />
@@ -437,6 +548,8 @@ export default function RouteMapPageClient({
                   setShowPreviewDatePicker(false);
                 }}
                 selectedDateRange={previewDateRange}
+                minDate={tripMinDate}
+                maxDate={tripMaxDate}
               />
             </>
           )}
@@ -448,8 +561,8 @@ export default function RouteMapPageClient({
         <DrawerTrigger asChild>
           <button
             type="button"
-            className={`fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 bg-black/70 backdrop-blur-md border border-white/15 text-xs font-semibold text-white flex items-center gap-2 shadow-lg transition-all ${
-              open || previewPlace || showAlongPanel
+            className={`fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 bg-black/70 backdrop-blur-md border border-white/15 text-xs font-semibold text-white flex items-center gap-2 shadow-lg transition-all pointer-events-auto ${
+              open || previewPlace || showAlongPanel || routeTourOpen
                 ? "opacity-0 pointer-events-none translate-y-2"
                 : "opacity-100 translate-y-0"
             }`}
@@ -462,7 +575,7 @@ export default function RouteMapPageClient({
 
         <DrawerContent className="border-none bg-black/80 backdrop-blur-2xl max-h-[70vh] max-w-5xl mx-auto mb-4 px-0">
           {/* Header: route title + N stops */}
-          <div className="px-4 pb-3">
+          <div className="px-4 pb-3" id="route-drawer-header">
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-col min-w-0">
                 <span className="text-xs uppercase tracking-wide text-white/60">
@@ -519,6 +632,8 @@ export default function RouteMapPageClient({
                         onNameCommit={handleNameCommit}
                         onDatesCommit={handleDatesCommit}
                         onFocusMap={handleFocusOnStop}
+                        minDate={tripMinDate}
+                        maxDate={tripMaxDate}
                       />
                     </Sortable.Item>
                   ))}
@@ -641,6 +756,73 @@ export default function RouteMapPageClient({
           )}
         </AnimatePresence>
       </div>
+
+      {isWizard && (
+        <Tour
+          open={routeTourOpen}
+          onOpenChange={handleRouteTourOpenChange}
+          value={routeTourStep}
+          onValueChange={setRouteTourStep}
+          alignOffset={0}
+          sideOffset={16}
+          spotlightPadding={8}
+          stepFooter={
+            <TourFooter>
+              <div className="flex w-full items-center justify-between">
+                <TourStepCounter className="text-xs text-muted-foreground" />
+                <div className="flex gap-2">
+                  <TourPrev
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                  />
+                  <TourNext
+                    size="sm"
+                    className="h-8 px-4 text-xs"
+                  />
+                </div>
+              </div>
+            </TourFooter>
+          }
+        >
+          <TourPortal>
+            <TourSpotlight />
+            <TourSpotlightRing className="rounded-2xl border-2 border-primary shadow-[0_0_30px_rgba(255,107,107,0.45)]" />
+
+            <TourStep target="#route-search-button" side="bottom">
+              <TourArrow />
+              <TourClose />
+              <TourHeader className="items-start text-left sm:text-left">
+                <TourTitle>
+                  {t("trip_overview.route_search_title", { defaultValue: "Add your first stop" })}
+                </TourTitle>
+                <TourDescription>
+                  {t("trip_overview.route_search_hint", {
+                    defaultValue:
+                      "Start by searching for where your route begins. Pick a city or exact place, then confirm it on the map.",
+                  })}
+                </TourDescription>
+              </TourHeader>
+            </TourStep>
+
+            <TourStep target="#route-drawer-header" side="top">
+              <TourArrow />
+              <TourClose />
+              <TourHeader className="items-start text-left sm:text-left">
+                <TourTitle>
+                  {t("trip_overview.route_title", { defaultValue: "Your route" })}
+                </TourTitle>
+                <TourDescription>
+                  {t("trip_overview.route_empty", {
+                    defaultValue:
+                      "Each stop you add appears here. Drag to reorder and tap a stop to adjust its dates.",
+                  })}
+                </TourDescription>
+              </TourHeader>
+            </TourStep>
+          </TourPortal>
+        </Tour>
+      )}
     </div>
   );
 }
@@ -652,6 +834,8 @@ interface RouteLocationRowProps {
   onNameCommit: (id: string, name: string) => void;
   onDatesCommit: (id: string, range: DateRange | undefined) => void;
   onFocusMap?: (location: TripLocation) => void;
+  minDate?: Date;
+  maxDate?: Date;
 }
 
 function RouteLocationRow({
@@ -661,6 +845,8 @@ function RouteLocationRow({
   onNameCommit,
   onDatesCommit,
   onFocusMap,
+  minDate,
+  maxDate,
 }: RouteLocationRowProps) {
   const { t } = useTranslation();
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -689,13 +875,31 @@ function RouteLocationRow({
 
   const dateLabel = formatDateLabel(selectedRange);
 
+  const handleRowClick = () => {
+    if (hasCoords && onFocusMap) onFocusMap(location);
+  };
+
   return (
     <>
-      <div className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 px-3 py-3">
-        <div className="flex flex-col items-center mr-1">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleRowClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleRowClick();
+          }
+        }}
+        className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 px-3 py-3 cursor-pointer hover:bg-white/[0.07] transition-colors"
+      >
+        <div className="flex flex-col items-center mr-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
-            onClick={() => onFocusMap?.(location)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onFocusMap?.(location);
+            }}
             disabled={!hasCoords || !onFocusMap}
             className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-semibold text-white/80 border border-white/10 hover:bg-white/20 hover:border-white/20 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             title={hasCoords ? t("trip_overview.route_focus_map") : undefined}
@@ -705,7 +909,7 @@ function RouteLocationRow({
           {index < allLocations.length - 1 && <div className="flex-1 w-px bg-white/10 mt-1" />}
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
           <input
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
@@ -716,7 +920,10 @@ function RouteLocationRow({
 
           <button
             type="button"
-            onClick={() => setShowDatePicker(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDatePicker(true);
+            }}
             className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[#ff6b6b] hover:text-[#ff8585] transition-colors"
           >
             <Calendar className="w-3 h-3" />
@@ -730,6 +937,8 @@ function RouteLocationRow({
         onClose={() => setShowDatePicker(false)}
         onSelect={(range) => onDatesCommit(location.id, range)}
         selectedDateRange={selectedRange}
+        minDate={minDate}
+        maxDate={maxDate}
       />
     </>
   );

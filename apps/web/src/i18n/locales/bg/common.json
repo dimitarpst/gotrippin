@@ -209,7 +209,8 @@
     "menu_change_background": "Промени фон",
     "menu_notifications_on": "Включи известия",
     "menu_notifications_off": "Изключи известия",
-    "menu_remove_trip": "Премахни пътуване"
+    "menu_remove_trip": "Премахни пътуване",
+    "show_route_tips_again": "Покажи гида отново"
   },
   "background_picker": {
     "title": "Избери изображение",

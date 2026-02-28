@@ -186,15 +186,16 @@ function CalendarDayButton({
   }, [modifiers.focused])
 
   const isToday = modifiers.today && !modifiers.range_start && !modifiers.range_end && !modifiers.range_middle
+  const mods = modifiers as Record<string, unknown>
   const isBusy =
-    (modifiers as any).busy &&
+    !!mods.busy &&
     !modifiers.selected &&
     !modifiers.range_start &&
     !modifiers.range_end &&
     !modifiers.range_middle
 
   const isTripBoundary =
-    ((modifiers as any).tripStart || (modifiers as any).tripEnd) &&
+    !!(mods.tripStart || mods.tripEnd) &&
     !modifiers.selected &&
     !modifiers.range_start &&
     !modifiers.range_end &&
