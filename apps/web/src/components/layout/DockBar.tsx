@@ -29,7 +29,7 @@ export default function DockBar({ onCreateTrip, onExplore }: DockBarProps = {}) 
     { key: "home", icon: Home },
     { key: "explore", icon: Compass },
     { key: "add_trip", icon: Plus },
-    { key: "settings", icon: Bot },
+    { key: "ai", icon: Bot },
   ];
 
   // Map standard icons
@@ -47,8 +47,8 @@ export default function DockBar({ onCreateTrip, onExplore }: DockBarProps = {}) 
         onCreateTrip();
       } else if (key === "explore" && onExplore) {
         onExplore();
-      } else if (key === "settings") {
-        router.push("/settings");
+      } else if (key === "ai") {
+        router.push("/ai");
       }
     },
     className: key === "add_trip" ? accentClass : baseClass,

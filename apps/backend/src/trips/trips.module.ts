@@ -19,5 +19,6 @@ import { WeatherModule } from '../weather/weather.module';
   ],
   providers: [TripsService],
   controllers: [TripsController],
+  exports: [TripsService],
 })
 export class TripsModule {}

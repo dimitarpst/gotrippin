@@ -57,3 +57,38 @@ export async function createAiSession(
 
   return res.json();
 }
+
+export interface PostMessageResponse {
+  message: string;
+  tool_calls?: string[];
+}
+
+export async function postAiMessage(
+  sessionId: string,
+  message: string,
+  token?: string | null
+): Promise<PostMessageResponse> {
+  const authToken = token ?? (await getAuthToken());
+  if (!authToken) {
+    throw new Error("Authentication required");
+  }
+
+  const res = await fetch(`${API_BASE}/ai/sessions/${sessionId}/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({ message }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err?.message ?? `Request failed: ${res.status}`;
+    const errWithStatus = new Error(`${msg} (${res.status})`);
+    (errWithStatus as Error & { status?: number }).status = res.status;
+    throw errWithStatus;
+  }
+
+  return res.json();
+}

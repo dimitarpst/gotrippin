@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Body,
+  Param,
   UseGuards,
   Req,
   BadRequestException,
@@ -12,10 +13,12 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiParam,
 } from '@nestjs/swagger';
 import { AiService } from './ai.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateSessionDto } from './dto/create-session.dto';
+import { PostMessageDto } from './dto/post-message.dto';
 
 @ApiTags('ai')
 @Controller('ai')
@@ -53,5 +56,33 @@ export class AiController {
     }
     const userId = request.user.id;
     return this.aiService.createSession(userId, result.data);
+  }
+
+  @Post('sessions/:sessionId/messages')
+  @ApiOperation({ summary: 'Send a message and get AI response (with tool execution)' })
+  @ApiParam({ name: 'sessionId', description: 'Session UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { message: { type: 'string' } },
+      required: ['message'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Assistant message and optional tool_calls list' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  async postMessage(
+    @Req() request: { user: { id: string } },
+    @Param('sessionId') sessionId: string,
+    @Body() body: PostMessageDto,
+  ) {
+    const result = PostMessageDto.safeParse(body);
+    if (!result.success) {
+      throw new BadRequestException({
+        message: 'Invalid message data',
+        errors: result.error.flatten(),
+      });
+    }
+    const userId = request.user.id;
+    return this.aiService.postMessage(userId, sessionId, result.data);
   }
 }

@@ -273,4 +273,48 @@ export class SupabaseService {
     if (error) return { data: null, error };
     return { data, error: null };
   }
+
+  async updateAiSession(
+    sessionId: string,
+    userId: string,
+    updates: { summary?: string | null; slots?: Record<string, unknown> },
+  ) {
+    const { data, error } = await this.supabase
+      .from('ai_sessions')
+      .update(updates)
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async getAiMessages(sessionId: string, limit = 20) {
+    const { data, error } = await this.supabase
+      .from('ai_messages')
+      .select('role, content')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async insertAiMessage(
+    sessionId: string,
+    role: 'user' | 'assistant' | 'tool' | 'system',
+    content: Record<string, unknown> | string,
+  ) {
+    const payload =
+      typeof content === 'string' ? { text: content } : content;
+    const { error } = await this.supabase.from('ai_messages').insert({
+      session_id: sessionId,
+      role,
+      content: payload,
+    });
+    if (error) throw error;
+  }
 }

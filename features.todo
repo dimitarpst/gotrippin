@@ -19,9 +19,12 @@ Todo:
     ✔ Phase 5 — Align Create Trip route step with map-first route editor (shared RouteEditor UX) — create wizard now: Step 1 (details) → Step 2 (map route editor at /trips/{share_code}/route)
   ✔ Map UX research — dynamic markers, popups, clicks & draggable markers via react-map-gl / Mapbox docs (Context7)
   ☐ AI operator — glm-5 via OpenRouter (docs/AI_TRIP_PLANNER.md, docs/plan.md, docs/AI_OPERATOR_IMPLEMENTATION.md)
-    ☐ Phase 1 — AI backend foundations (DB session model, tools catalog, OpenRouter client)
-    ☐ Phase 2 — Turn orchestration & tool execution (single- and multi-tool calls) in NestJS ai module
-    ☐ Phase 3 — Web chat UI (global + trip-scoped) wired to AI endpoints, with basic cards/quick replies
+    ✔ Phase 1 — AI backend foundations (DB session model, tools catalog, OpenRouter client)
+    ✔ Phase 2 — Turn orchestration & tool execution (single- and multi-tool calls) in NestJS ai module
+    ✔ Phase 3 — Web chat UI (global + trip-scoped) wired to AI endpoints, with basic cards/quick replies
+    ✔ Phase 3a — AI chat UX: markdown rendering, loading animation, design aligned to project
+    ☐ Phase 3b — Dock as collapse bubble (compact on side, expand left/right); keep off AI page
+    ☐ Phase 3c — Edit message (draft before send and/or edit last message to re-send)
     ☐ Phase 4 — Logging, metrics, rate limits and error handling for AI calls
     ☐ Phase 5 — Collaboration features and advanced planning behaviours (multi-user chat, locks, refinements)
 

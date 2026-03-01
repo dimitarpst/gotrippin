@@ -4,11 +4,29 @@ import { ConfigService } from '@nestjs/config';
 export interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
+  tool_call_id?: string;
+  name?: string;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: { name: string; arguments: string };
+  }>;
+}
+
+export interface OpenRouterTool {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
 }
 
 export interface OpenRouterChatOptions {
   model?: string;
   messages: OpenRouterMessage[];
+  tools?: OpenRouterTool[];
+  tool_choice?: 'auto' | 'none';
   max_tokens?: number;
   temperature?: number;
 }
@@ -16,6 +34,12 @@ export interface OpenRouterChatOptions {
 export interface OpenRouterChatResponse {
   content: string;
   model: string;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: { name: string; arguments: string };
+  }>;
+  finish_reason?: string;
   usage?: { prompt_tokens: number; completion_tokens: number };
 }
 
@@ -39,7 +63,14 @@ export class OpenRouterClient {
   }
 
   async chat(options: OpenRouterChatOptions): Promise<OpenRouterChatResponse> {
-    const { messages, model = this.defaultModel, max_tokens = 1024, temperature = 0.7 } = options;
+    const {
+      messages,
+      model = this.defaultModel,
+      tools,
+      tool_choice = 'auto',
+      max_tokens = 1024,
+      temperature = 0.7,
+    } = options;
 
     if (!this.apiKey) {
       throw new Error(
@@ -48,19 +79,25 @@ export class OpenRouterClient {
     }
 
     const url = `${this.baseUrl.replace(/\/$/, '')}/chat/completions`;
-    const body = {
+    const body: Record<string, unknown> = {
       model,
       messages,
       max_tokens,
       temperature,
     };
+    if (tools && tools.length > 0) {
+      body.tools = tools;
+      body.tool_choice = tool_choice;
+    }
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': this.configService.get<string>('FRONTEND_ORIGIN_PROD') ?? 'https://gotrippin.app',
+        'HTTP-Referer':
+          this.configService.get<string>('FRONTEND_ORIGIN_PROD') ??
+          'https://gotrippin.app',
       },
       body: JSON.stringify(body),
     });
@@ -73,17 +110,31 @@ export class OpenRouterClient {
     }
 
     const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+      choices?: Array<{
+        message?: {
+          content?: string;
+          tool_calls?: Array<{
+            id: string;
+            type: 'function';
+            function: { name: string; arguments: string };
+          }>;
+        };
+        finish_reason?: string;
+      }>;
       model?: string;
       usage?: { prompt_tokens: number; completion_tokens: number };
     };
 
     const choice = data.choices?.[0];
-    const content = choice?.message?.content ?? '';
+    const msg = choice?.message;
+    const content = msg?.content ?? '';
+    const tool_calls = msg?.tool_calls;
 
     return {
       content,
       model: data.model ?? model,
+      tool_calls,
+      finish_reason: choice?.finish_reason,
       usage: data.usage,
     };
   }
