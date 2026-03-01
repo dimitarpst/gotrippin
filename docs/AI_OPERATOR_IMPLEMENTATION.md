@@ -51,6 +51,8 @@ If we want a persistent log (beyond in‑memory or short‑term cache), add:
 
 For v1, the agent can store only the last N messages in the DB or even skip this table; `ai_sessions.summary` + `slots` is the critical part.
 
+**Environment (backend):** Set `OPENROUTER_API_KEY` (from [OpenRouter](https://openrouter.ai/)) for live LLM calls. Optional: `OPENROUTER_MODEL` (default `z-ai/glm-5`), `OPENROUTER_BASE_URL` (default `https://openrouter.ai/api/v1`). If the key is not set, session creation still works with a static welcome message.
+
 ---
 
 ### 2. NestJS AI Module (Phase 1 + 2)

@@ -236,4 +236,41 @@ export class SupabaseService {
 
     if (error) throw error;
   }
+
+  // --- AI sessions (ai_sessions table) ---
+
+  async createAiSession(params: {
+    user_id: string;
+    trip_id: string | null;
+    scope: 'global' | 'trip';
+    model_name?: string;
+  }) {
+    const { data, error } = await this.supabase
+      .from('ai_sessions')
+      .insert({
+        user_id: params.user_id,
+        trip_id: params.trip_id,
+        scope: params.scope,
+        model_name: params.model_name ?? 'z-ai/glm-5',
+        summary: null,
+        slots: {},
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async getAiSession(sessionId: string, userId: string) {
+    const { data, error } = await this.supabase
+      .from('ai_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) return { data: null, error };
+    return { data, error: null };
+  }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { type DateRange } from "react-day-picker"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
@@ -36,11 +36,13 @@ export function DatePicker({
 }: DatePickerProps) {
   const { t } = useTranslation()
   const [localRange, setLocalRange] = useState<DateRange | undefined>(selectedDateRange)
-  const [prevOpen, setPrevOpen] = useState(open)
-  if (open !== prevOpen) {
-    setPrevOpen(open)
-    if (open) setLocalRange(selectedDateRange)
-  }
+
+  // Sync local range when drawer opens so it shows current selection (avoids setState-in-render).
+  useEffect(() => {
+    if (open) {
+      setLocalRange(selectedDateRange)
+    }
+  }, [open, selectedDateRange])
 
   const handleDateSelect = (dateRange: DateRange | undefined) => {
     setLocalRange(dateRange)

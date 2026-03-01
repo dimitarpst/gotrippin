@@ -80,9 +80,8 @@ export default function CreateRouteDraftPageClient() {
     return () => clearTimeout(id);
   }, [searchOpen, searchQuery, search]);
 
-  const waypoints = previewPlace
-    ? [{ lat: previewPlace.lat, lng: previewPlace.lng, name: previewPlace.name }]
-    : [];
+  // No waypoints until a stop is saved; preview uses previewLngLat only (avoids double marker).
+  const waypoints: { lat: number; lng: number; name?: string }[] = [];
 
   const handleConfirmAddPlace = async () => {
     if (!previewPlace || !draft || addingPlaceId) return;
@@ -119,11 +118,11 @@ export default function CreateRouteDraftPageClient() {
       } catch {
         /* ignore */
       }
-      toast.success(t("trip_overview.route_stop_added"));
+      toast.success(t("trips.trip_created", { defaultValue: "Trip created!" }));
       if (trip.share_code) {
-        router.push(`/trips/${trip.share_code}/route?wizard=1`);
+        router.replace(`/trips/${trip.share_code}/route?wizard=1`);
       } else {
-        router.push("/trips");
+        router.replace("/trips");
       }
     } catch (error) {
       console.error("Failed to create trip and add first stop", error);
@@ -142,32 +141,45 @@ export default function CreateRouteDraftPageClient() {
   const draftMaxDate = draft.end_date ? new Date(draft.end_date) : undefined;
 
   return (
-    <div className="h-screen w-full bg-[#0a0a0a] relative overflow-hidden">
-      <MapView
-        waypoints={waypoints}
-        fitToRoute={waypoints.length > 0}
-        className="absolute inset-0"
-        focusLngLat={focusLngLat}
-        focusZoom={14}
-        previewLngLat={previewPlace ? { lng: previewPlace.lng, lat: previewPlace.lat } : null}
-        defaultCenter={waypoints.length === 0 ? { lng: 23.32, lat: 42.7 } : undefined}
-        defaultZoom={waypoints.length === 0 ? 10 : undefined}
-      />
+    <div className="h-screen w-full bg-[#0a0a0a] flex flex-col overflow-hidden">
+      {/* Step 2 bar above the map — same layout as step 1: Back | · · | spacer */}
+      <div className="shrink-0 relative z-10 px-6 pt-12 flex items-center justify-between bg-[#0a0a0a]">
+        <button
+          type="button"
+          onClick={() => router.replace("/trips/create")}
+          className="px-4 py-2 rounded-full text-[#ff6b6b] text-lg font-medium backdrop-blur-md border border-white/20 hover:bg-white/5 transition-colors"
+        >
+          {t("common.back", { defaultValue: "Back" })}
+        </button>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90">
+          <span className="w-2 h-2 rounded-full bg-white/20 shrink-0" />
+          <span className="w-2 h-2 rounded-full bg-white shrink-0" />
+        </span>
+        <span className="px-4 py-2 rounded-full text-lg font-medium text-transparent select-none pointer-events-none" aria-hidden>
+          {t("common.back", { defaultValue: "Back" })}
+        </span>
+      </div>
 
-      <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-safe-top bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
-        <div className="flex items-center gap-4 max-w-5xl mx-auto">
-          <button
-            type="button"
-            onClick={() => router.replace("/trips/create")}
-            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors pointer-events-auto shadow-lg"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <span className="text-xs uppercase tracking-wide text-white/80 font-medium drop-shadow-md block">
-              {t("trip_overview.route_map_title")}
-            </span>
-            <span className="text-sm font-semibold text-white truncate block">{draftTitle || t("trips.untitled_trip")}</span>
+      {/* Map area below */}
+      <div className="flex-1 relative min-h-0">
+        <MapView
+          waypoints={waypoints}
+          fitToRoute={waypoints.length > 0}
+          className="absolute inset-0"
+          focusLngLat={focusLngLat}
+          focusZoom={14}
+          previewLngLat={previewPlace ? { lng: previewPlace.lng, lat: previewPlace.lat } : null}
+          defaultCenter={waypoints.length === 0 ? { lng: 23.32, lat: 42.7 } : undefined}
+          defaultZoom={waypoints.length === 0 ? 10 : undefined}
+        />
+        <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+          <div className="flex items-center gap-4 max-w-5xl mx-auto">
+            <div className="flex-1 flex flex-col min-w-0">
+              <span className="text-xs uppercase tracking-wide text-white/80 font-medium drop-shadow-md">
+                {t("trip_overview.route_map_title")}
+              </span>
+              <span className="text-sm font-semibold text-white truncate block drop-shadow-md">{draftTitle || t("trips.untitled_trip")}</span>
+            </div>
           </div>
         </div>
       </div>

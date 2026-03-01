@@ -66,33 +66,42 @@ export default function CreateTripPageClient() {
         {step === 1 ? (
           <CreateTrip onBack={handleBack} onSave={handleDetailsNext} />
         ) : (
-          <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-            <div className="max-w-md space-y-4">
-              <h1 className="text-2xl font-semibold">
-                {t("trips.route_step_ready_title", { defaultValue: "Ready to plan your route?" })}
+          <div className="min-h-screen relative overflow-hidden flex flex-col">
+            {/* Same top bar as step 1: Back | step dots | CTA */}
+            <div className="relative z-10 px-6 pt-12 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="px-4 py-2 rounded-full text-[#ff6b6b] text-lg font-medium backdrop-blur-md border border-white/20 hover:bg-white/5 transition-colors"
+              >
+                {t("common.back", { defaultValue: "Back" })}
+              </button>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90">
+                <span className="text-white/50">1</span>
+                <span className="text-white/40">/</span>
+                <span className="text-white">2</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleOpenRouteEditor}
+                className="px-6 py-2 rounded-full bg-white text-black font-semibold hover:bg-white/90 transition-colors"
+              >
+                {t("trips.route_step_ready_cta", { defaultValue: "Open route editor" })}
+              </button>
+            </div>
+            {/* Centered content: trip name + short line, same feel as step 1 */}
+            <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pb-32">
+              <p className="text-white/60 text-lg mb-2">
+                {t("trips.route_step_label", { defaultValue: "Step 2 of 2" })}
+              </p>
+              <h1 className="text-white text-4xl md:text-5xl font-bold text-center mb-4">
+                {pendingData?.title || t("trips.untitled_trip")}
               </h1>
-              <p className="text-sm text-muted-foreground">
-                {t("trips.route_step_ready_body", {
-                  defaultValue:
-                    "Next we’ll open the map-based route editor so you can sketch your trip from A to B. When you’re done there, your trip will be saved.",
+              <p className="text-white/70 text-center text-lg max-w-sm">
+                {t("trips.route_step_ready_short", {
+                  defaultValue: "Add your first stop on the map — we’ll create your trip when you do.",
                 })}
               </p>
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="px-4 py-2 rounded-full border border-white/20 text-sm text-[var(--color-foreground)] bg-white/5 hover:bg-white/10 transition-colors"
-                >
-                  {t("common.back", { defaultValue: "Back" })}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenRouteEditor}
-                  className="px-6 py-2 rounded-full bg-white text-black text-sm font-semibold hover:bg-white/90 transition-colors"
-                >
-                  {t("trips.route_step_ready_cta", { defaultValue: "Open route editor" })}
-                </button>
-              </div>
             </div>
           </div>
         )}

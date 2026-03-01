@@ -15,12 +15,14 @@ export class JwtAuthGuard implements CanActivate {
     const authHeader = request.headers.authorization;
 
     if (!authHeader) {
+      console.error("[JwtAuthGuard] No Authorization header");
       throw new UnauthorizedException("No authorization header provided");
     }
 
-    const token = authHeader.replace("Bearer ", "").trim();
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
 
     if (!token) {
+      console.error("[JwtAuthGuard] Empty token after stripping Bearer");
       throw new UnauthorizedException("No token provided");
     }
 

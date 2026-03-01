@@ -249,10 +249,11 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
           </button>
 
           {!isEditing && (
-            <div className="flex gap-2">
-              <div className="w-2 h-2 rounded-full bg-white" />
-              <div className="w-2 h-2 rounded-full bg-white/20" />
-            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90">
+              <span className="text-white">1</span>
+              <span className="text-white/40">/</span>
+              <span className="text-white/50">2</span>
+            </span>
           )}
 
           <button 

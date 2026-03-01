@@ -47,7 +47,7 @@ export class AuthService {
       // Since the token was issued by Supabase, we can trust it if it's valid
       const parts = token.split('.');
       if (parts.length !== 3) {
-        console.error('[validateToken] Invalid token format');
+        console.error('[validateToken] Invalid token format: expected 3 parts, got', parts.length, '| token length:', token.length);
         return null;
       }
 

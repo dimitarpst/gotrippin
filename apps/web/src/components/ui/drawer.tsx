@@ -4,19 +4,35 @@ import * as React from "react";
 import { Drawer as VaulDrawer } from "vaul";
 import { cn } from "@/lib/utils";
 
+const DrawerContext = React.createContext<{
+  onOpenComplete?: () => void;
+  onCloseComplete?: () => void;
+} | null>(null);
+
 function Drawer({
   open,
   onOpenChange,
+  onOpenComplete,
+  onCloseComplete,
   direction = "bottom",
   ...props
-}: React.ComponentProps<typeof VaulDrawer.Root>) {
+}: React.ComponentProps<typeof VaulDrawer.Root> & {
+  onOpenComplete?: () => void;
+  onCloseComplete?: () => void;
+}) {
+  const ctx = React.useMemo(
+    () => (onOpenComplete || onCloseComplete ? { onOpenComplete, onCloseComplete } : null),
+    [onOpenComplete, onCloseComplete]
+  );
   return (
-    <VaulDrawer.Root
-      open={open}
-      onOpenChange={onOpenChange}
-      direction={direction}
-      {...props}
-    />
+    <DrawerContext.Provider value={ctx}>
+      <VaulDrawer.Root
+        open={open}
+        onOpenChange={onOpenChange}
+        direction={direction}
+        {...props}
+      />
+    </DrawerContext.Provider>
   );
 }
 
@@ -38,6 +54,7 @@ function DrawerOverlay({
 }: React.ComponentProps<typeof VaulDrawer.Overlay>) {
   return (
     <VaulDrawer.Overlay
+      data-drawer-overlay
       className={cn(
         "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className
@@ -50,12 +67,27 @@ function DrawerOverlay({
 function DrawerContent({
   className,
   children,
+  onAnimationEnd,
   ...props
 }: React.ComponentProps<typeof VaulDrawer.Content>) {
+  const ctx = React.useContext(DrawerContext);
+
+  const handleAnimationEnd = React.useCallback(
+    (e: React.AnimationEvent<HTMLDivElement>) => {
+      onAnimationEnd?.(e);
+      if (!ctx || e.target !== e.currentTarget) return;
+      const state = (e.currentTarget as HTMLElement).getAttribute("data-state");
+      if (state === "open") ctx.onOpenComplete?.();
+      if (state === "closed") ctx.onCloseComplete?.();
+    },
+    [ctx, onAnimationEnd]
+  );
+
   return (
     <DrawerPortal>
       <DrawerOverlay />
       <VaulDrawer.Content
+        onAnimationEnd={handleAnimationEnd}
         className={cn(
           "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[96vh] flex-col rounded-t-[10px] border border-border bg-background",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
@@ -69,8 +101,9 @@ function DrawerContent({
         )}
         {...props}
       >
-        {/* Accessible title so Radix/Dialog has a label; can be overridden by callers with a visible title if needed */}
+        {/* Accessible title and description so Radix/Dialog does not warn */}
         <VaulDrawer.Title className="sr-only">Drawer</VaulDrawer.Title>
+        <VaulDrawer.Description className="sr-only">Panel content</VaulDrawer.Description>
         <div className="mx-auto mt-4 h-2 w-[100px] shrink-0 rounded-full bg-muted" />
         {children}
       </VaulDrawer.Content>

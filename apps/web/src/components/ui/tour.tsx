@@ -415,6 +415,9 @@ function updateMask(
   padding: number = DEFAULT_SPOTLIGHT_PADDING,
 ) {
   const clientRect = targetElement.getBoundingClientRect();
+  if (clientRect.width === 0 && clientRect.height === 0) {
+    return;
+  }
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
 
@@ -422,6 +425,28 @@ function updateMask(
   const y = Math.max(0, clientRect.top - padding);
   const width = Math.min(viewportWidth - x, clientRect.width + padding * 2);
   const height = Math.min(viewportHeight - y, clientRect.height + padding * 2);
+
+  // #region agent log
+  const targetId = targetElement.id || targetElement.getAttribute?.("id") || "";
+  if (targetId.includes("route-along") || targetId.includes("route-drawer")) {
+    fetch("http://127.0.0.1:7242/ingest/b825bf43-0208-4c7d-9557-d39b03530ae0", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b39295" },
+      body: JSON.stringify({
+        sessionId: "b39295",
+        location: "tour:updateMask",
+        message: "Spotlight rect computed",
+        data: {
+          targetId,
+          clientRect: { left: clientRect.left, top: clientRect.top, width: clientRect.width, height: clientRect.height },
+          spotlightRect: { x, y, width, height },
+        },
+        hypothesisId: "spotlight",
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
 
   const path = `polygon(0% 0%, 0% 100%, ${x}px 100%, ${x}px ${y}px, ${x + width}px ${y}px, ${x + width}px ${y + height}px, ${x}px ${y + height}px, ${x}px 100%, 100% 100%, 100% 0%)`;
   store.setState("maskPath", path);
@@ -446,6 +471,8 @@ interface TourContextValue {
   dismissible: boolean;
   modal: boolean;
   stepFooter?: React.ReactElement;
+  /** When pointer target matches one of these selectors (via closest), do not close the tour. */
+  pointerDownOutsideIgnoreSelectors?: string[];
   onPointerDownOutside?: (event: PointerDownOutsideEvent) => void;
   onInteractOutside?: (event: InteractOutsideEvent) => void;
   onOpenAutoFocus?: (event: OpenAutoFocusEvent) => void;
@@ -550,6 +577,8 @@ interface TourProps extends DivProps {
   dismissible?: boolean;
   modal?: boolean;
   stepFooter?: React.ReactElement;
+  /** When pointer target matches one of these selectors (via closest), do not close on pointer down outside. */
+  pointerDownOutsideIgnoreSelectors?: string[];
 }
 
 function Tour(props: TourProps) {
@@ -577,6 +606,7 @@ function Tour(props: TourProps) {
     dismissible = true,
     modal = true,
     stepFooter,
+    pointerDownOutsideIgnoreSelectors,
     asChild,
     ...rootProps
   } = props;
@@ -641,8 +671,13 @@ function Tour(props: TourProps) {
             }
           }
         } else if (key === "value" && typeof value === "number") {
-          const prevStep = stateRef.current.steps[stateRef.current.value];
+          const prevValue = stateRef.current.value;
+          const prevStep = stateRef.current.steps[prevValue];
           const nextStep = stateRef.current.steps[value];
+
+          // #region agent log
+          fetch("http://127.0.0.1:7242/ingest/b825bf43-0208-4c7d-9557-d39b03530ae0", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b39295" }, body: JSON.stringify({ sessionId: "b39295", location: "tour:store:setValue", message: "Tour store setting value", data: { prevValue, newValue: value, stepsLength: stateRef.current.steps.length, isControlled: propsRef.current.valueProp !== undefined, willComplete: value >= stateRef.current.steps.length }, hypothesisId: "tour", timestamp: Date.now() }) }).catch(() => {});
+          // #endregion
 
           prevStep?.onStepLeave?.();
           nextStep?.onStepEnter?.();
@@ -789,6 +824,7 @@ function Tour(props: TourProps) {
       dismissible,
       modal,
       stepFooter,
+      pointerDownOutsideIgnoreSelectors,
       onPointerDownOutside,
       onInteractOutside,
       onOpenAutoFocus,
@@ -802,6 +838,7 @@ function Tour(props: TourProps) {
       dismissible,
       modal,
       stepFooter,
+      pointerDownOutsideIgnoreSelectors,
       onPointerDownOutside,
       onInteractOutside,
       onOpenAutoFocus,
@@ -1040,6 +1077,7 @@ function TourStep(props: TourStepProps) {
       updateMask(store, targetElement, context.spotlightPadding);
 
       let rafId: number | null = null;
+      const timeouts: ReturnType<typeof setTimeout>[] = [];
 
       function onResize() {
         if (targetElement) {
@@ -1057,9 +1095,29 @@ function TourStep(props: TourStepProps) {
         });
       }
 
+      const resizeObserver = new ResizeObserver(() => {
+        if (targetElement) {
+          updateMask(store, targetElement, context.spotlightPadding);
+        }
+      });
+      resizeObserver.observe(targetElement);
+
+      // Re-measure after short delays to catch final position when target is in an animation (e.g. drawer slide-in).
+      [100, 250, 450].forEach((ms) => {
+        timeouts.push(
+          setTimeout(() => {
+            if (targetElement) {
+              updateMask(store, targetElement, context.spotlightPadding);
+            }
+          }, ms)
+        );
+      });
+
       window.addEventListener("resize", onResize);
       window.addEventListener("scroll", onScroll, { passive: true });
       return () => {
+        timeouts.forEach((id) => clearTimeout(id));
+        resizeObserver.disconnect();
         window.removeEventListener("resize", onResize);
         window.removeEventListener("scroll", onScroll);
         if (rafId !== null) {
@@ -1079,6 +1137,11 @@ function TourStep(props: TourStepProps) {
 
     function onPointerDown(event: PointerEvent) {
       if (event.target && !isPointerInsideReactTreeRef.current) {
+        // Don't close when clicking the current step's target (e.g. drawer content on step 3).
+        if (targetElement?.contains(event.target as Node)) return;
+        // Don't close when clicking elements that match ignore selectors (e.g. drawer overlay).
+        if (context.pointerDownOutsideIgnoreSelectors?.some((sel) => (event.target as Element).closest(sel))) return;
+
         const pointerDownOutsideEvent = new CustomEvent(POINTER_DOWN_OUTSIDE, {
           ...EVENT_OPTIONS,
           detail: { originalEvent: event },
@@ -1112,7 +1175,7 @@ function TourStep(props: TourStepProps) {
       window.clearTimeout(timerId);
       ownerDocument.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [open, isCurrentStep, store, context]);
+  }, [open, isCurrentStep, store, context, targetElement]);
 
   React.useEffect(() => {
     if (!open || !isCurrentStep) return;
@@ -1221,6 +1284,45 @@ function TourStep(props: TourStepProps) {
     context.onCloseAutoFocus,
   );
 
+  // #region agent log
+  const stepIndex = stepOrderRef.current;
+  const wouldReturnNull = !open || !stepData || (!targetElement && !forceMount) || !isCurrentStep;
+  if (stepIndex === 2 && isCurrentStep && wouldReturnNull) {
+    const rect = targetElement?.getBoundingClientRect();
+    fetch("http://127.0.0.1:7242/ingest/b825bf43-0208-4c7d-9557-d39b03530ae0", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b39295" },
+      body: JSON.stringify({
+        sessionId: "b39295",
+        location: "tour:TourStep:drawer:currentNull",
+        message: "Drawer step current but returning null",
+        data: { value, targetElement: !!targetElement, targetRect: rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : null },
+        hypothesisId: "drawer-null",
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  if (stepIndex === 3 && isCurrentStep) {
+    const rect = targetElement?.getBoundingClientRect();
+    fetch("http://127.0.0.1:7242/ingest/b825bf43-0208-4c7d-9557-d39b03530ae0", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b39295" },
+      body: JSON.stringify({
+        sessionId: "b39295",
+        location: "tour:TourStep:along:current",
+        message: "Along step is current - will render tooltip",
+        data: {
+          value,
+          targetElement: !!targetElement,
+          targetRect: rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : null,
+          wouldReturnNull,
+        },
+        hypothesisId: "along-current",
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+  // #endregion
   if (!open || !stepData || (!targetElement && !forceMount) || !isCurrentStep) {
     return null;
   }
@@ -1241,7 +1343,7 @@ function TourStep(props: TourStepProps) {
         onFocusCapture={onFocusCapture}
         onBlurCapture={onBlurCapture}
         className={cn(
-          "fixed z-50 flex w-80 flex-col gap-4 rounded-lg border bg-popover p-4 text-popover-foreground shadow-md outline-none",
+          "fixed z-[100] flex w-80 flex-col gap-4 rounded-lg border bg-popover p-4 text-popover-foreground shadow-md outline-none",
           className,
         )}
         style={{
@@ -1288,7 +1390,7 @@ function TourSpotlight(props: TourSpotlightProps) {
       data-state={getDataState(open)}
       {...backdropProps}
       className={cn(
-        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/80 data-[state=closed]:animate-out data-[state=open]:animate-in",
+        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-[100] bg-black/80 data-[state=closed]:animate-out data-[state=open]:animate-in",
         className,
       )}
       style={{
@@ -1320,7 +1422,7 @@ function TourSpotlightRing(props: TourSpotlightRingProps) {
       data-state={getDataState(open)}
       {...ringProps}
       className={cn(
-        "pointer-events-none fixed z-50 border-ring ring-[3px] ring-ring/50",
+        "pointer-events-none fixed z-[100] border-ring ring-[3px] ring-ring/50",
         className,
       )}
       style={{
