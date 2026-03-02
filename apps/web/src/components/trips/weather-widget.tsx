@@ -14,6 +14,7 @@ interface WeatherWidgetProps {
   variant?: "full" | "inline" | "compact"
   updatedAt?: number | null
   showMeta?: boolean
+  minimal?: boolean
 }
 
 /**
@@ -65,6 +66,7 @@ export default function WeatherWidget({
   variant,
   updatedAt,
   showMeta = false,
+  minimal = false,
 }: WeatherWidgetProps) {
   const { t } = useTranslation()
   const activeVariant = variant || (compact ? "compact" : "full")
@@ -88,18 +90,18 @@ export default function WeatherWidget({
         onClick={onClick}
       >
         <WeatherIcon className="w-4 h-4 text-white" />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {typeof temperature === "number" && (
             <span className="text-sm font-semibold text-white">{formatTemp(temperature)}</span>
           )}
-          {description && <span className="text-xs text-white/80">{description}</span>}
+          {!minimal && description && <span className="text-xs text-white/80">{description}</span>}
         </div>
-        {locationLabel && (
-          <span className="text-[11px] uppercase tracking-wide text-white/60 whitespace-nowrap">
+        {!minimal && locationLabel && (
+          <span className="text-[11px] uppercase tracking-wide text-white/60 whitespace-nowrap ml-1">
             {locationLabel}
           </span>
         )}
-        {updatedLabel && (
+        {!minimal && updatedLabel && (
           <span className="text-[11px] text-white/50 whitespace-nowrap">
             {updatedLabel}
           </span>
@@ -148,36 +150,34 @@ export default function WeatherWidget({
          <div className="absolute top-0 left-0 right-0 h-1/2 bg-linear-to-b from-white/10 to-transparent pointer-events-none" />
 
         {weather.current && (
-          <div className="relative p-6 flex items-center justify-between z-10">
-            <div>
-              <div className="flex items-center justify-between gap-3 text-white/90 text-sm font-medium mb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <MapPin className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{weather.location}</span>
-                </div>
-                {updatedLabel && (
-                  <span className="text-[11px] text-white/60 whitespace-nowrap">
-                    {updatedLabel}
-                  </span>
-                )}
+          <div className="relative p-5 sm:p-6 flex flex-row items-start justify-between z-10 gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-white/90 text-sm font-medium mb-2">
+                <MapPin className="w-4 h-4 shrink-0" />
+                <span className="truncate">{weather.location}</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-6xl font-bold text-white tracking-tighter drop-shadow-sm">
+                <span className="text-5xl sm:text-6xl font-bold text-white tracking-tighter drop-shadow-sm">
                   {formatTemp(weather.current.temperature)}
                 </span>
               </div>
-              <div className="text-white font-medium mt-1 text-lg">
+              <div className="text-white font-medium mt-1 text-base sm:text-lg">
                 {weather.current.description}
               </div>
-              <div className="text-white/70 text-sm mt-0.5">
+              <div className="text-white/70 text-xs sm:text-sm mt-0.5">
                 {t("weather.feels_like", {
                   defaultValue: "Feels like {{temp}}",
                   temp: formatTemp(weather.current.temperatureApparent),
                 })}
               </div>
+              {updatedLabel && (
+                <div className="text-[11px] text-white/50 mt-2">
+                  {updatedLabel}
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-col items-end gap-6">
+            <div className="flex flex-col items-end gap-6 shrink-0 pt-2">
               <motion.div
                 initial={{ rotate: -10, scale: 0.9 }}
                 animate={{ rotate: 0, scale: 1 }}
@@ -190,22 +190,22 @@ export default function WeatherWidget({
                   duration: 2
                 }}
               >
-                <WeatherIcon className="w-24 h-24 text-white drop-shadow-lg" />
+                <WeatherIcon className="w-16 h-16 sm:w-24 sm:h-24 text-white drop-shadow-lg" />
               </motion.div>
 
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-black/10 rounded-full px-3 py-1.5 backdrop-blur-sm border border-white/10">
-                  <Wind className="w-3.5 h-3.5 text-white/90" />
-                  <span className="text-xs text-white font-semibold">{Math.round(weather.current.windSpeed)} km/h</span>
+              <div className="flex flex-col gap-2 bg-white/5 border border-white/10 rounded-2xl p-3 pr-4 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <Wind className="w-3.5 h-3.5 text-white/70" />
+                  <span className="text-xs text-white font-medium">{Math.round(weather.current.windSpeed)} km/h</span>
                 </div>
-                <div className="flex items-center gap-2 bg-black/10 rounded-full px-3 py-1.5 backdrop-blur-sm border border-white/10">
-                  <Droplets className="w-3.5 h-3.5 text-white/90" />
-                  <span className="text-xs text-white font-semibold">{weather.current.humidity}%</span>
+                <div className="flex items-center gap-2.5">
+                  <Droplets className="w-3.5 h-3.5 text-white/70" />
+                  <span className="text-xs text-white font-medium">{weather.current.humidity}%</span>
                 </div>
                 {typeof precipChance === "number" && (
-                  <div className="flex items-center gap-2 bg-black/10 rounded-full px-3 py-1.5 backdrop-blur-sm border border-white/10">
-                    <CloudRain className="w-3.5 h-3.5 text-white/90" />
-                    <span className="text-xs text-white font-semibold">{precipChance}%</span>
+                  <div className="flex items-center gap-2.5">
+                    <CloudRain className="w-3.5 h-3.5 text-white/70" />
+                    <span className="text-xs text-white font-medium">{precipChance}%</span>
                   </div>
                 )}
               </div>

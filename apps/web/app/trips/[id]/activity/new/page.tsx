@@ -1,16 +1,20 @@
 import { redirect, notFound } from "next/navigation";
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
 import { fetchTripByShareCode } from "@/lib/api/trips";
-import FlightPageClient from "./FlightPageClient";
+import NewActivityPageClient from "./NewActivityPageClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function FlightSearchPage({
+export default async function NewActivityPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id: shareCode } = await params;
+  const resolvedSearchParams = await searchParams;
+  const type = typeof resolvedSearchParams.type === 'string' ? resolvedSearchParams.type : 'custom';
 
   const supabase = await createServerSupabaseClient();
   const {
@@ -37,5 +41,5 @@ export default async function FlightSearchPage({
     notFound();
   }
 
-  return <FlightPageClient trip={trip} shareCode={shareCode} />;
+  return <NewActivityPageClient trip={trip} shareCode={shareCode} initialType={type} />;
 }

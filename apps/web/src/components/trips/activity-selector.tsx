@@ -54,36 +54,38 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
   const [searchQuery, setSearchQuery] = useState("")
 
   const handleActivityClick = (activityLabel: string) => {
-    // Map activity labels to routes
-    const activityRoutes: Record<string, string> = {
-      "Flight": `/trips/${shareCode}/activity/flight`,
-      "Lodging": `/trips/${shareCode}/activity/lodging`,
-      "Route": `/trips/${shareCode}/activity/route`,
-      "Train": `/trips/${shareCode}/activity/route`,
-      "Car Rental": `/trips/${shareCode}/activity/route`,
-      // Add more mappings as needed
+    // Map activity labels to core activity types
+    const activityTypes: Record<string, string> = {
+      "Flight": "flight",
+      "Lodging": "accommodation",
+      "Route": "custom",
+      "Train": "train",
+      "Car Rental": "car_rental",
+      "Restaurant": "restaurant",
+      "Café": "restaurant",
+      "Bar": "restaurant",
+      "Museum": "museum",
+      "Concert": "concert",
+      "Gallery": "attraction",
+      "Shopping": "shopping",
     }
 
-    const route = activityRoutes[activityLabel]
-    if (route) {
-      router.push(route)
-    } else {
-      // Default behavior for unmapped activities
-      onBack()
-    }
+    const type = activityTypes[activityLabel] || "custom"
+    router.push(`/trips/${shareCode}/activity/new?type=${type}`)
   }
 
   const handleCategoryClick = (categoryLabel: string) => {
-    const categoryRoutes: Record<string, string> = {
-      "Flights": `/trips/${shareCode}/activity/flight`,
-      "Lodging": `/trips/${shareCode}/activity/lodging`,
-      "Routes": `/trips/${shareCode}/activity/route`,
+    const categoryTypes: Record<string, string> = {
+      "Flights": "flight",
+      "Lodging": "accommodation",
+      "Routes": "custom",
+      "Car Rental": "car_rental",
+      "Dining": "restaurant",
+      "Shopping": "shopping",
     }
 
-    const route = categoryRoutes[categoryLabel]
-    if (route) {
-      router.push(route)
-    }
+    const type = categoryTypes[categoryLabel] || "custom"
+    router.push(`/trips/${shareCode}/activity/new?type=${type}`)
   }
 
   return (

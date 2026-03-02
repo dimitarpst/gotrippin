@@ -216,7 +216,11 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
               ) : (
                 <div className="space-y-2">
                   {activities.map((act) => (
-                    <div key={act.id} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 flex items-center justify-between">
+                    <div 
+                      key={act.id} 
+                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                      onClick={() => router.push(`/trips/${shareCode}/activity/${act.id}/edit`)}
+                    >
                       <div>
                         <p className="text-white font-semibold text-sm">{act.title}</p>
                         {act.start_time && (
@@ -225,7 +229,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                           </p>
                         )}
                       </div>
-                      {act.type && <span className="text-[11px] uppercase tracking-wide text-white/50">{act.type}</span>}
+                      {act.type && <span className="text-[11px] uppercase tracking-wide text-white/50">{act.type.replace('_', ' ')}</span>}
                     </div>
                   ))}
                 </div>

@@ -1,16 +1,17 @@
 import { redirect, notFound } from "next/navigation";
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
 import { fetchTripByShareCode } from "@/lib/api/trips";
-import LodgingPageClient from "./LodgingPageClient";
+import { fetchActivities } from "@/lib/api/activities";
+import EditActivityPageClient from "./EditActivityPageClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function LodgingPage({
+export default async function EditActivityPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; activityId: string }>;
 }) {
-  const { id: shareCode } = await params;
+  const { id: shareCode, activityId } = await params;
 
   const supabase = await createServerSupabaseClient();
   const {
@@ -37,5 +38,17 @@ export default async function LodgingPage({
     notFound();
   }
 
-  return <LodgingPageClient trip={trip} shareCode={shareCode} />;
+  let activities;
+  try {
+    activities = await fetchActivities(trip.id, token);
+  } catch {
+    notFound();
+  }
+
+  const activity = activities.find((a: any) => a.id === activityId);
+  if (!activity) {
+    notFound();
+  }
+
+  return <EditActivityPageClient trip={trip} shareCode={shareCode} activity={activity} />;
 }

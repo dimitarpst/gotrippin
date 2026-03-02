@@ -25,6 +25,7 @@ import {
   Trash2,
   Share2,
   Pencil,
+  ArrowRight,
   Map as MapIcon,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
@@ -165,10 +166,16 @@ export default function TripOverview({
     const departure = location.departure_date ? new Date(location.departure_date) : null
 
     if (arrival && departure) {
-      return `${format(arrival, "MMM d")} → ${format(departure, "MMM d")}`
+      return (
+        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/20 border border-white/10 text-[11px] font-medium text-white/80 shadow-inner">
+          <span>{format(arrival, "MMM d")}</span>
+          <ArrowRight className="w-2.5 h-2.5 text-white/40" />
+          <span>{format(departure, "MMM d")}</span>
+        </span>
+      )
     }
-    if (arrival) return format(arrival, "MMM d")
-    if (departure) return format(departure, "MMM d")
+    if (arrival) return <span className="px-2.5 py-1 rounded-md bg-black/20 border border-white/10 text-[11px] font-medium text-white/80 shadow-inner">{format(arrival, "MMM d")}</span>
+    if (departure) return <span className="px-2.5 py-1 rounded-md bg-black/20 border border-white/10 text-[11px] font-medium text-white/80 shadow-inner">{format(departure, "MMM d")}</span>
     return null
   }
 
@@ -188,6 +195,7 @@ export default function TripOverview({
       return (
         <WeatherWidget
           variant="inline"
+          minimal
           weather={{
             ...weather,
             location: location.location_name || trip.destination || weather.location,
@@ -682,22 +690,22 @@ export default function TripOverview({
                           {index < derivedLocations.length - 1 && <span className="flex-1 w-px bg-white/15 mt-1" />}
                         </div>
                         <div className="flex-1 bg-white/[0.04] rounded-2xl border border-white/[0.08] px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.25)] transition-colors group-hover:border-white/[0.15]">
-                          <div className="flex items-center justify-between gap-3 mb-2">
-                            <div className="flex items-center gap-3">
-                              <span className="text-[11px] uppercase tracking-wide text-white/50">
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-3 mt-0.5">
+                              <span className="text-[11px] uppercase tracking-wide text-white/50 font-medium">
                                 {(index + 1).toString().padStart(2, "0")}
                               </span>
-                              {dateLabel && (
-                                <span className="whitespace-nowrap text-xs text-white/70">{dateLabel}</span>
-                              )}
+                              <p className="text-white font-semibold truncate text-lg">
+                                {location.location_name || t('trips.untitled_trip')}
+                              </p>
                             </div>
-                            {renderLocationWeather(location)}
+                            <div className="shrink-0">{renderLocationWeather(location)}</div>
                           </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-white font-semibold truncate">
-                              {location.location_name || t('trips.untitled_trip')}
-                            </p>
-                            <span className="text-[11px] uppercase tracking-wide text-white/40 group-hover:text-white/60 transition-colors">
+                          <div className="flex items-center justify-between gap-2 mt-3">
+                            {dateLabel ? (
+                              <div className="whitespace-nowrap">{dateLabel}</div>
+                            ) : <div />}
+                            <span className="text-[10px] uppercase tracking-wider font-semibold text-white/40 group-hover:text-white/60 transition-colors shrink-0">
                               {t('trip_overview.view_all_days')}
                             </span>
                           </div>
@@ -739,9 +747,9 @@ export default function TripOverview({
           {!loadingRoute && hasRoute && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.52 }}>
               <div onClick={() => onNavigate("map" as any)}>
-                <Card className="relative overflow-hidden border-white/[0.08] rounded-2xl h-48 cursor-pointer group shadow-xl bg-[var(--color-card)]">
+                <Card className="relative overflow-hidden border-white/[0.08] rounded-2xl h-48 cursor-pointer group shadow-[0_8px_30px_rgba(0,0,0,0.25)] bg-[#0e0b10]">
                   {/* Map Background */}
-                  <div className="absolute inset-0 z-0 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity duration-500">
+                  <div className="absolute inset-0 z-0 pointer-events-none group-hover:scale-105 transition-transform duration-700 ease-out">
                     <MapView
                       waypoints={tripLocationsToWaypoints(routeLocations)}
                       routeLineGeo={routeGeo}
@@ -749,32 +757,27 @@ export default function TripOverview({
                       fitPadding={40}
                       interactive={false}
                     />
-                    {/* Dark gradient overlay to ensure text is readable */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent" />
+                    {/* Very dark gradient overlays to ensure absolute text legibility while letting the map peek through */}
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0e0b10] via-[#0e0b10]/60 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#0e0b10]/80 via-transparent to-transparent" />
                   </div>
 
                   {/* Content on top of map */}
-                  <div className="relative z-10 h-full flex flex-col justify-end p-5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-black/40 backdrop-blur-md border border-white/10 shadow-lg group-hover:border-[#ff6b6b]/50 transition-colors">
-                          <MapIcon className="w-5 h-5 text-white group-hover:text-[#ff6b6b] transition-colors" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs uppercase tracking-wide text-white/80 drop-shadow-md">
-                            {t("trip_overview.route_map_title")}
-                          </span>
-                          <span className="text-sm font-semibold text-white drop-shadow-md group-hover:text-[#ff6b6b] transition-colors">
-                            {trip.destination || trip.title || t("trips.untitled_trip")}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center gap-2 shadow-lg group-hover:bg-black/70 transition-colors">
-                        <span className="text-[11px] font-semibold text-white uppercase tracking-wider">Expand Map</span>
-                        <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                          <MapIcon className="w-3 h-3 text-white" />
-                        </div>
-                      </div>
+                  <div className="relative z-10 h-full flex flex-col justify-center items-center p-5 text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff6b6b] drop-shadow-md mb-1">
+                        {t("trip_overview.route_map_title")}
+                      </span>
+                      <span className="text-3xl font-bold text-white drop-shadow-xl mb-4">
+                        {trip.destination || trip.title || t("trips.untitled_trip")}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-white/90 group-hover:text-white transition-colors bg-white/10 backdrop-blur-md px-5 py-2 rounded-full border border-white/20 shadow-lg">
+                      <MapIcon className="w-4 h-4" />
+                      <span className="text-[11px] font-bold uppercase tracking-widest">Expand Map</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
                 </Card>
