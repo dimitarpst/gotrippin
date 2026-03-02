@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { TripsModule } from './trips/trips.module';
@@ -16,6 +17,10 @@ import { WeatherModule } from './weather/weather.module';
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
     }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 10,
+    }]),
     SupabaseModule,
     AuthModule,
     ProfilesModule,

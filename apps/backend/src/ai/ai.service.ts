@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { OpenRouterClient } from './openrouter.client';
@@ -33,10 +34,82 @@ export interface PostMessageResult {
 
 @Injectable()
 export class AiService {
+  private readonly logger = new Logger(AiService.name);
+
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly openRouter: OpenRouterClient,
   ) {}
+
+  async listSessions(
+    userId: string,
+    scope: 'global' | 'trip' = 'global',
+    tripId?: string | null,
+    opts?: { limit?: number; offset?: number },
+  ) {
+    return this.supabaseService.listAiSessions(userId, {
+      scope,
+      trip_id: tripId ?? undefined,
+      limit: opts?.limit ?? 20,
+      offset: opts?.offset ?? 0,
+    });
+  }
+
+  async updateSessionSummary(
+    userId: string,
+    sessionId: string,
+    summary: string | null,
+  ) {
+    const { data: session, error } = await this.supabaseService.getAiSession(
+      sessionId,
+      userId,
+    );
+    if (error || !session) {
+      throw new NotFoundException('Session not found');
+    }
+    return this.supabaseService.updateAiSession(sessionId, userId, {
+      summary: summary?.trim() || null,
+    });
+  }
+
+  async deleteSession(userId: string, sessionId: string) {
+    const { data: session, error } = await this.supabaseService.getAiSession(
+      sessionId,
+      userId,
+    );
+    if (error || !session) {
+      throw new NotFoundException('Session not found');
+    }
+    await this.supabaseService.deleteAiSession(sessionId, userId);
+  }
+
+  async getSessionWithMessages(userId: string, sessionId: string) {
+    const { data: session, error } = await this.supabaseService.getAiSession(
+      sessionId,
+      userId,
+    );
+    if (error || !session) {
+      throw new NotFoundException('Session not found');
+    }
+    const rows = await this.supabaseService.getAiMessages(sessionId, 100);
+    const messages = rows
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => {
+        const c = m.content as Record<string, unknown>;
+        const text = c?.text != null ? String(c.text) : '';
+        return { role: m.role as 'user' | 'assistant', content: text };
+      });
+    return {
+      session: {
+        id: session.id,
+        scope: session.scope,
+        summary: session.summary,
+        created_at: session.created_at,
+        updated_at: session.updated_at,
+      },
+      messages,
+    };
+  }
 
   async createSession(
     userId: string,
@@ -95,6 +168,12 @@ export class AiService {
       }
     }
 
+    if (welcome_message?.trim()) {
+      await this.supabaseService.insertAiMessage(session.id, 'assistant', {
+        text: welcome_message.trim(),
+      });
+    }
+
     return {
       session_id: session.id,
       session,
@@ -107,6 +186,9 @@ export class AiService {
     sessionId: string,
     dto: PostMessageDto,
   ): Promise<PostMessageResult> {
+    const startTime = Date.now();
+    this.logger.log(`Handling message for session ${sessionId} from user ${userId}`);
+
     const { data: session, error } = await this.supabaseService.getAiSession(
       sessionId,
       userId,
@@ -125,7 +207,7 @@ export class AiService {
     const summary = session.summary ?? '';
     const tripId = session.trip_id as string | null;
 
-    const systemPrompt = this.buildSystemPrompt(session.scope, tripId, summary, slots);
+    let systemPrompt = this.buildSystemPrompt(session.scope, tripId, summary, slots);
 
     const messages: OpenRouterMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -148,26 +230,89 @@ export class AiService {
       // Ignore if no messages yet
     }
 
+    const isFirstUserMessage = !session.summary?.trim();
+    if (isFirstUserMessage) {
+      systemPrompt += `\n\nThis is the first message in this chat. You must end your reply with a newline and then exactly one line in this format: TITLE: followed by a 3–4 word phrase that summarizes the conversation topic (e.g. TITLE: Weekend in Paris). The user will not see this line; it is used only as the chat title. Do not mention the TITLE line in your reply.`;
+      messages[0] = { role: 'system', content: systemPrompt };
+    }
+
     messages.push({ role: 'user', content: dto.message });
 
     // Single request per message (no tools/agent loop) to stay within rate limits.
-    const response = await this.openRouter.chat({
-      messages,
-      max_tokens: 1024,
-    });
+    try {
+      const response = await this.openRouter.chat({
+        messages,
+        max_tokens: 1024,
+      });
 
-    const finalContent = response.content?.trim() ?? '';
+      let finalContent = response.content?.trim() ?? '';
 
-    await this.supabaseService.insertAiMessage(sessionId, 'user', {
-      text: dto.message,
-    });
-    await this.supabaseService.insertAiMessage(sessionId, 'assistant', {
-      text: finalContent,
-    });
+      if (!finalContent) {
+        this.logger.warn(
+          `Empty AI response content for session ${sessionId}. Returning empty string to client.`,
+        );
+      }
 
-    return {
-      message: finalContent,
-    };
+      let sessionSummary: string | null = null;
+      if (isFirstUserMessage) {
+        const parsed = this.parseTitleFromResponse(finalContent);
+        if (parsed) {
+          sessionSummary = parsed.title;
+          finalContent = parsed.content;
+        }
+        if (!sessionSummary) {
+          const words = dto.message.trim().split(/\s+/).slice(0, 4);
+          sessionSummary = words.length ? words.join(' ') : null;
+        }
+      }
+
+      await this.supabaseService.insertAiMessage(sessionId, 'user', {
+        text: dto.message,
+      });
+      if (isFirstUserMessage && sessionSummary) {
+        await this.supabaseService.updateAiSession(sessionId, userId, {
+          summary: sessionSummary,
+        });
+      }
+      await this.supabaseService.insertAiMessage(sessionId, 'assistant', {
+        text: finalContent,
+      });
+
+      const latency = Date.now() - startTime;
+      this.logger.log(`Generated response for session ${sessionId} in ${latency}ms`);
+
+      return {
+        message: finalContent,
+      };
+    } catch (err) {
+      this.logger.error(`Error generating response for session ${sessionId}:`, err);
+      throw err;
+    }
+  }
+
+  /**
+   * Parses "TITLE: <phrase>" from the end of the AI response (first message only).
+   * Returns { title, content } with the TITLE line stripped, or null if not found.
+   */
+  private parseTitleFromResponse(
+    content: string,
+  ): { title: string; content: string } | null {
+    const lines = content.split('\n');
+    let titleLineIndex = -1;
+    let titleValue = '';
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i];
+      const match = line.match(/^TITLE:\s*(.+)$/i);
+      if (match) {
+        titleLineIndex = i;
+        titleValue = match[1].trim().split(/\s+/).slice(0, 4).join(' ');
+        break;
+      }
+    }
+    if (titleLineIndex < 0 || !titleValue) return null;
+    const newLines = lines.filter((_, i) => i !== titleLineIndex);
+    const newContent = newLines.join('\n').trim();
+    return { title: titleValue, content: newContent };
   }
 
   private buildSystemPrompt(

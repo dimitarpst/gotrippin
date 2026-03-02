@@ -123,6 +123,9 @@
     "ai": "AI Assistant",
     "profile": "Profile"
   },
+  "ai": {
+    "empty_reply": "I'm sorry, something went wrong generating that reply. Could you try asking again or rephrasing your question?"
+  },
   "trips": {
     "my_trips": "My Trips",
     "no_trips": "No trips yet",

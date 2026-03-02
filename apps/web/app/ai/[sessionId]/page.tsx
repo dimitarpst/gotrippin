@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import AiSessionsListClient from "./AiSessionsListClient";
+import AiTestClient from "../AiTestClient";
 
-export default async function AiListPage() {
+interface PageProps {
+  params: Promise<{ sessionId: string }>;
+}
+
+export default async function AiChatPage({ params }: PageProps) {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -12,5 +16,6 @@ export default async function AiListPage() {
     redirect("/auth");
   }
 
-  return <AiSessionsListClient />;
+  const { sessionId } = await params;
+  return <AiTestClient sessionId={sessionId} />;
 }

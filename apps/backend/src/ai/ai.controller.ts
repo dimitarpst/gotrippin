@@ -1,12 +1,19 @@
 import {
   Controller,
+  Get,
   Post,
+  Patch,
+  Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Req,
   BadRequestException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -22,10 +29,45 @@ import { PostMessageDto } from './dto/post-message.dto';
 
 @ApiTags('ai')
 @Controller('ai')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ThrottlerGuard)
 @ApiBearerAuth('JWT-auth')
 export class AiController {
   constructor(private readonly aiService: AiService) {}
+
+  @Get('sessions')
+  @ApiOperation({ summary: 'List AI chat sessions (global or trip-scoped) with pagination' })
+  @ApiResponse({ status: 200, description: 'List of sessions ordered by updated_at desc' })
+  async listSessions(
+    @Req() request: { user: { id: string } },
+    @Query('scope') scope?: 'global' | 'trip',
+    @Query('trip_id') tripId?: string,
+    @Query('limit') limitStr?: string,
+    @Query('offset') offsetStr?: string,
+  ) {
+    const userId = request.user.id;
+    const scopeVal = scope === 'trip' ? 'trip' : 'global';
+    const limit = Math.min(Math.max(parseInt(limitStr ?? '20', 10) || 20, 1), 50);
+    const offset = Math.max(parseInt(offsetStr ?? '0', 10) || 0, 0);
+    return this.aiService.listSessions(
+      userId,
+      scopeVal,
+      scopeVal === 'trip' ? tripId ?? null : null,
+      { limit, offset },
+    );
+  }
+
+  @Get('sessions/:sessionId')
+  @ApiOperation({ summary: 'Get a session with its messages (for opening a chat)' })
+  @ApiParam({ name: 'sessionId', description: 'Session UUID' })
+  @ApiResponse({ status: 200, description: 'Session and messages' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  async getSession(
+    @Req() request: { user: { id: string } },
+    @Param('sessionId') sessionId: string,
+  ) {
+    const userId = request.user.id;
+    return this.aiService.getSessionWithMessages(userId, sessionId);
+  }
 
   @Post('sessions')
   @ApiOperation({ summary: 'Create an AI chat session (global or trip-scoped)' })
@@ -56,6 +98,38 @@ export class AiController {
     }
     const userId = request.user.id;
     return this.aiService.createSession(userId, result.data);
+  }
+
+  @Patch('sessions/:sessionId')
+  @ApiOperation({ summary: 'Update session (e.g. rename/summary)' })
+  @ApiParam({ name: 'sessionId', description: 'Session UUID' })
+  @ApiResponse({ status: 200, description: 'Updated session' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  async updateSession(
+    @Req() request: { user: { id: string } },
+    @Param('sessionId') sessionId: string,
+    @Body() body: { summary?: string | null },
+  ) {
+    const userId = request.user.id;
+    return this.aiService.updateSessionSummary(
+      userId,
+      sessionId,
+      body.summary ?? null,
+    );
+  }
+
+  @Delete('sessions/:sessionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a chat session and its messages' })
+  @ApiParam({ name: 'sessionId', description: 'Session UUID' })
+  @ApiResponse({ status: 204, description: 'Session deleted' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  async deleteSession(
+    @Req() request: { user: { id: string } },
+    @Param('sessionId') sessionId: string,
+  ) {
+    const userId = request.user.id;
+    await this.aiService.deleteSession(userId, sessionId);
   }
 
   @Post('sessions/:sessionId/messages')

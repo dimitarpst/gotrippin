@@ -274,6 +274,26 @@ export class SupabaseService {
     return { data, error: null };
   }
 
+  async listAiSessions(
+    userId: string,
+    opts: { scope?: 'global' | 'trip'; trip_id?: string; limit?: number; offset?: number } = {},
+  ) {
+    const { scope = 'global', trip_id, limit = 20, offset = 0 } = opts;
+    let q = this.supabase
+      .from('ai_sessions')
+      .select('id, scope, summary, created_at, updated_at, trip_id')
+      .eq('user_id', userId)
+      .eq('scope', scope)
+      .order('updated_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (scope === 'trip' && trip_id) {
+      q = q.eq('trip_id', trip_id);
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return data ?? [];
+  }
+
   async updateAiSession(
     sessionId: string,
     userId: string,
@@ -289,6 +309,16 @@ export class SupabaseService {
 
     if (error) throw error;
     return data;
+  }
+
+  async deleteAiSession(sessionId: string, userId: string) {
+    const { error } = await this.supabase
+      .from('ai_sessions')
+      .delete()
+      .eq('id', sessionId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
   }
 
   async getAiMessages(sessionId: string, limit = 20) {

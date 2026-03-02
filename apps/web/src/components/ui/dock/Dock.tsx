@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { motion, useMotionValue, useSpring, useTransform, type SpringOptions } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  type SpringOptions,
+} from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DockItem } from "./DockItem";
 import { DockIcon } from "./DockIcon";
@@ -41,14 +47,17 @@ export function Dock({
 
   const maxHeight = useMemo(
     () => Math.max(dockHeight, magnification + magnification / 2 + 4),
-    [magnification, dockHeight]
+    [magnification, dockHeight],
   );
 
   const heightRow = useTransform(isHovered, [0, 1], [panelHeight, maxHeight]);
   const height = useSpring(heightRow, spring);
 
   return (
-    <motion.div style={{ height }} className="flex w-full items-center justify-center overflow-hidden">
+    <motion.div
+      style={{ height }}
+      className="flex w-full items-center justify-center overflow-hidden"
+    >
       <motion.div
         onMouseMove={({ pageX }) => {
           isHovered.set(1);
@@ -66,7 +75,7 @@ export function Dock({
           "rounded-2xl border border-[color:var(--color-border)]/60",
           "backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
           "bg-[color-mix(in_oklab,var(--surface)_70%,black_30%)]",
-          className
+          className,
         )}
       >
         {items.map((item, i) => (

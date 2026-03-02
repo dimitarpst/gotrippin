@@ -75,17 +75,21 @@ export default function DockBar({ onCreateTrip, onExplore }: DockBarProps = {}) 
             className="w-full h-full object-cover"
             onError={(e) => {
               // Hide broken image and show fallback
-              e.currentTarget.style.display = 'none';
+              e.currentTarget.style.display = "none";
               const parent = e.currentTarget.parentElement;
               if (parent) {
-                const fallback = parent.querySelector('.avatar-fallback') as HTMLElement;
-                if (fallback) fallback.style.display = 'flex';
+                const fallback = parent.querySelector(
+                  ".avatar-fallback",
+                ) as HTMLElement;
+                if (fallback) fallback.style.display = "flex";
               }
             }}
           />
         ) : null}
         <div
-          className={`avatar-fallback text-sm font-bold text-white select-none w-full h-full rounded-full flex items-center justify-center absolute inset-0 ${avatarUrl ? 'hidden' : 'flex'}`}
+          className={`avatar-fallback text-sm font-bold text-white select-none w-full h-full rounded-full flex items-center justify-center absolute inset-0 ${
+            avatarUrl ? "hidden" : "flex"
+          }`}
           style={{
             backgroundColor: avatarColor,
             boxShadow: user ? `0 0 10px ${avatarColor}66` : "none",
@@ -109,7 +113,7 @@ export default function DockBar({ onCreateTrip, onExplore }: DockBarProps = {}) 
         opacity: 1,
         y: 0,
         scale: 1,
-        transition: { type: 'spring', stiffness: 260, damping: 24 },
+        transition: { type: "spring", stiffness: 260, damping: 24 },
       }}
     >
       <Dock

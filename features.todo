@@ -24,8 +24,8 @@ Todo:
     ✔ Phase 3 — Web chat UI (global + trip-scoped) wired to AI endpoints, with basic cards/quick replies
     ✔ Phase 3a — AI chat UX: markdown rendering, loading animation, design aligned to project
     ☐ Phase 3b — Dock as collapse bubble (compact on side, expand left/right); keep off AI page
-    ☐ Phase 3c — Edit message (draft before send and/or edit last message to re-send)
-    ☐ Phase 4 — Logging, metrics, rate limits and error handling for AI calls
+    ✔ Phase 3c — Edit message (draft before send and/or edit last message to re-send)
+    ✔ Phase 4 — Logging, metrics, rate limits and error handling for AI calls
     ☐ Phase 5 — Collaboration features and advanced planning behaviours (multi-user chat, locks, refinements)
 
 Archive:
