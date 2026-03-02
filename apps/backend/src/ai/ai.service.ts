@@ -8,6 +8,8 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { OpenRouterClient } from './openrouter.client';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { PostMessageDto } from './dto/post-message.dto';
+import { ToolExecutor } from './tools/tool-executor';
+import { AI_TOOLS } from './tools/tool-definitions';
 import type { OpenRouterMessage } from './openrouter.client';
 
 export interface AiSessionRow {
@@ -30,6 +32,14 @@ export interface CreateSessionResult {
 
 export interface PostMessageResult {
   message: string;
+  quick_replies?: Array<{ label: string; action: string }>;
+  image_suggestions?: Array<{
+    id: string;
+    thumbnail_url: string;
+    blur_hash: string | null;
+    photographer_name: string;
+    photographer_url: string;
+  }>;
 }
 
 @Injectable()
@@ -39,6 +49,7 @@ export class AiService {
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly openRouter: OpenRouterClient,
+    private readonly toolExecutor: ToolExecutor,
   ) {}
 
   async listSessions(
@@ -97,7 +108,47 @@ export class AiService {
       .map((m) => {
         const c = m.content as Record<string, unknown>;
         const text = c?.text != null ? String(c.text) : '';
-        return { role: m.role as 'user' | 'assistant', content: text };
+
+        const quickRepliesRaw = c?.quick_replies;
+        const quick_replies =
+          Array.isArray(quickRepliesRaw) && quickRepliesRaw.length > 0
+            ? quickRepliesRaw.map((qr) => ({
+                label: String((qr as { label?: unknown }).label ?? ''),
+                action: String((qr as { action?: unknown }).action ?? ''),
+              }))
+            : undefined;
+
+        const imagesRaw = c?.image_suggestions;
+        const image_suggestions =
+          Array.isArray(imagesRaw) && imagesRaw.length > 0
+            ? imagesRaw.map((img) => ({
+                id: String((img as { id?: unknown }).id ?? ''),
+                thumbnail_url: String(
+                  (img as { thumbnail_url?: unknown }).thumbnail_url ?? '',
+                ),
+                blur_hash:
+                  (img as { blur_hash?: unknown }).blur_hash != null
+                    ? String(
+                        (img as { blur_hash?: unknown }).blur_hash as string,
+                      )
+                    : null,
+                photographer_name: String(
+                  (img as { photographer_name?: unknown }).photographer_name ??
+                    '',
+                ),
+                photographer_url: String(
+                  (img as { photographer_url?: unknown }).photographer_url ??
+                    '',
+                ),
+              }))
+            : undefined;
+
+        return {
+          role: m.role as 'user' | 'assistant',
+          content: text,
+          ...(quick_replies ? { quick_replies } : {}),
+          ...(image_suggestions ? { image_suggestions } : {}),
+        };
       });
     return {
       session: {
@@ -236,16 +287,128 @@ export class AiService {
       messages[0] = { role: 'system', content: systemPrompt };
     }
 
-    messages.push({ role: 'user', content: dto.message });
+    let userContent = dto.message;
+    if (dto.message === 'create_trip') {
+      userContent =
+        'User chose: Create a trip. Start the trip creation walkthrough using createTripDraft, then guide through title, dates, and route stops.';
+    } else if (dto.message === 'just_chat') {
+      userContent =
+        'User chose: Just chat. Continue the conversation without creating a trip.';
+    }
 
-    // Single request per message (no tools/agent loop) to stay within rate limits.
+    messages.push({ role: 'user', content: userContent });
+
+    const MAX_TOOL_LOOPS = 5;
+    let finalContent = '';
+    let quickReplies: Array<{ label: string; action: string }> | undefined;
+    let slotsChanged = false;
+    let imageSuggestions:
+      | Array<{
+          id: string;
+          thumbnail_url: string;
+          blur_hash: string | null;
+          photographer_name: string;
+          photographer_url: string;
+        }>
+      | undefined;
+
     try {
-      const response = await this.openRouter.chat({
-        messages,
-        max_tokens: 1024,
-      });
+      let currentMessages = messages;
+      let lastResponseContent = '';
 
-      let finalContent = response.content?.trim() ?? '';
+      for (let i = 0; i < MAX_TOOL_LOOPS; i += 1) {
+        const response = await this.openRouter.chat({
+          messages: currentMessages,
+          tools: AI_TOOLS,
+          tool_choice: 'auto',
+          max_tokens: 1024,
+        });
+
+        lastResponseContent = response.content?.trim() ?? '';
+
+        const toolCalls = response.tool_calls ?? [];
+        if (!toolCalls.length) {
+          break;
+        }
+
+        for (const toolCall of toolCalls) {
+          const { name, arguments: argsJson } = toolCall.function;
+          let parsedArgs: unknown;
+          try {
+            parsedArgs = JSON.parse(argsJson);
+          } catch (err) {
+            this.logger.warn(
+              `Failed to parse tool arguments for ${name}: ${(err as Error).message}`,
+            );
+            continue;
+          }
+
+          let result: unknown;
+          try {
+            result = await this.toolExecutor.execute(name, parsedArgs, userId);
+          } catch (err) {
+            this.logger.error(
+              `Error executing tool ${name} for session ${sessionId}:`,
+              err,
+            );
+            result = {
+              error: (err as Error).message ?? 'Tool execution failed',
+            };
+          }
+
+          if (name === 'createTripDraft' && result && typeof result === 'object') {
+            const r = result as {
+              trip_id?: string;
+              share_code?: string;
+            };
+            if (r.trip_id) {
+              (slots as Record<string, unknown>).current_trip_id = r.trip_id;
+              if (r.share_code) {
+                (slots as Record<string, unknown>).current_trip_share_code =
+                  r.share_code;
+              }
+              slotsChanged = true;
+            }
+          }
+
+          if (name === 'searchCoverImage' && result && typeof result === 'object') {
+            const data = result as {
+              results?: Array<{
+                id?: string;
+                blur_hash?: string | null;
+                urls?: { small?: string; regular?: string };
+                user?: { name?: string; links?: { html?: string } };
+              }>;
+            };
+            const photos = Array.isArray(data.results) ? data.results : [];
+            imageSuggestions = photos.slice(0, 6).map((photo) => ({
+              id: String(photo.id ?? ''),
+              thumbnail_url: String(
+                photo.urls?.small ?? photo.urls?.regular ?? '',
+              ),
+              blur_hash:
+                photo.blur_hash != null ? String(photo.blur_hash) : null,
+              photographer_name: String(photo.user?.name ?? ''),
+              photographer_url: String(photo.user?.links?.html ?? ''),
+            }));
+          }
+
+          await this.supabaseService.insertAiMessage(sessionId, 'tool', {
+            name,
+            tool_call_id: toolCall.id,
+            result,
+          });
+
+          currentMessages.push({
+            role: 'tool',
+            name,
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(result),
+          });
+        }
+      }
+
+      finalContent = lastResponseContent;
 
       if (!finalContent) {
         this.logger.warn(
@@ -255,6 +418,12 @@ export class AiService {
 
       let sessionSummary: string | null = null;
       if (isFirstUserMessage) {
+        const quickParsed = this.parseQuickRepliesFromResponse(finalContent);
+        if (quickParsed) {
+          finalContent = quickParsed.content;
+          quickReplies = quickParsed.quick_replies;
+        }
+
         const parsed = this.parseTitleFromResponse(finalContent);
         if (parsed) {
           sessionSummary = parsed.title;
@@ -274,8 +443,15 @@ export class AiService {
           summary: sessionSummary,
         });
       }
+      if (slotsChanged) {
+        await this.supabaseService.updateAiSession(sessionId, userId, {
+          slots,
+        });
+      }
       await this.supabaseService.insertAiMessage(sessionId, 'assistant', {
         text: finalContent,
+        ...(quickReplies ? { quick_replies: quickReplies } : {}),
+        ...(imageSuggestions ? { image_suggestions: imageSuggestions } : {}),
       });
 
       const latency = Date.now() - startTime;
@@ -283,6 +459,8 @@ export class AiService {
 
       return {
         message: finalContent,
+        quick_replies: quickReplies,
+        image_suggestions: imageSuggestions,
       };
     } catch (err) {
       this.logger.error(`Error generating response for session ${sessionId}:`, err);
@@ -315,6 +493,53 @@ export class AiService {
     return { title: titleValue, content: newContent };
   }
 
+  private parseQuickRepliesFromResponse(
+    content: string,
+  ): { content: string; quick_replies: Array<{ label: string; action: string }> } | null {
+    const lines = content.split('\n');
+    let qrLineIndex = -1;
+    let rawJson = '';
+
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i];
+      const match = line.match(/^QUICK_REPLIES:\s*(\[.+\])\s*$/i);
+      if (match) {
+        qrLineIndex = i;
+        rawJson = match[1];
+        break;
+      }
+    }
+
+    if (qrLineIndex < 0 || !rawJson) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(rawJson) as Array<{
+        label?: string;
+        action?: string;
+      }>;
+      const quick_replies = parsed
+        .map((qr) => ({
+          label: String(qr.label ?? '').trim(),
+          action: String(qr.action ?? '').trim(),
+        }))
+        .filter((qr) => qr.label && qr.action);
+
+      const newLines = lines.filter((_, i) => i !== qrLineIndex);
+      const newContent = newLines.join('\n').trim();
+
+      return quick_replies.length
+        ? { content: newContent, quick_replies }
+        : null;
+    } catch (err) {
+      this.logger.warn(
+        `Failed to parse QUICK_REPLIES JSON: ${(err as Error).message}`,
+      );
+      return null;
+    }
+  }
+
   private buildSystemPrompt(
     scope: string,
     tripId: string | null,
@@ -322,6 +547,12 @@ export class AiService {
     slots: Record<string, unknown>,
   ): string {
     let prompt = `You are a helpful trip planning assistant for Go Trippin'. You help users plan trips, suggest destinations, and give travel advice. Keep responses concise and friendly.`;
+
+    prompt += `\n\nWhen the user expresses interest in going somewhere or planning a trip (for example: "I want to go to Bali", "thinking about Japan", "I want to plan a vacation"), you should:\n- Reply briefly and warmly in 1–3 sentences.\n- At the end of your reply, on a new line, output exactly one line in this format (the user will not see it):\nQUICK_REPLIES: [{\"label\":\"Create a trip\",\"action\":\"create_trip\"},{\"label\":\"Just chat\",\"action\":\"just_chat\"}]\nDo not mention this QUICK_REPLIES line in your visible reply.`;
+
+    prompt += `\n\nWhen you receive a user message that is exactly "create_trip", treat it as: "User chose: Create a trip. Start the trip creation walkthrough using tools (createTripDraft, updateTrip, addLocation, getRoute, etc.), asking for missing details like title, dates, and route stops, and confirming with the user as you go."\nWhen you receive a user message that is exactly "just_chat", treat it as: "User chose: Just chat. Continue the conversation without creating or modifying any trips."`;
+
+    prompt += `\n\nWhen the user describes a specific new trip in natural language (for example: "I wanna go on a trip to Bali on the 14th of March"), you must:\n- Extract what you can (destination, approximate dates, preferences) from their message.\n- Ask follow-up questions only for missing key information, one at a time (for example: \"How many days do you want to stay?\" if you know the start date but not the duration or end date).\n- Once you know at least a destination and a start and end date (or a start date and duration that implies the end date), use the tools to:\n  - Create or update a real trip via createTripDraft and updateTrip.\n  - Then call searchCoverImage with an appropriate query (for example: \"Bali travel landscape\"), and describe a few of the returned image options in your reply so the user can pick one.\n- When the user clearly chooses an image (for example: \"use the second image\" or \"use the sunset beach photo\"), call selectCoverImage with the corresponding Unsplash photo metadata to set the trip cover. Confirm in your reply after the tool succeeds.`;
 
     if (scope === 'trip' && tripId) {
       prompt += `\n\nThe user is working on a specific trip (trip_id: ${tripId}).`;

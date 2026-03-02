@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { TripsModule } from '../trips/trips.module';
 import { TripLocationsModule } from '../trip-locations/trip-locations.module';
+import { ImagesModule } from '../images/images.module';
 import { OpenRouterClient } from './openrouter.client';
 import { ToolExecutor } from './tools/tool-executor';
 
@@ -14,6 +15,7 @@ import { ToolExecutor } from './tools/tool-executor';
     SupabaseModule,
     TripsModule,
     TripLocationsModule,
+    ImagesModule,
   ],
   providers: [AiService, OpenRouterClient, ToolExecutor],
   controllers: [AiController],

@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getAiSessionWithMessages, postAiMessage } from "@/lib/api/ai";
+import {
+  getAiSessionWithMessages,
+  postAiMessage,
+  type AiImageSuggestion,
+} from "@/lib/api/ai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AuroraBackground from "@/components/effects/aurora-background";
@@ -9,14 +13,23 @@ import MarkdownMessage from "@/components/ai/MarkdownMessage";
 import ThinkingDots from "@/components/ai/ThinkingDots";
 import AssistantAvatar from "@/components/ai/AssistantAvatar";
 import AiSessionLoader from "@/components/ai/AiSessionLoader";
-import { Send, Sparkles, Pencil, X, Square } from "lucide-react";
+import { Send, Sparkles, Pencil, X, Square, Plus, Image as ImageIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  quick_replies?: Array<{ label: string; action: string }>;
+  image_suggestions?: AiImageSuggestion[];
 }
 
 interface AiTestClientProps {
@@ -79,7 +92,12 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
       .then((data) => {
         if (cancelled) return;
         setMessages(
-          data.messages.map((m) => ({ role: m.role, content: m.content }))
+          data.messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+            quick_replies: m.quick_replies,
+            image_suggestions: m.image_suggestions,
+          })),
         );
       })
       .catch((err) => {
@@ -103,26 +121,37 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    const trimmed = text.trim();
     if (fromIndex !== null) {
-      setMessages((prev) => [...prev.slice(0, fromIndex), { role: "user", content: text.trim() }]);
+      setMessages((prev) => [
+        ...prev.slice(0, fromIndex),
+        { role: "user", content: trimmed },
+      ]);
       setEditingIndex(null);
       setEditingDraft("");
     } else {
       setInput("");
-      setMessages((prev) => [...prev, { role: "user", content: text.trim() }]);
+      setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
     }
     setLoading(true);
     setError(null);
 
     try {
-      const res = await postAiMessage(sessionId, text.trim(), { signal: controller.signal });
+      const res = await postAiMessage(sessionId, trimmed, {
+        signal: controller.signal,
+      });
       const safeMessage =
         res.message && res.message.trim().length > 0
           ? res.message
           : t("ai.empty_reply");
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: safeMessage },
+        {
+          role: "assistant",
+          content: safeMessage,
+          quick_replies: res.quick_replies,
+          image_suggestions: res.image_suggestions,
+        },
       ]);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
@@ -134,8 +163,10 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
         return;
       }
       setError(err instanceof Error ? err.message : "Request failed");
-      setMessages((prev) => (fromIndex !== null ? prev.slice(0, fromIndex) : prev.slice(0, -1)));
-      if (fromIndex === null) setInput(text.trim());
+      setMessages((prev) =>
+        fromIndex !== null ? prev.slice(0, fromIndex) : prev.slice(0, -1),
+      );
+      if (fromIndex === null) setInput(trimmed);
     } finally {
       abortControllerRef.current = null;
       setLoading(false);
@@ -146,6 +177,44 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
     const text = input.trim();
     if (!text || !sessionId || loading) return;
     await sendMessage(text, null);
+  }
+
+  async function handleQuickReplyClick(action: string, label: string) {
+    if (!sessionId || loading) return;
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setMessages((prev) => [...prev, { role: "user", content: label }]);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await postAiMessage(sessionId, action, {
+        signal: controller.signal,
+      });
+      const safeMessage =
+        res.message && res.message.trim().length > 0
+          ? res.message
+          : t("ai.empty_reply");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: safeMessage,
+          quick_replies: res.quick_replies,
+          image_suggestions: res.image_suggestions,
+        },
+      ]);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
+      setError(err instanceof Error ? err.message : "Request failed");
+    } finally {
+      abortControllerRef.current = null;
+      setLoading(false);
+    }
   }
 
   async function handleSendFromInline() {
@@ -272,8 +341,59 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
                       : {})}
                   >
                     {m.role === "assistant" ? (
-                      <div className="text-[15px] leading-relaxed">
-                        <MarkdownMessage content={m.content} />
+                      <div className="space-y-3">
+                        <div className="text-[15px] leading-relaxed">
+                          <MarkdownMessage content={m.content} />
+                        </div>
+                        {m.image_suggestions && m.image_suggestions.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+                            {m.image_suggestions.map((img, idx) => (
+                              <button
+                                key={img.id || idx}
+                                type="button"
+                                onClick={() => {
+                                  const label = `Use image ${idx + 1}`;
+                                  setInput(label);
+                                }}
+                                className="relative aspect-[3/4] rounded-xl overflow-hidden group border border-white/10 bg-black/40"
+                              >
+                                <CoverImageWithBlur
+                                  src={img.thumbnail_url}
+                                  alt={img.photographer_name || "Trip cover option"}
+                                  blurHash={img.blur_hash ?? undefined}
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-xs text-white/90">
+                                  <span className="font-medium truncate">
+                                    {img.photographer_name || `Image ${idx + 1}`}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-full bg-black/60 text-[10px]">
+                                    {idx + 1}
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {m.quick_replies && m.quick_replies.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {m.quick_replies.map((qr) => (
+                              <Button
+                                key={`${qr.action}-${qr.label}`}
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleQuickReplyClick(qr.action, qr.label)
+                                }
+                                className="rounded-full border-white/20 bg-white/5 text-white/90 hover:bg-white/10 hover:text-white"
+                              >
+                                {qr.label}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ) : editingIndex === i ? (
                       <div className="flex flex-col gap-2 w-full min-w-0">
@@ -383,6 +503,53 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
               transition={{ delay: 0.2, duration: 0.5, type: "spring" }}
               className="relative p-2 rounded-[2rem] bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] flex gap-2 items-center"
             >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="w-10 h-10 rounded-full bg-card/70 text-white/80 hover:bg-card hover:text-white border border-white/10 mr-1"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (!loading) {
+                        setInput((prev) =>
+                          prev && prev.length > 0
+                            ? prev
+                            : "Find some Unsplash images for ",
+                        );
+                      }
+                    }}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
+                    <span>Find images</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (!loading) {
+                        void handleQuickReplyClick("create_trip", "Create a trip");
+                      }
+                    }}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
+                    <span>Create a trip</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (!loading) {
+                        void handleQuickReplyClick("just_chat", "Just chat");
+                      }
+                    }}
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    <span>Just chat</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Input
                 placeholder="Where do you want to go next?"
                 value={input}

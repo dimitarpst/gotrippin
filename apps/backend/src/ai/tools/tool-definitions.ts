@@ -104,4 +104,82 @@ export const AI_TOOLS: OpenRouterTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'searchCoverImage',
+      description:
+        'Search Unsplash for potential trip cover images. Use when the user asks for photos or cover images.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Search term, e.g. "sunset beach Bali"',
+          },
+          page: {
+            type: 'number',
+            description: 'Page number (1-based)',
+          },
+          per_page: {
+            type: 'number',
+            description: 'Results per page (max ~30)',
+          },
+        },
+        required: ['query'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'selectCoverImage',
+      description:
+        'Set the cover image for a trip using an Unsplash photo. Use after the user has chosen one of the suggested images.',
+      parameters: {
+        type: 'object',
+        properties: {
+          trip_id: { type: 'string', description: 'Trip UUID' },
+          unsplash_photo_id: {
+            type: 'string',
+            description: 'Unsplash photo id',
+          },
+          download_location: {
+            type: 'string',
+            description: 'Unsplash download_location URL for tracking downloads',
+          },
+          image_url: {
+            type: 'string',
+            description: 'Display URL for the selected image',
+          },
+          photographer_name: {
+            type: 'string',
+            description: 'Name of the photographer for attribution',
+          },
+          photographer_url: {
+            type: 'string',
+            description: 'Profile URL of the photographer',
+          },
+          blur_hash: {
+            type: ['string', 'null'],
+            description: 'Blurhash placeholder value (optional)',
+          },
+          dominant_color: {
+            type: ['string', 'null'],
+            description: 'Dominant color of the image (optional)',
+          },
+        },
+        required: [
+          'trip_id',
+          'unsplash_photo_id',
+          'download_location',
+          'image_url',
+          'photographer_name',
+          'photographer_url',
+        ],
+        additionalProperties: false,
+      },
+    },
+  },
 ];

@@ -7,6 +7,14 @@ import { getAuthToken } from "./auth";
 
 const API_BASE = appConfig.apiUrl;
 
+export interface AiImageSuggestion {
+  id: string;
+  thumbnail_url: string;
+  blur_hash: string | null;
+  photographer_name: string;
+  photographer_url: string;
+}
+
 export interface CreateSessionBody {
   scope: "global" | "trip";
   trip_id?: string;
@@ -46,7 +54,12 @@ export interface AiSessionWithMessagesResponse {
     created_at: string;
     updated_at: string;
   };
-  messages: Array<{ role: "user" | "assistant"; content: string }>;
+  messages: Array<{
+    role: "user" | "assistant";
+    content: string;
+    quick_replies?: Array<{ label: string; action: string }>;
+    image_suggestions?: AiImageSuggestion[];
+  }>;
 }
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -170,6 +183,8 @@ export async function createAiSession(
 
 export interface PostMessageResponse {
   message: string;
+  quick_replies?: Array<{ label: string; action: string }>;
+  image_suggestions?: AiImageSuggestion[];
   tool_calls?: string[];
 }
 

@@ -2,6 +2,8 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 import { TripsService } from '../../trips/trips.service';
 import { TripLocationsService } from '../../trip-locations/trip-locations.service';
+import { ImagesService } from '../../images/images.service';
+import type { CoverPhotoInput } from '@gotrippin/core';
 
 const CreateTripDraftSchema = z.object({
   title: z.string().max(200).optional(),
@@ -34,11 +36,29 @@ const ReorderLocationsSchema = z.object({
   location_ids: z.array(z.string().uuid()).min(1),
 });
 
+const SearchCoverImageSchema = z.object({
+  query: z.string().min(1),
+  page: z.number().int().positive().optional(),
+  per_page: z.number().int().positive().max(30).optional(),
+});
+
+const SelectCoverImageSchema = z.object({
+  trip_id: z.string().uuid(),
+  unsplash_photo_id: z.string().min(1),
+  download_location: z.string().min(1),
+  image_url: z.string().min(1),
+  photographer_name: z.string().min(1),
+  photographer_url: z.string().min(1),
+  blur_hash: z.string().nullable().optional(),
+  dominant_color: z.string().nullable().optional(),
+});
+
 @Injectable()
 export class ToolExecutor {
   constructor(
     private readonly tripsService: TripsService,
     private readonly tripLocationsService: TripLocationsService,
+    private readonly imagesService: ImagesService,
   ) {}
 
   async execute(
@@ -127,6 +147,34 @@ export class ToolExecutor {
             start_date: t.start_date,
             end_date: t.end_date,
           }));
+        }
+        case 'searchCoverImage': {
+          const parsed = SearchCoverImageSchema.parse(args);
+          const data = await this.imagesService.searchImages(
+            parsed.query,
+            parsed.page,
+            parsed.per_page,
+          );
+          return data;
+        }
+        case 'selectCoverImage': {
+          const parsed = SelectCoverImageSchema.parse(args);
+          const coverPhoto: CoverPhotoInput = {
+            unsplash_photo_id: parsed.unsplash_photo_id,
+            download_location: parsed.download_location,
+            image_url: parsed.image_url,
+            photographer_name: parsed.photographer_name,
+            photographer_url: parsed.photographer_url,
+            blur_hash: parsed.blur_hash ?? null,
+            dominant_color: parsed.dominant_color ?? null,
+          };
+          const trip = await this.tripsService.updateTrip(parsed.trip_id, userId, {
+            cover_photo: coverPhoto,
+          });
+          return {
+            success: true,
+            trip,
+          };
         }
         default:
           throw new BadRequestException(`Unknown tool: ${toolName}`);
