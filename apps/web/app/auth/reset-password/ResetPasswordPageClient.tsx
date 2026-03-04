@@ -57,7 +57,7 @@ export default function ResetPasswordPageClient() {
     const timer = setTimeout(() => {
       setIsSessionReady((currentIsSessionReady) => {
         if (!currentIsSessionReady) {
-          setError("Invalid or expired reset link. Please request a new one.");
+          setError(t("auth.invalid_reset_link"));
         }
         return currentIsSessionReady;
       });
@@ -75,12 +75,12 @@ export default function ResetPasswordPageClient() {
     setError(null);
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError(t("auth.password_min_length"));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("auth.passwords_do_not_match"));
       return;
     }
 
@@ -98,7 +98,7 @@ export default function ResetPasswordPageClient() {
         router.push("/auth");
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reset password");
+      setError(err instanceof Error ? err.message : t("auth.failed_reset_password"));
     } finally {
       setLoading(false);
     }

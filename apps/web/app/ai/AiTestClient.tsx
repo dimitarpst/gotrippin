@@ -102,7 +102,7 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load chat");
+        setError(err instanceof Error ? err.message : t("ai.failed_load_chat"));
         if (err instanceof Error && err.message === "Session not found") {
           router.replace("/ai");
         }
@@ -162,7 +162,7 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
         }
         return;
       }
-      setError(err instanceof Error ? err.message : "Request failed");
+      setError(err instanceof Error ? err.message : t("ai.failed_request"));
       setMessages((prev) =>
         fromIndex !== null ? prev.slice(0, fromIndex) : prev.slice(0, -1),
       );
@@ -210,7 +210,7 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
       if (err instanceof Error && err.name === "AbortError") {
         return;
       }
-      setError(err instanceof Error ? err.message : "Request failed");
+      setError(err instanceof Error ? err.message : t("ai.failed_request"));
     } finally {
       abortControllerRef.current = null;
       setLoading(false);
@@ -281,13 +281,13 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
               </div>
             </div>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight text-white">Go Trippin' AI</h1>
+              <h1 className="text-lg font-semibold tracking-tight text-white">{t("ai.title")}</h1>
               <p className="text-xs text-white/50 font-medium flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
-                Online & ready
+                {t("ai.online_ready")}
               </p>
             </div>
           </motion.div>
@@ -300,7 +300,7 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
             <button
               onClick={() => router.push("/ai")}
               className="w-10 h-10 rounded-full flex items-center justify-center bg-card/10 backdrop-blur-md border border-white/5 hover:bg-card/20 transition-colors group"
-              aria-label="Back to chats"
+              aria-label={t("ai.back_to_chats")}
             >
               <X className="w-5 h-5 text-white/50 group-hover:text-white/80 transition-colors" />
             </button>
@@ -359,7 +359,7 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
                               >
                                 <CoverImageWithBlur
                                   src={img.thumbnail_url}
-                                  alt={img.photographer_name || "Trip cover option"}
+                                  alt={img.photographer_name || t("trips.trip_cover_option_alt")}
                                   blurHash={img.blur_hash ?? undefined}
                                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                 />
@@ -410,7 +410,7 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
                           }}
                           rows={3}
                           className="w-full min-w-0 resize-none rounded-xl bg-white/95 text-[var(--color-background)] border border-white/40 px-4 py-3 text-[15px] placeholder:text-[var(--color-background)]/50 focus:outline-none focus:ring-2 focus:ring-white"
-                          placeholder="Edit message..."
+                          placeholder={t("ai.placeholder_edit")}
                         />
                         <div className="flex gap-2 justify-end">
                           <Button
@@ -446,8 +446,8 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
                             handleStartEdit(m.content, i);
                           }}
                           className="absolute top-1/2 -translate-y-1/2 -left-12 w-8 h-8 rounded-full bg-card/60 backdrop-blur-md border border-white/10 shadow-lg flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity hover:bg-card/80 text-muted-foreground hover:text-white"
-                          aria-label="Edit message"
-                          title="Edit message (or long-press bubble)"
+                          aria-label={t("ai.edit_message")}
+                          title={t("ai.edit_message_title")}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -526,32 +526,32 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
                     }}
                   >
                     <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
-                    <span>Find images</span>
+                    <span>{t("ai.find_images")}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
                       if (!loading) {
-                        void handleQuickReplyClick("create_trip", "Create a trip");
+                        void handleQuickReplyClick("create_trip", t("ai.create_trip"));
                       }
                     }}
                   >
                     <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
-                    <span>Create a trip</span>
+                    <span>{t("ai.create_trip")}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
                       if (!loading) {
-                        void handleQuickReplyClick("just_chat", "Just chat");
+                        void handleQuickReplyClick("just_chat", t("ai.just_chat"));
                       }
                     }}
                   >
                     <Send className="w-4 h-4 mr-2" />
-                    <span>Just chat</span>
+                    <span>{t("ai.just_chat")}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Input
-                placeholder="Where do you want to go next?"
+                placeholder={t("ai.placeholder")}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) =>
@@ -565,7 +565,7 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
                   type="button"
                   onClick={stopGeneration}
                   size="icon"
-                  aria-label="Stop generating"
+                  aria-label={t("ai.stop_generating")}
                   className="w-12 h-12 shrink-0 rounded-full bg-destructive/90 text-destructive-foreground hover:bg-destructive transition-all flex items-center justify-center"
                 >
                   <Square className="w-5 h-5 fill-current" />

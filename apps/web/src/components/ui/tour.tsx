@@ -19,6 +19,7 @@ import {
 } from "radix-ui";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useComposedRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
@@ -1592,7 +1593,7 @@ function TourClose(props: TourCloseProps) {
     onClick: onClickProp,
     ...closeButtonProps
   } = props;
-
+  const { t } = useTranslation();
   const store = useStoreContext(CLOSE_NAME);
 
   const onClick = React.useCallback(
@@ -1610,7 +1611,7 @@ function TourClose(props: TourCloseProps) {
   return (
     <ClosePrimitive
       type="button"
-      aria-label="Close tour"
+      aria-label={t("ui.close_tour")}
       className={cn(
         "absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
@@ -1625,7 +1626,7 @@ function TourClose(props: TourCloseProps) {
 
 function TourPrev(props: React.ComponentProps<typeof Button>) {
   const { children, onClick: onClickProp, ...prevButtonProps } = props;
-
+  const { t } = useTranslation();
   const store = useStoreContext(PREV_NAME);
   const value = useStore((state) => state.value);
 
@@ -1644,7 +1645,7 @@ function TourPrev(props: React.ComponentProps<typeof Button>) {
   return (
     <Button
       type="button"
-      aria-label="Previous step"
+      aria-label={t("ui.previous_step")}
       data-slot="tour-prev"
       variant="outline"
       {...prevButtonProps}
@@ -1654,7 +1655,7 @@ function TourPrev(props: React.ComponentProps<typeof Button>) {
       {children ?? (
         <>
           <ChevronLeft />
-          Previous
+          {t("ui.previous_step")}
         </>
       )}
     </Button>
@@ -1663,6 +1664,7 @@ function TourPrev(props: React.ComponentProps<typeof Button>) {
 
 function TourNext(props: React.ComponentProps<typeof Button>) {
   const { children, onClick: onClickProp, ...nextButtonProps } = props;
+  const { t } = useTranslation();
   const store = useStoreContext(NEXT_NAME);
   const value = useStore((state) => state.value);
   const steps = useStore((state) => state.steps);
@@ -1682,14 +1684,14 @@ function TourNext(props: React.ComponentProps<typeof Button>) {
   return (
     <Button
       type="button"
-      aria-label="Next step"
+      aria-label={t("ui.next_step")}
       data-slot="tour-next"
       {...nextButtonProps}
       onClick={onClick}
     >
       {children ?? (
         <>
-          {isLastStep ? "Finish" : "Next"}
+          {isLastStep ? t("ui.finish") : t("common.next")}
           {!isLastStep && <ChevronRight />}
         </>
       )}
@@ -1699,7 +1701,7 @@ function TourNext(props: React.ComponentProps<typeof Button>) {
 
 function TourSkip(props: React.ComponentProps<typeof Button>) {
   const { children, onClick: onClickProp, ...skipButtonProps } = props;
-
+  const { t } = useTranslation();
   const store = useStoreContext(SKIP_NAME);
 
   const onClick = React.useCallback(
@@ -1715,13 +1717,13 @@ function TourSkip(props: React.ComponentProps<typeof Button>) {
   return (
     <Button
       type="button"
-      aria-label="Skip tour"
+      aria-label={t("ui.skip_tour")}
       data-slot="tour-skip"
       variant="outline"
       {...skipButtonProps}
       onClick={onClick}
     >
-      {children ?? "Skip"}
+      {children ?? t("ui.skip_tour")}
     </Button>
   );
 }

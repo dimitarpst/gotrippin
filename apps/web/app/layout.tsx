@@ -1,3 +1,4 @@
+import "@fontsource/figtree/latin.css";
 import "./globals.css";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";

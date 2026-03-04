@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslation } from "react-i18next"
 import type { TripLocation } from "@gotrippin/core"
 import { getLocations } from "@/lib/api/trip-locations"
 import { useAuth } from "@/contexts/AuthContext"
@@ -13,6 +14,7 @@ interface UseTripLocationsResult {
 }
 
 export function useTripLocations(tripId?: string | null): UseTripLocationsResult {
+  const { t } = useTranslation()
   const [locations, setLocations] = useState<TripLocation[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +26,7 @@ export function useTripLocations(tripId?: string | null): UseTripLocationsResult
     // Don't fetch if user is not authenticated or auth is still loading
     if (!user && !authLoading) {
       setLoading(false)
-      setError("Authentication required")
+      setError(t("common.auth_required"))
       return
     }
 
@@ -39,7 +41,7 @@ export function useTripLocations(tripId?: string | null): UseTripLocationsResult
       setLocations(data || [])
     } catch (err) {
       console.error("Failed to fetch trip locations:", err)
-      setError(err instanceof Error ? err.message : "Failed to fetch locations")
+      setError(err instanceof Error ? err.message : t("common.failed_fetch_locations"))
     } finally {
       setLoading(false)
     }

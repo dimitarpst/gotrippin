@@ -26,11 +26,11 @@ export default async function HomePage() {
       if (err instanceof ApiError) {
         error = err.message
       } else {
-        error = "Failed to fetch trips"
+        error = "trips.failed_fetch"
       }
     }
   } else {
-    error = "Authentication required"
+    error = "common.auth_required"
   }
 
   return <TripsPageClient trips={trips} error={error} />

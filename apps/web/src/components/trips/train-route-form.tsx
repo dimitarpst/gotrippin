@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { motion } from "framer-motion"
 import { Train, Calendar, Clock, Plus, DollarSign, FileText, LinkIcon, StickyNote } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -19,6 +20,7 @@ interface TrainRouteFormProps {
 }
 
 export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) {
+  const { t } = useTranslation()
   const [showDocumentModal, setShowDocumentModal] = useState(false)
   const { locations, loading: locationsLoading, error: locationsError, refetch } = useTripLocations(tripId)
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null)
@@ -58,18 +60,18 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
     setErrorMessage(null)
 
     if (!selectedLocationId) {
-      setErrorMessage("Select a route stop before saving.")
+      setErrorMessage(t("train_route.select_stop_before_save"))
       return
     }
     if (!accessToken) {
-      setErrorMessage("Authentication required. Please refresh or sign in again.")
+      setErrorMessage(t("train_route.auth_required"))
       return
     }
 
     try {
       setSaving(true)
       await createActivity(tripId, {
-        title: formData.routeName || "Train route",
+        title: formData.routeName || t("train_route.train_route"),
         type: "transport",
         location_id: selectedLocationId,
         notes: formData.reservationCode ? `Reservation: ${formData.reservationCode}` : undefined,
@@ -77,9 +79,9 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
         end_time: null,
         all_day: false,
       }, accessToken)
-      setStatusMessage("Saved to timeline for this stop.")
+      setStatusMessage(t("train_route.saved_to_timeline"))
     } catch (err: any) {
-      setErrorMessage(err?.message || "Failed to save activity")
+      setErrorMessage(err?.message || t("train_route.failed_save"))
     } finally {
       setSaving(false)
     }
@@ -99,16 +101,16 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
       >
         <div className="flex items-center justify-between">
           <button onClick={onBack} className="text-sm font-medium" style={{ color: "var(--accent)" }}>
-            Cancel
+            {t("common.cancel")}
           </button>
-          <h1 className="text-lg font-semibold text-white">Train Route</h1>
+          <h1 className="text-lg font-semibold text-white">{t("train_route.train_route")}</h1>
           <button
             className="text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-60"
             style={{ backgroundColor: "var(--accent)", color: "white" }}
             onClick={handleSave}
             disabled={saving || locationsLoading || !tripId || noRoute}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? t("profile.saving") : t("profile.save")}
           </button>
         </div>
         {!tripId && (
@@ -116,13 +118,13 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
         )}
         {locationsError && (
           <div className="mt-2 text-xs text-red-300 flex items-center gap-2">
-            <span>Failed to load stops: {locationsError}</span>
+            <span>{t("train_route.failed_load_stops")} {locationsError}</span>
             <button
-              onClick={() => refetch().catch((e: unknown) => toast.error("Retry failed", { description: e instanceof Error ? e.message : String(e) }))}
+              onClick={() => refetch().catch((e: unknown) => toast.error(t("common.retry_failed"), { description: e instanceof Error ? e.message : String(e) }))}
               className="underline decoration-dotted text-white/80"
               type="button"
             >
-              Retry
+              {t("common.retry")}
           </button>
         </div>
         )}
@@ -140,22 +142,22 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
             className="rounded-2xl p-5 shadow-card border-white/[0.08] space-y-3"
             style={{ backgroundColor: "var(--surface)" }}
           >
-            <p className="text-sm font-semibold text-white">No route yet</p>
+            <p className="text-sm font-semibold text-white">{t("train_route.no_route_yet")}</p>
             <p className="text-sm text-white/70">
-              Add at least one stop to your trip before creating transport entries.
+              {t("train_route.no_route_hint")}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={onBack}
                 className="text-sm font-medium px-4 py-2 rounded-lg border border-white/20 text-white hover:border-white/40 transition"
               >
-                Go to route
+                {t("train_route.go_to_route")}
               </button>
               <button
-                onClick={() => refetch().catch((e: unknown) => toast.error("Retry failed", { description: e instanceof Error ? e.message : String(e) }))}
+                onClick={() => refetch().catch((e: unknown) => toast.error(t("common.retry_failed"), { description: e instanceof Error ? e.message : String(e) }))}
                 className="text-sm font-medium px-4 py-2 rounded-lg text-white/80 underline decoration-dotted"
               >
-                Retry
+                {t("common.retry")}
               </button>
             </div>
           </Card>
@@ -173,14 +175,14 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
             style={{ backgroundColor: "var(--surface)" }}
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-white">Attach to stop</p>
+              <p className="text-sm font-semibold text-white">{t("train_route.attach_to_stop")}</p>
               {locationsLoading && (
-                <span className="text-xs text-white/60">Loading stops...</span>
+                <span className="text-xs text-white/60">{t("train_route.loading_stops")}</span>
               )}
             </div>
             {locations.length === 0 && !locationsLoading && (
               <div className="text-sm text-white/70">
-                Add a route first to place this activity. Go back and add stops.
+                {t("train_route.add_route_first")}
               </div>
             )}
             <div className="flex flex-wrap gap-2">
@@ -190,7 +192,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
                   onClick={() => setSelectedLocationId(loc.id)}
                   className={`px-3 py-2 rounded-xl text-sm border transition-colors ${selectedLocationId === loc.id ? "border-[#ff6b6b] bg-[#ff6b6b]/15 text-white" : "border-white/10 text-white/80 hover:border-white/30"}`}
                 >
-                  {loc.location_name || "Stop"}
+                  {loc.location_name || t("train_route.stop_label")}
                 </button>
               ))}
             </div>
@@ -214,7 +216,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
                 value={formData.routeName}
                 onChange={(e) => setFormData({ ...formData, routeName: e.target.value })}
                 className="w-full text-white bg-transparent border-white/[0.08]"
-                placeholder="Route name"
+                placeholder={t("train_route.route_name_placeholder")}
               />
             </div>
             <div>
@@ -225,7 +227,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
                 value={formData.transportNumber}
                 onChange={(e) => setFormData({ ...formData, transportNumber: e.target.value })}
                 className="w-full text-white bg-transparent border-white/[0.08]"
-                placeholder="Transport number"
+                placeholder={t("train_route.transport_number_placeholder")}
               />
             </div>
             <div>
@@ -236,7 +238,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
                 value={formData.company}
                 onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                 className="w-full text-white bg-transparent border-white/[0.08]"
-                placeholder="Company name"
+                placeholder={t("train_route.company_name_placeholder")}
               />
             </div>
           </Card>
@@ -391,7 +393,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
           transition={{ duration: 0.4, delay: 0.5 }}
         >
           <ActionButton icon={DollarSign} label="Total Cost" iconColor="#FFD93D" />
-          <ActionButton icon={FileText} label="Write a note" iconColor="#95E1D3" />
+          <ActionButton icon={FileText} label={t("train_route.write_note")} iconColor="#95E1D3" />
           <ActionButton
             icon={LinkIcon}
             label="Add File, Photo or Link"
@@ -421,7 +423,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
               <ModalOption icon={FileText} label="Import Document" />
               <ModalOption icon={LinkIcon} label="Save Link" />
               <ModalOption icon={ImageIcon} label="Choose Photo from Library" />
-              <ModalOption icon={Camera} label="Take a Photo" />
+              <ModalOption icon={Camera} label={t("train_route.take_photo")} />
               <ModalOption icon={StickyNote} label="New Note" />
             </div>
           </motion.div>

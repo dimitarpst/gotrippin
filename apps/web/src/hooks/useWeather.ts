@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { TripWeatherResponse, TripLocationWeather } from "@gotrippin/core";
 import { getTripWeather } from "@/lib/api/weather";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +16,7 @@ interface UseTripWeatherResult {
 }
 
 export function useTripWeather(tripId?: string | null, days?: number): UseTripWeatherResult {
+  const { t } = useTranslation();
   const [weather, setWeather] = useState<TripWeatherResponse | null>(null);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,7 +29,7 @@ export function useTripWeather(tripId?: string | null, days?: number): UseTripWe
     // Don't fetch if user is not authenticated or auth is still loading
     if (!user && !authLoading) {
       setLoading(false);
-      setError("Authentication required");
+      setError(t("common.auth_required"));
       return;
     }
 
@@ -42,7 +44,7 @@ export function useTripWeather(tripId?: string | null, days?: number): UseTripWe
       setFetchedAt(Date.now());
     } catch (err) {
       console.error("Failed to fetch trip weather:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch weather");
+      setError(err instanceof Error ? err.message : t("weather.failed_fetch"));
     } finally {
       setLoading(false);
     }

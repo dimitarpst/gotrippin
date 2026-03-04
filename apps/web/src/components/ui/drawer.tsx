@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Drawer as VaulDrawer } from "vaul";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +71,7 @@ function DrawerContent({
   onAnimationEnd,
   ...props
 }: React.ComponentProps<typeof VaulDrawer.Content>) {
+  const { t } = useTranslation();
   const ctx = React.useContext(DrawerContext);
 
   const handleAnimationEnd = React.useCallback(
@@ -102,8 +104,8 @@ function DrawerContent({
         {...props}
       >
         {/* Accessible title and description so Radix/Dialog does not warn */}
-        <VaulDrawer.Title className="sr-only">Drawer</VaulDrawer.Title>
-        <VaulDrawer.Description className="sr-only">Panel content</VaulDrawer.Description>
+        <VaulDrawer.Title className="sr-only">{t("ui.drawer")}</VaulDrawer.Title>
+        <VaulDrawer.Description className="sr-only">{t("ui.panel_content")}</VaulDrawer.Description>
         <div className="mx-auto mt-4 h-2 w-[100px] shrink-0 rounded-full bg-muted" />
         {children}
       </VaulDrawer.Content>

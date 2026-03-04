@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { searchImages, type UnsplashImage } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useImageSearch() {
+  const { t } = useTranslation();
   const { accessToken, loading: authLoading } = useAuth();
   const [authReady, setAuthReady] = useState(false); // stable: flips true once after initial auth load
   const [query, setQuery] = useState<string>('');
@@ -48,7 +50,7 @@ export function useImageSearch() {
 
         setTotalPages(data.total_pages);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load images');
+        setError(err instanceof Error ? err.message : t('background_picker.error'));
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -66,7 +68,7 @@ export function useImageSearch() {
     if (!authReady) return;
 
     if (!accessToken) {
-      setError("Authentication required");
+      setError(t("common.auth_required"));
       return;
     }
 

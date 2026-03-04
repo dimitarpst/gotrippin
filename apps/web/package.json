@@ -16,6 +16,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@floating-ui/react-dom": "^2.1.7",
+    "@fontsource/figtree": "^5.2.10",
     "@gotrippin/core": "*",
     "@nestjs/throttler": "^6.5.0",
     "@radix-ui/react-dialog": "^1.1.15",

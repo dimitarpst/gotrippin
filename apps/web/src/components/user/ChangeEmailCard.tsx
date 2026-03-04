@@ -107,7 +107,7 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="new.email@example.com"
+                placeholder={t("profile.new_email_placeholder")}
                 required
                 disabled={loading}
                 className="bg-white/5 border-white/10 text-white placeholder:text-white/40"

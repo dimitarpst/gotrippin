@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Plane, Hotel, MapPin, Car, Utensils, Palette, Music, 
@@ -73,6 +74,7 @@ const TYPE_COLORS: Record<string, string> = {
 }
 
 export default function ActivityForm({ tripId, activity, initialType = "custom", onBack, onSave }: ActivityFormProps) {
+  const { t } = useTranslation()
   const { locations, loading: locationsLoading, error: locationsError, refetch } = useTripLocations(tripId)
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(activity?.location_id || null)
   
@@ -128,15 +130,15 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
 
   const handleSave = async () => {
     if (!selectedLocationId && locations.length > 0) {
-      toast.error("Please select a route stop")
+      toast.error(t("activity.please_select_route_stop"))
       return
     }
     if (!formData.title) {
-      toast.error("Title is required")
+      toast.error(t("activity.title_required"))
       return
     }
     if (!accessToken) {
-      toast.error("Authentication required")
+      toast.error(t("activity.auth_required"))
       return
     }
 
@@ -192,17 +194,17 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
       }
 
       if (activity) {
-        await updateActivity(activity.id, payload, accessToken)
-        toast.success("Activity updated")
+        await updateActivity(tripId, activity.id, payload, accessToken)
+        toast.success(t("activity.activity_updated"))
       } else {
         await createActivity(tripId, payload, accessToken)
-        toast.success("Activity created")
+        toast.success(t("activity.activity_created"))
       }
 
       if (onSave) onSave()
       else onBack()
     } catch (err: any) {
-      toast.error(err?.message || "Failed to save activity")
+      toast.error(err?.message || t("activity.failed_save_activity"))
     } finally {
       setSaving(false)
     }
@@ -210,16 +212,16 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
 
   const handleDelete = async () => {
     if (!activity || !accessToken) return
-    if (!confirm("Are you sure you want to delete this activity?")) return
+    if (!confirm(t("activity.delete_confirm"))) return
 
     try {
       setDeleting(true)
       await deleteActivity(tripId, activity.id, accessToken)
-      toast.success("Activity deleted")
+      toast.success(t("activity.activity_deleted"))
       if (onSave) onSave()
       else onBack()
     } catch (err: any) {
-      toast.error(err?.message || "Failed to delete activity")
+      toast.error(err?.message || t("activity.failed_delete_activity"))
     } finally {
       setDeleting(false)
     }
@@ -240,7 +242,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
       >
         <div className="flex items-center justify-between">
           <button onClick={onBack} className="text-sm font-medium transition-colors hover:text-white" style={{ color: "var(--accent)" }}>
-            Cancel
+            {t("activity.cancel")}
           </button>
           <h1 className="text-lg font-semibold text-white capitalize">{formData.type.replace('_', ' ')}</h1>
           <button
@@ -249,7 +251,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
             onClick={handleSave}
             disabled={saving || locationsLoading || !tripId || noRoute}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? t("profile.saving") : t("profile.save")}
           </button>
         </div>
       </motion.div>
@@ -298,7 +300,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         className="w-full text-xl font-bold text-white bg-transparent border-0 border-b border-white/10 rounded-none px-0 focus-visible:ring-0 focus-visible:border-white/40 h-auto py-1"
-                        placeholder="e.g. Grand Hotel"
+                        placeholder={t("activity.accommodation_placeholder")}
                         autoFocus
                       />
                     </div>
@@ -348,7 +350,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {formData.date ? format(parseISO(formData.date), "PPP") : <span>Pick a date</span>}
+                          {formData.date ? format(parseISO(formData.date), "PPP") : <span>{t("activity.pick_a_date")}</span>}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0 bg-[var(--surface)] border-white/10" align="start">
@@ -409,7 +411,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                       <Input
                         value={formData.departureAirport}
                         onChange={(e) => setFormData({ ...formData, departureAirport: e.target.value })}
-                        placeholder="JFK"
+                        placeholder={t("activity.airport_origin_placeholder")}
                         className="bg-white/5 border-white/10 text-white rounded-xl focus:border-white/30"
                       />
                     </div>
@@ -418,7 +420,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                       <Input
                         value={formData.arrivalAirport}
                         onChange={(e) => setFormData({ ...formData, arrivalAirport: e.target.value })}
-                        placeholder="LHR"
+                        placeholder={t("activity.airport_dest_placeholder")}
                         className="bg-white/5 border-white/10 text-white rounded-xl focus:border-white/30"
                       />
                     </div>
@@ -427,7 +429,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                       <Input
                         value={formData.airline}
                         onChange={(e) => setFormData({ ...formData, airline: e.target.value })}
-                        placeholder="e.g. Delta"
+                        placeholder={t("activity.airline_placeholder")}
                         className="bg-white/5 border-white/10 text-white rounded-xl focus:border-white/30"
                       />
                     </div>
@@ -436,7 +438,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                       <Input
                         value={formData.flightNumber}
                         onChange={(e) => setFormData({ ...formData, flightNumber: e.target.value })}
-                        placeholder="DL 123"
+                        placeholder={t("activity.flight_number_placeholder")}
                         className="bg-white/5 border-white/10 text-white rounded-xl focus:border-white/30"
                       />
                     </div>
@@ -522,7 +524,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                       <Input
                         value={formData.roomType}
                         onChange={(e) => setFormData({ ...formData, roomType: e.target.value })}
-                        placeholder="e.g. King Suite with Ocean View"
+                        placeholder={t("activity.room_placeholder")}
                         className="bg-white/5 border-white/10 text-white rounded-xl focus:border-white/30"
                       />
                     </div>
@@ -544,7 +546,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                       <Input
                         value={formData.cuisine}
                         onChange={(e) => setFormData({ ...formData, cuisine: e.target.value })}
-                        placeholder="e.g. Italian, Casual"
+                        placeholder={t("activity.cuisine_placeholder")}
                         className="bg-white/5 border-white/10 text-white rounded-xl focus:border-white/30"
                       />
                     </div>
@@ -576,7 +578,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                     <Input
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Address"
+                      placeholder={t("activity.address_placeholder")}
                       className="pl-10 bg-white/5 border-white/10 text-white rounded-xl h-12 focus:border-white/30"
                     />
                   </div>
@@ -587,7 +589,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                       <Input
                         value={formData.reservation}
                         onChange={(e) => setFormData({ ...formData, reservation: e.target.value })}
-                        placeholder="Reservation / PNR"
+                        placeholder={t("activity.pnr_placeholder")}
                         className="pl-10 bg-white/5 border-white/10 text-white rounded-xl h-12 focus:border-white/30 text-sm"
                       />
                     </div>
@@ -596,7 +598,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                       <Input
                         value={formData.website}
                         onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                        placeholder="Website URL"
+                        placeholder={t("activity.website_placeholder")}
                         className="pl-10 bg-white/5 border-white/10 text-white rounded-xl h-12 focus:border-white/30 text-sm"
                       />
                     </div>
@@ -614,7 +616,7 @@ export default function ActivityForm({ tripId, activity, initialType = "custom",
                 <Textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Add any extra notes, things to pack, or reminders..."
+                  placeholder={t("activity.notes_placeholder")}
                   className="min-h-[120px] bg-white/5 border-white/10 text-white rounded-xl resize-none focus:border-white/30"
                 />
               </Card>

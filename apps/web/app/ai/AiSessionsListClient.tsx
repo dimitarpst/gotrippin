@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import {
   createAiSession,
   listAiSessions,
@@ -15,10 +16,10 @@ import { motion } from "framer-motion";
 
 const PAGE_SIZE = 20;
 
-function titleToShortLabel(summary: string | null): string {
-  if (!summary?.trim()) return "New chat";
+function titleToShortLabel(summary: string | null, newChatLabel: string): string {
+  if (!summary?.trim()) return newChatLabel;
   const words = summary.trim().split(/\s+/).slice(0, 4);
-  return words.join(' ') || "New chat";
+  return words.join(" ") || newChatLabel;
 }
 
 function formatDate(iso: string) {
@@ -39,6 +40,7 @@ function formatDate(iso: string) {
 }
 
 export default function AiSessionsListClient() {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<AiSessionListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -82,7 +84,7 @@ export default function AiSessionsListClient() {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load chats");
+        if (!cancelled) setError(err instanceof Error ? err.message : t("ai.failed_load_chat"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -117,7 +119,7 @@ export default function AiSessionsListClient() {
       const data = await createAiSession({ scope: "global" });
       router.push(`/ai/${data.session_id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create chat");
+      setError(err instanceof Error ? err.message : t("ai.failed_request"));
       setCreating(false);
     }
   }
@@ -139,7 +141,7 @@ export default function AiSessionsListClient() {
         )
       );
     } catch {
-      setError("Failed to rename chat");
+      setError(t("ai.failed_rename_chat"));
     }
     setRenamingId(null);
     setRenameDraft("");
@@ -153,12 +155,12 @@ export default function AiSessionsListClient() {
   async function handleDelete(sessionId: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm("Delete this chat? This cannot be undone.")) return;
+    if (!confirm(t("ai.delete_chat_confirm"))) return;
     try {
       await deleteAiSession(sessionId);
       setSessions((prev) => prev.filter((x) => x.id !== sessionId));
     } catch {
-      setError("Failed to delete chat");
+      setError(t("ai.failed_delete_chat"));
     }
   }
 
@@ -179,7 +181,7 @@ export default function AiSessionsListClient() {
             type="button"
             onClick={() => router.push("/trips")}
             className="w-10 h-10 rounded-full flex items-center justify-center bg-card/10 backdrop-blur-md border border-white/5 hover:bg-card/20 transition-colors group shrink-0"
-            aria-label="Back to trips"
+            aria-label={t("ai.back_to_trips")}
           >
             <ArrowLeft className="w-5 h-5 text-white/50 group-hover:text-white/80 transition-colors" />
           </button>
@@ -191,8 +193,8 @@ export default function AiSessionsListClient() {
               </div>
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold tracking-tight text-white truncate">Go Trippin' AI</h1>
-              <p className="text-xs text-white/50 font-medium">Recent chats</p>
+              <h1 className="text-lg font-semibold tracking-tight text-white truncate">{t("ai.title")}</h1>
+              <p className="text-xs text-white/50 font-medium">{t("ai.recent_chats")}</p>
             </div>
           </div>
         </header>
@@ -214,9 +216,9 @@ export default function AiSessionsListClient() {
             <MessageSquarePlus className="w-5 h-5 text-[var(--color-accent)]" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-white">New chat</p>
+            <p className="font-medium text-white">{t("ai.new_chat")}</p>
             <p className="text-xs text-white/50">
-              {creating ? "Creating…" : "Start a new conversation"}
+              {creating ? t("ai.creating") : t("ai.start_new_conversation")}
             </p>
           </div>
           <ChevronRight className="w-5 h-5 text-white/40 shrink-0" />
@@ -235,7 +237,7 @@ export default function AiSessionsListClient() {
               ))}
             </div>
           ) : sessions.length === 0 ? (
-            <p className="text-sm text-white/50 px-1">No chats yet. Start with “New chat”.</p>
+            <p className="text-sm text-white/50 px-1">{t("ai.no_chats_yet")}</p>
           ) : (
             <>
               <ul className="space-y-2">
@@ -267,13 +269,13 @@ export default function AiSessionsListClient() {
                           onBlur={saveRename}
                           onClick={(e) => e.stopPropagation()}
                           className="w-full bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-[15px] text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
-                          placeholder="Chat name (3–4 words)"
+                          placeholder={t("ai.placeholder_sessions")}
                           autoFocus
                         />
                       ) : (
                         <>
                           <p className="font-medium text-white truncate">
-                            {titleToShortLabel(s.summary)}
+                            {titleToShortLabel(s.summary, t("ai.new_chat"))}
                           </p>
                           <p className="text-xs text-white/50 mt-0.5">
                             {formatDate(s.updated_at)}
@@ -287,7 +289,7 @@ export default function AiSessionsListClient() {
                           type="button"
                           onClick={() => startRename(s)}
                           className="w-9 h-9 rounded-full flex items-center justify-center text-white/40 active:text-white active:bg-white/10 transition-colors"
-                          aria-label="Rename chat"
+                          aria-label={t("ai.rename_chat")}
                         >
                           <Pencil className="w-[18px] h-[18px]" />
                         </button>
@@ -295,7 +297,7 @@ export default function AiSessionsListClient() {
                           type="button"
                           onClick={(e) => handleDelete(s.id, e)}
                           className="w-9 h-9 rounded-full flex items-center justify-center text-white/40 active:text-destructive active:bg-destructive/10 transition-colors"
-                          aria-label="Delete chat"
+                          aria-label={t("ai.delete_chat")}
                         >
                           <Trash2 className="w-[18px] h-[18px]" />
                         </button>

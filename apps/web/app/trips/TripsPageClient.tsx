@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import type { Trip } from "@gotrippin/core";
 import AuroraBackground from "@/components/effects/aurora-background";
 import FloatingHeader from "@/components/layout/FloatingHeader";
@@ -18,6 +19,7 @@ export default function TripsPageClient({
   trips,
   error,
 }: TripsPageClientProps) {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const handleSelectTrip = (shareCode: string) => {
@@ -54,7 +56,7 @@ export default function TripsPageClient({
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-full max-w-md px-4">
             <Alert variant="destructive" className="bg-destructive/10 backdrop-blur-md border-destructive/20">
               <AlertCircle className="size-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{t(error, { defaultValue: error })}</AlertDescription>
             </Alert>
           </div>
         )}

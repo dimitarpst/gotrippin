@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { motion } from "framer-motion"
 import { X, Search, Plane, Hotel, Car, MapPin, Utensils, Palette, Music, ShoppingBag, ChevronRight, Train } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -50,6 +51,7 @@ const activities = [
 ]
 
 export default function ActivitySelector({ tripId, shareCode, onBack }: ActivitySelectorProps) {
+  const { t } = useTranslation()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -105,9 +107,9 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            Cancel
+            {t("activity.cancel")}
           </motion.button>
-          <h1 className="text-lg font-semibold text-white">New Activity</h1>
+          <h1 className="text-lg font-semibold text-white">{t("activity.new_activity")}</h1>
           <motion.button
             className="w-8 h-8 rounded-full flex items-center justify-center"
             style={{ backgroundColor: "var(--surface-alt)" }}
@@ -127,7 +129,7 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: "var(--accent)" }} />
           <Input
             type="text"
-            placeholder="Search activities and places"
+            placeholder={t("activity.search_placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-4 py-3 rounded-full text-white focus:ring-2 transition-all duration-200"

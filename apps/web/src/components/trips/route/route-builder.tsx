@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { LocationCard } from "./location-card"
 import { Plus } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -23,6 +24,7 @@ interface RouteBuilderProps {
 }
 
 export function RouteBuilder({ locations, onChange, tripDateRange, className }: RouteBuilderProps) {
+  const { t } = useTranslation()
   const addLocation = () => {
     const newLocation: RouteLocation = {
       id: uuidv4(),
@@ -41,18 +43,18 @@ export function RouteBuilder({ locations, onChange, tripDateRange, className }: 
     ))
   }
 
-  const stopCountLabel = locations.length === 1 ? "1 stop" : `${locations.length} stops`
-  const primaryCtaLabel = locations.length === 0 ? "Set starting point" : "Add destination"
+  const stopCountLabel = locations.length === 1 ? t("trip_overview.route_one_stop") : t("trip_overview.route_stops_count", { count: locations.length })
+  const primaryCtaLabel = locations.length === 0 ? t("trip_overview.route_set_starting_point") : t("trip_overview.route_add_destination")
 
   return (
     <div className={className}>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-white">Your route</h2>
+          <h2 className="text-2xl font-bold text-white">{t("trip_overview.route_your_route")}</h2>
           <p className="text-sm text-white/60">
             {locations.length === 0
-              ? "Set your first stop, then add destinations in order."
-              : "Stop 1 is your first stop. Add destinations in travel order."}
+              ? t("trip_overview.route_set_first_stop")
+              : t("trip_overview.route_add_destinations_order")}
           </p>
         </div>
         <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-white/60">
@@ -75,7 +77,7 @@ export function RouteBuilder({ locations, onChange, tripDateRange, className }: 
                   index={index}
                   name={location.name}
                   badgeLabel={index === 0 ? "1" : undefined}
-                  helperText={index === 0 ? "Trip start" : undefined}
+                  helperText={index === 0 ? t("trip_overview.route_trip_start") : undefined}
                   arrivalDate={location.arrivalDate}
                   departureDate={location.departureDate}
                   tripDateRange={tripDateRange}

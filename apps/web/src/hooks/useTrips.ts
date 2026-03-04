@@ -15,6 +15,7 @@ import {
   ApiError,
 } from '@/lib/api/trips';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface UseTripsResult {
   trips: Trip[];
@@ -27,6 +28,7 @@ interface UseTripsResult {
  * Hook to fetch all trips for the current user
  */
 export function useTrips(): UseTripsResult {
+  const { t } = useTranslation();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export function useTrips(): UseTripsResult {
   const fetchData = useCallback(async () => {
     if (!user && !authLoading) {
       setLoading(false);
-      setError('Authentication required');
+      setError(t('common.auth_required'));
       return;
     }
 
@@ -52,13 +54,13 @@ export function useTrips(): UseTripsResult {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('Failed to fetch trips');
+        setError(t('trips.failed_fetch'));
       }
       console.error('Error fetching trips:', err);
     } finally {
       setLoading(false);
     }
-  }, [user, authLoading, accessToken]);
+  }, [user, authLoading, accessToken, t]);
 
   useEffect(() => {
     fetchData();
@@ -83,6 +85,7 @@ interface UseTripResult {
  * Hook to fetch a single trip by share code
  */
 export function useTrip(shareCode: string | null): UseTripResult {
+  const { t } = useTranslation();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +100,7 @@ export function useTrip(shareCode: string | null): UseTripResult {
     // Don't fetch if user is not authenticated or auth is still loading
     if (!user && !authLoading) {
       setLoading(false);
-      setError('Authentication required');
+      setError(t('common.auth_required'));
       return;
     }
 
@@ -114,13 +117,13 @@ export function useTrip(shareCode: string | null): UseTripResult {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('Failed to fetch trip');
+        setError(t('trips.failed_fetch_trip'));
       }
       console.error('Error fetching trip:', err);
     } finally {
       setLoading(false);
     }
-  }, [shareCode, user, authLoading, accessToken]);
+  }, [shareCode, user, authLoading, accessToken, t]);
 
   useEffect(() => {
     fetchData();
@@ -145,6 +148,7 @@ interface UseCreateTripResult {
  * Hook to create a new trip
  */
 export function useCreateTrip(): UseCreateTripResult {
+  const { t } = useTranslation();
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string> | null>(null);
@@ -174,14 +178,14 @@ export function useCreateTrip(): UseCreateTripResult {
           setValidationErrors(errors);
         }
       } else {
-        setError('Failed to create trip');
+        setError(t('trips.create_failed'));
       }
       console.error('Error creating trip:', err);
       return null;
     } finally {
       setCreating(false);
     }
-  }, [accessToken]);
+  }, [accessToken, t]);
 
   return {
     create,
@@ -202,6 +206,7 @@ interface UseUpdateTripResult {
  * Hook to update an existing trip
  */
 export function useUpdateTrip(): UseUpdateTripResult {
+  const { t } = useTranslation();
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string> | null>(null);
@@ -235,14 +240,14 @@ export function useUpdateTrip(): UseUpdateTripResult {
           setValidationErrors(errors);
         }
       } else {
-        setError('Failed to update trip');
+        setError(t('trips.update_failed'));
       }
       console.error('Error updating trip:', err);
       return null;
     } finally {
       setUpdating(false);
     }
-  }, [accessToken]);
+  }, [accessToken, t]);
 
   return {
     update,
@@ -262,6 +267,7 @@ interface UseDeleteTripResult {
  * Hook to delete a trip
  */
 export function useDeleteTrip(): UseDeleteTripResult {
+  const { t } = useTranslation();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { accessToken } = useAuth();
@@ -280,14 +286,14 @@ export function useDeleteTrip(): UseDeleteTripResult {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('Failed to delete trip');
+        setError(t('trips.delete_failed'));
       }
       console.error('Error deleting trip:', err);
       return false;
     } finally {
       setDeleting(false);
     }
-  }, [accessToken]);
+  }, [accessToken, t]);
 
   return {
     deleteTrip: deleteTripFn,

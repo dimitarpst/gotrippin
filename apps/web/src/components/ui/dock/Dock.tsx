@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   motion,
   useMotionValue,
@@ -42,6 +43,7 @@ export function Dock({
   dockHeight = 256,
   baseItemSize = 50,
 }: DockProps) {
+  const { t } = useTranslation();
   const mouseX = useMotionValue(Infinity);
   const isHovered = useMotionValue(0);
 
@@ -68,7 +70,7 @@ export function Dock({
           mouseX.set(Infinity);
         }}
         role="toolbar"
-        aria-label="Application dock"
+        aria-label={t("ui.application_dock")}
         style={{ height: panelHeight }}
         className={cn(
           "absolute bottom-2 left-1/2 -translate-x-1/2 flex items-end gap-4 px-3 pb-2",

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import AuroraBackground from "@/components/effects/aurora-background";
 import TripOverview from "@/components/trips/trip-overview";
 import type {
@@ -39,6 +40,7 @@ export default function TripDetailPageClient({
   weatherError,
   shareCode,
 }: TripDetailPageClientProps) {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const actions: TripOverviewActions = useMemo(
@@ -59,10 +61,10 @@ export default function TripDetailPageClient({
         if (!trip?.id) return;
         const result = await deleteTripAction(trip.id);
         if (result.success) {
-          toast.success("Trip deleted successfully");
+          toast.success(t("trips.delete_success"));
           router.push("/");
         } else {
-          toast.error("Failed to delete trip", { description: result.error });
+          toast.error(t("trips.delete_failed"), { description: result.error });
         }
       },
       onShare: () => {
@@ -81,34 +83,34 @@ export default function TripDetailPageClient({
           end_date: dateRange.to ? dateRange.to.toISOString() : null,
         });
         if (result.success) {
-          toast.success("Dates updated");
+          toast.success(t("trips.dates_updated"));
           router.refresh();
         } else {
-          toast.error("Failed to update dates", { description: result.error });
+          toast.error(t("trips.dates_update_failed"), { description: result.error });
         }
       },
       onChangeBackground: async (_type, coverPhoto) => {
         if (!trip?.id) return;
         const result = await updateTripAction(trip.id, { cover_photo: coverPhoto, color: undefined });
         if (result.success) {
-          toast.success("Background updated");
+          toast.success(t("trips.background_updated"));
           router.refresh();
         } else {
-          toast.error("Failed to update background", { description: result.error });
+          toast.error(t("trips.background_update_failed"), { description: result.error });
         }
       },
       onChangeBackgroundColor: async (color) => {
         if (!trip?.id) return;
         const result = await updateTripAction(trip.id, { color, cover_photo: undefined });
         if (result.success) {
-          toast.success("Color updated");
+          toast.success(t("trips.color_updated"));
           router.refresh();
         } else {
-          toast.error("Failed to update color", { description: result.error });
+          toast.error(t("trips.color_update_failed"), { description: result.error });
         }
       },
     }),
-    [trip?.id, shareCode, router]
+    [trip?.id, shareCode, router, t]
   );
 
   const timeline: TripOverviewTimeline = useMemo(

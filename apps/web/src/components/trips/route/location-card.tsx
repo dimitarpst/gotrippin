@@ -1,6 +1,7 @@
 "use client"
 
 import { GripVertical, Calendar, X } from "lucide-react"
+import { useTranslation } from "react-i18next"
 import { motion, HTMLMotionProps } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
@@ -25,8 +26,8 @@ function getBusyRanges(
     .filter(Boolean) as { from: Date; to: Date }[]
 }
 
-function formatDateRangeText(range: DateRange | undefined): string {
-  if (!range?.from) return "Set dates"
+function formatDateRangeText(range: DateRange | undefined, setDatesLabel: string): string {
+  if (!range?.from) return setDatesLabel
   const fromStr = format(range.from, "MMM d")
   const toStr = range.to ? ` - ${format(range.to, "MMM d")}` : ""
   return `${fromStr}${toStr}`
@@ -67,6 +68,7 @@ export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
     },
     ref
   ) => {
+    const { t } = useTranslation()
     const [showDatePicker, setShowDatePicker] = useState(false)
 
     const selectedRange: DateRange | undefined = arrivalDate
@@ -80,7 +82,7 @@ export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
     const maxDate = tripDateRange?.to
 
     const busyRanges = getBusyRanges(allLocations, id)
-    const dateText = formatDateRangeText(selectedRange)
+    const dateText = formatDateRangeText(selectedRange, t("trips.set_dates"))
 
     return (
       <>
@@ -117,7 +119,7 @@ export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
             <input
               value={name}
               onChange={(e) => onUpdateName(e.target.value)}
-              placeholder="Enter location name"
+              placeholder={t("trip_overview.route_enter_location_name")}
               className="w-full bg-transparent text-lg font-semibold text-white placeholder:text-white/20 outline-none border-none p-0 focus:ring-0"
             />
 
