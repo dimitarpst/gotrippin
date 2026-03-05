@@ -14,6 +14,7 @@ import { addLocation as apiAddLocation } from "@/lib/api/trip-locations";
 import { useGooglePlaces } from "@/hooks";
 import { toast } from "sonner";
 import { createTripAction } from "@/actions/trips";
+import AuroraBackground from "@/components/effects/aurora-background";
 
 const DRAFT_KEY = "createTripDraft";
 
@@ -141,9 +142,11 @@ export default function CreateRouteDraftPageClient() {
   const draftMaxDate = draft.end_date ? new Date(draft.end_date) : undefined;
 
   return (
-    <div className="h-screen w-full bg-[#0a0a0a] flex flex-col overflow-hidden">
+    <div className="relative h-screen w-full bg-[var(--color-background)] flex flex-col overflow-hidden">
+      <AuroraBackground className="absolute inset-0 pointer-events-none" />
+
       {/* Step 2 bar above the map — same layout as step 1: Back | · · | spacer */}
-      <div className="shrink-0 relative z-10 px-6 pt-12 flex items-center justify-between bg-[#0a0a0a]">
+      <div className="shrink-0 relative z-10 px-6 py-3 flex items-center justify-between">
         <button
           type="button"
           onClick={() => router.replace("/trips/create")}
@@ -155,7 +158,10 @@ export default function CreateRouteDraftPageClient() {
           <span className="w-2 h-2 rounded-full bg-white/20 shrink-0" />
           <span className="w-2 h-2 rounded-full bg-white shrink-0" />
         </span>
-        <span className="px-4 py-2 rounded-full text-lg font-medium text-transparent select-none pointer-events-none" aria-hidden>
+        <span
+          className="px-4 py-2 rounded-full text-lg font-medium text-transparent select-none pointer-events-none"
+          aria-hidden
+        >
           {t("common.back", { defaultValue: "Back" })}
         </span>
       </div>

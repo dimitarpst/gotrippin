@@ -29,7 +29,7 @@ function Calendar({
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        "bg-transparent p-3 w-fit",
+        "bg-transparent p-3 w-full",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className
@@ -41,7 +41,7 @@ function Calendar({
         ...formatters,
       }}
       classNames={{
-        root: cn("w-fit", defaultClassNames.root),
+        root: cn("w-full", defaultClassNames.root),
         months: cn(
           "relative flex flex-col gap-4 md:flex-row sm:gap-4 w-full",
           defaultClassNames.months
@@ -84,7 +84,7 @@ function Calendar({
         table: "w-full border-collapse space-y-1",
         weekdays: cn("flex w-full", defaultClassNames.weekdays),
         weekday: cn(
-          "text-muted-foreground w-9 flex items-center justify-center select-none rounded-md text-[0.8rem] font-normal",
+          "text-muted-foreground flex-1 flex items-center justify-center select-none rounded-md text-[0.8rem] font-normal",
           defaultClassNames.weekday
         ),
         week: cn("mt-2 flex w-full", defaultClassNames.week),
@@ -97,7 +97,7 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          "group/day w-9 h-9 relative aspect-square select-none p-0 flex items-center justify-center text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md",
+          "group/day flex-1 relative aspect-square select-none p-0 flex items-center justify-center text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md",
           defaultClassNames.day
         ),
         range_start: cn(
@@ -214,7 +214,7 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "flex aspect-square h-9 w-9 items-center justify-center font-normal leading-none",
+        "flex aspect-square h-full w-full items-center justify-center font-normal leading-none",
         "text-white transition-all duration-150 rounded-md",
         "hover:bg-[#ff6b6b]/10",
         // Dates used by other route stops (only when not selecting)
