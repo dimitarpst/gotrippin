@@ -31,7 +31,7 @@ export default function TripFilters({
 
   return (
     <motion.div
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-0"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4, type: "spring", damping: 20 }}

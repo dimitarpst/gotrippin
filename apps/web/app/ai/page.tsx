@@ -9,7 +9,7 @@ export default async function AiListPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth");
+    redirect("/home");
   }
 
   return <AiSessionsListClient />;

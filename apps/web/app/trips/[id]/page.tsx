@@ -32,12 +32,12 @@ export default async function TripDetailPage({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth");
+    redirect("/home");
   }
 
   const token = await getServerAuthToken();
   if (!token) {
-    redirect("/auth");
+    redirect("/home");
   }
 
   let detail;

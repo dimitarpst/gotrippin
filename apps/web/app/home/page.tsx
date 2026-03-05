@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation"
 import { createServerSupabaseClient } from "@/lib/supabase-server"
+import LandingPage from "@/components/landing/LandingPage"
 
 export const dynamic = "force-dynamic"
 
-export default async function RootPage() {
+export default async function HomeRoutePage() {
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -13,5 +14,5 @@ export default async function RootPage() {
     redirect("/trips")
   }
 
-  redirect("/home")
+  return <LandingPage />
 }

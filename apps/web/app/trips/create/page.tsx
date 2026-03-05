@@ -11,7 +11,7 @@ export default async function CreateTripPage() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect("/auth")
+    redirect("/home")
   }
 
   return <CreateTripPageClient />

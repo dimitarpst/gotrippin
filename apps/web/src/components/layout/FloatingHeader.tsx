@@ -61,17 +61,17 @@ export default function FloatingHeader() {
   // ✅ Only conditionally render output, not hooks
   if (!mounted) {
     return (
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] z-50 opacity-0" />
+      <div className="fixed top-6 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 opacity-0" />
     );
   }
 
   return (
     <div
       ref={ref}
-      className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] z-50"
+      className="fixed top-6 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 flex justify-center"
     >
       <motion.div
-        className="relative flex items-center justify-between px-8 py-3 rounded-2xl border border-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+        className="relative w-full max-w-7xl flex items-center justify-between px-8 py-3 rounded-2xl border border-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
         style={{
           background:
             "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",

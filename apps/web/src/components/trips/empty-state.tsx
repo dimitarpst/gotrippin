@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { MapPin, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTranslation } from "react-i18next"
+import RecommendedDestinations from "./recommended-destinations"
 
 interface EmptyStateProps {
   onCreateTrip: () => void
@@ -11,7 +12,7 @@ interface EmptyStateProps {
 
 export default function EmptyState({ onCreateTrip }: EmptyStateProps) {
   const { t } = useTranslation()
-  
+
   return (
     <motion.div
       className="flex flex-col items-center justify-center py-20"
@@ -31,12 +32,13 @@ export default function EmptyState({ onCreateTrip }: EmptyStateProps) {
       </p>
       <Button
         onClick={onCreateTrip}
-        className="rounded-xl font-semibold shadow-lg"
+        className="rounded-xl font-semibold shadow-lg mb-10"
         style={{ background: "#ff6b6b" }}
       >
         <Plus className="w-5 h-5 mr-2" />
         {t('trips.create_first_trip')}
       </Button>
+      <RecommendedDestinations onCreateTrip={onCreateTrip} />
     </motion.div>
   )
 }

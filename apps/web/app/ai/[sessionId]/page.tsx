@@ -13,7 +13,7 @@ export default async function AiChatPage({ params }: PageProps) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth");
+    redirect("/home");
   }
 
   const { sessionId } = await params;

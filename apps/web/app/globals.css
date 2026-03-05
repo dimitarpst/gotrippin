@@ -4,8 +4,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Martian Grotesk – variable font (Evil Martians, OFL). https://github.com/evilmartians/grotesk */
+@font-face {
+  font-family: "Martian Grotesk";
+  font-display: swap;
+  src: url("/fonts/MartianGrotesk-VFVF.woff2") format("woff2");
+  font-weight: 100 1000;
+  font-stretch: 75% 200%;
+}
+
 @theme inline {
+  /* Primary UI: readable, professional */
   --font-sans: "Figtree";
+  /* Headlines / marketing: personality, laid-back (e.g. landing hero, section titles) */
+  --font-display: "Martian Grotesk";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -129,6 +141,11 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Use for headlines, landing hero, marketing – e.g. className="font-display" */
+@utility font-display {
+  font-family: var(--font-display);
 }
 
 @utility scrollbar-none {

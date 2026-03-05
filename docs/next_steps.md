@@ -1,7 +1,7 @@
-# 🧭 Go Trippin' – Next Development Steps
+# 🧭 Go Trippin' (gotrippin.app) – Next Development Steps
 
 This document defines the current roadmap and next implementation priorities for the Go Trippin' full-stack project.  
-It should be stored in `docs/` and treated as a **live synchronization file** between developer and AI assistants (Cursor / ChatGPT).
+**Domain Note:** The official domain for this project is `gotrippin.app`. Ensure all dummy URLs in UI components (like the landing page mockups) reflect this domain instead of `.com`.
 
 ---
 

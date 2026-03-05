@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react"
 import type { Trip } from "@gotrippin/core"
 import { formatTripDate, calculateDaysUntil, calculateDuration } from "@gotrippin/core"
-import RecommendedDestinations from "./recommended-destinations"
 import TripFilters from "./trip-filters"
 import TripGrid from "./trip-grid"
 import EmptyState from "./empty-state"
@@ -54,8 +53,6 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
     <div className="min-h-screen relative pb-32 overflow-y-auto scrollbar-hide">
       {/* Main Content */}
       <div className="relative z-10 min-h-screen pt-24">
-        <RecommendedDestinations />
-
         <TripFilters
           activeFilter={activeFilter}
           onFilterChange={setActiveFilter}

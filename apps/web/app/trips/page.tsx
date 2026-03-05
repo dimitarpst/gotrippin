@@ -13,7 +13,7 @@ export default async function TripsPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth");
+    redirect("/home");
   }
 
   const token = await getServerAuthToken();

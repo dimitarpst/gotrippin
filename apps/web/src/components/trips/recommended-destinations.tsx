@@ -36,9 +36,13 @@ const recommendedDestinations = [
   },
 ]
 
-export default function RecommendedDestinations() {
+interface RecommendedDestinationsProps {
+  onCreateTrip: () => void
+}
+
+export default function RecommendedDestinations({ onCreateTrip }: RecommendedDestinationsProps) {
   const { t } = useTranslation()
-  
+
   return (
     <motion.div
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
@@ -52,6 +56,7 @@ export default function RecommendedDestinations() {
           className="text-[#ff6b6b] font-semibold text-sm hover:text-[#ff8585] transition-colors"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={onCreateTrip}
         >
           View All
         </motion.button>
@@ -62,6 +67,10 @@ export default function RecommendedDestinations() {
           <motion.div
             key={destination.id}
             className="flex-shrink-0 w-[280px] group cursor-pointer"
+            onClick={onCreateTrip}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && onCreateTrip()}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 + index * 0.03, type: "spring", stiffness: 600, damping: 20 }}
