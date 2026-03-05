@@ -1,5 +1,5 @@
 /**
- * Shared TypeScript types and interfaces for Go Trippin'
+ * Shared TypeScript types and interfaces for gotrippin
  * Re-exports types from Zod schemas
  */
 

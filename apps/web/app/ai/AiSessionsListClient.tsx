@@ -11,7 +11,8 @@ import {
 } from "@/lib/api/ai";
 import type { AiSessionListItem } from "@/lib/api/ai";
 import AuroraBackground from "@/components/effects/aurora-background";
-import { Sparkles, MessageSquarePlus, ChevronRight, ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { Logo } from "@/components/Logo";
+import { MessageSquarePlus, ChevronRight, ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 const PAGE_SIZE = 20;
@@ -185,17 +186,12 @@ export default function AiSessionsListClient() {
           >
             <ArrowLeft className="w-5 h-5 text-white/50 group-hover:text-white/80 transition-colors" />
           </button>
-          <div className="relative flex items-center gap-3 min-w-0">
-            <div className="relative shrink-0">
-              <div className="absolute inset-0 bg-[var(--color-accent)] blur-md opacity-40 rounded-full" />
-              <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-background to-background/50 border border-white/10 flex items-center justify-center shadow-lg">
-                <Sparkles className="w-5 h-5 text-[var(--color-accent)]" />
-              </div>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <div className="flex items-center gap-2 flex-nowrap">
+              <Logo variant="sm" className="h-8 w-auto shrink-0" />
+              <h1 className="text-lg font-semibold tracking-tight text-white whitespace-nowrap">{t("ai.title_short")}</h1>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-lg font-semibold tracking-tight text-white truncate">{t("ai.title")}</h1>
-              <p className="text-xs text-white/50 font-medium">{t("ai.recent_chats")}</p>
-            </div>
+            <p className="text-xs text-white/50 font-medium">{t("ai.recent_chats")}</p>
           </div>
         </header>
 

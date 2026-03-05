@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Go Trippin'",
+    "title": "gotrippin",
     "tagline": "Your journeys, organized and brought to life.",
     "get_started": "Get Started",
     "welcome_back": "Welcome back!",
@@ -160,7 +160,8 @@
     "failed_fetch_locations": "Failed to fetch locations"
   },
   "ai": {
-    "title": "Go Trippin' AI",
+    "title": "gotrippin AI",
+    "title_short": "AI",
     "empty_reply": "I'm sorry, something went wrong generating that reply. Could you try asking again or rephrasing your question?",
     "placeholder": "Where do you want to go next?",
     "placeholder_edit": "Edit message...",

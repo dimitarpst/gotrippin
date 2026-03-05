@@ -13,6 +13,7 @@ import MarkdownMessage from "@/components/ai/MarkdownMessage";
 import ThinkingDots from "@/components/ai/ThinkingDots";
 import AssistantAvatar from "@/components/ai/AssistantAvatar";
 import AiSessionLoader from "@/components/ai/AiSessionLoader";
+import { Logo } from "@/components/Logo";
 import { Send, Sparkles, Pencil, X, Square, Plus, Image as ImageIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -274,14 +275,11 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
             transition={{ duration: 0.5 }}
             className="flex items-center gap-3"
           >
-            <div className="relative group">
-              <div className="absolute inset-0 bg-[var(--color-accent)] blur-md opacity-40 rounded-full group-hover:opacity-60 transition-opacity" />
-              <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-background to-background/50 border border-white/10 flex items-center justify-center shadow-lg">
-                <Sparkles className="w-5 h-5 text-[var(--color-accent)]" />
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <div className="flex items-center gap-2 flex-nowrap">
+                <Logo variant="sm" className="h-8 w-auto shrink-0" />
+                <h1 className="text-lg font-semibold tracking-tight text-white whitespace-nowrap">{t("ai.title_short")}</h1>
               </div>
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight text-white">{t("ai.title")}</h1>
               <p className="text-xs text-white/50 font-medium flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>

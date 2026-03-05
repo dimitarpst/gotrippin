@@ -40,8 +40,8 @@ async function bootstrap() {
 
   // Swagger documentation setup
   const swaggerConfig = new DocumentBuilder()
-    .setTitle("Go Trippin API")
-    .setDescription("Backend API for Go Trippin travel planner")
+    .setTitle("gotrippin API")
+    .setDescription("Backend API for gotrippin travel planner")
     .setVersion("1.0")
     .addBearerAuth(
       {

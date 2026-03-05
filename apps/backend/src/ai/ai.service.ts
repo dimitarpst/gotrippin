@@ -546,7 +546,7 @@ export class AiService {
     summary: string,
     slots: Record<string, unknown>,
   ): string {
-    let prompt = `You are a helpful trip planning assistant for Go Trippin'. You help users plan trips, suggest destinations, and give travel advice. Keep responses concise and friendly.`;
+    let prompt = `You are a helpful trip planning assistant for gotrippin. You help users plan trips, suggest destinations, and give travel advice. Keep responses concise and friendly.`;
 
     prompt += `\n\nWhen the user expresses interest in going somewhere or planning a trip (for example: "I want to go to Bali", "thinking about Japan", "I want to plan a vacation"), you should:\n- Reply briefly and warmly in 1–3 sentences.\n- At the end of your reply, on a new line, output exactly one line in this format (the user will not see it):\nQUICK_REPLIES: [{\"label\":\"Create a trip\",\"action\":\"create_trip\"},{\"label\":\"Just chat\",\"action\":\"just_chat\"}]\nDo not mention this QUICK_REPLIES line in your visible reply.`;
 

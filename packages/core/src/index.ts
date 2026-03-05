@@ -1,6 +1,6 @@
 /**
  * @gotrippin/core
- * Shared types, schemas, and utilities for Go Trippin'
+ * Shared types, schemas, and utilities for gotrippin
  */
 
 // Export Zod schemas

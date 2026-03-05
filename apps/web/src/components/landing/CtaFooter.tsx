@@ -28,7 +28,7 @@ export default function CtaFooter() {
             Ready to sequence your next adventure?
           </h2>
           <p className="text-xl text-muted-foreground mb-10">
-            {"Join travelers building better itineraries with Go Trippin\u2019."}
+            {"Join travelers building better itineraries with gotrippin."}
           </p>
 
           <Link href="/auth">

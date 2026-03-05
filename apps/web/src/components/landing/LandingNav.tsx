@@ -13,7 +13,7 @@ export default function LandingNav() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
     >
-      <Link href="/home" className="flex items-center pointer-events-auto group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-lg group-hover:opacity-90 transition-opacity" aria-label="Go Trippin' home">
+      <Link href="/home" className="flex items-center pointer-events-auto group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-lg group-hover:opacity-90 transition-opacity" aria-label="gotrippin home">
         <Logo className="h-10 w-auto" />
       </Link>
 

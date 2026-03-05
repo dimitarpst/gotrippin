@@ -13,8 +13,8 @@ import {
 } from "../src/i18n/config";
 
 export const metadata: Metadata = {
-  title: "Go Trippin",
-  description: "Explore. Connect. Go Trippin' — travel planning made simple.",
+  title: "gotrippin",
+  description: "Explore. Connect. gotrippin — travel planning made simple.",
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },

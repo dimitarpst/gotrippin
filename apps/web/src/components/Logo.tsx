@@ -16,7 +16,7 @@ export function Logo({ className, variant = "default" }: LogoProps) {
   return (
     <img
       src={src}
-      alt="Go Trippin'"
+      alt="gotrippin"
       className={cn("h-auto w-auto", className)}
     />
   );
