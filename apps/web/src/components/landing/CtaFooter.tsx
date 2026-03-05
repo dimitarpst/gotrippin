@@ -1,9 +1,10 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { ArrowRight, Compass } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { Logo } from "@/components/Logo"
 
 export default function CtaFooter() {
   return (
@@ -19,35 +20,37 @@ export default function CtaFooter() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="mb-16"
         >
-          <div className="w-16 h-16 mx-auto bg-gradient-to-tr from-[#ff6b6b] to-[#ff8e8b] rounded-2xl flex items-center justify-center mb-8 shadow-2xl shadow-[#ff6b6b]/20">
-            <Compass className="w-8 h-8 text-white" />
+          <div className="flex justify-center mb-8">
+            <Logo className="h-16 w-auto" />
           </div>
-          
+
           <h2 className="font-display text-5xl sm:text-6xl font-bold tracking-tight mb-6">
-            Ready to get out there?
+            Ready to sequence your next adventure?
           </h2>
           <p className="text-xl text-muted-foreground mb-10">
-            Join thousands of travelers planning better trips in less time.
+            {"Join travelers building better itineraries with Go Trippin\u2019."}
           </p>
-          
+
           <Link href="/auth">
-            <Button size="lg" className="rounded-full px-10 h-16 text-lg font-semibold bg-white text-black hover:bg-white/90 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:scale-105 transition-all duration-300">
-              Create your first trip
-              <ArrowRight className="ml-2 w-5 h-5" />
+            <Button size="lg" className="relative group overflow-hidden rounded-full px-10 h-16 text-lg font-semibold bg-white text-black hover:scale-105 transition-all duration-300 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)]">
+              <span className="relative z-10 flex items-center">
+                Create your first trip
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white via-indigo-200 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </Button>
           </Link>
         </motion.div>
 
-        <div className="flex flex-col md:flex-row items-center justify-between pt-10 border-t border-white/10 text-sm text-white/40">
+        <div className="flex flex-col md:flex-row items-center justify-between pt-10 border-t border-white/10 text-sm text-white/40 gap-4">
           <div className="flex items-center gap-2 mb-4 md:mb-0">
-            <Compass className="w-4 h-4" />
-            <span className="font-display font-bold">Go Trippin'</span>
+            <Logo variant="sm" className="h-5 w-auto opacity-80" />
             <span>© {new Date().getFullYear()}</span>
           </div>
           <div className="flex gap-6">
-            <a href="https://github.com/dimitarpst/gotrippin" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
-            <Link href="#" className="hover:text-white transition-colors">Privacy</Link>
-            <Link href="#" className="hover:text-white transition-colors">Terms</Link>
+            <a href="https://github.com/dimitarpst/gotrippin" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)] rounded">GitHub</a>
+            <Link href="#" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)] rounded">Privacy</Link>
+            <Link href="#" className="hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)] rounded">Terms</Link>
           </div>
         </div>
       </div>

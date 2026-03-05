@@ -30,22 +30,6 @@ export default function TripsPageClient({
     router.push("/trips/create");
   };
 
-  const handleExplore = () => {
-    const firstTrip = trips[0];
-
-    if (firstTrip?.share_code) {
-      router.push(`/trips/${firstTrip.share_code}/map`);
-      return;
-    }
-
-    if (firstTrip) {
-      router.push(`/trips/${firstTrip.id}`);
-      return;
-    }
-
-    router.push("/trips/create");
-  };
-
   return (
     <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
       <AuroraBackground />
@@ -69,7 +53,7 @@ export default function TripsPageClient({
         />
       </div>
 
-      <DockBar onCreateTrip={handleCreateTrip} onExplore={handleExplore} />
+      <DockBar onCreateTrip={handleCreateTrip} />
     </main>
   );
 }

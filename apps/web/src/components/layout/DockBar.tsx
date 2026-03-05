@@ -16,10 +16,9 @@ const accentClass =
 
 interface DockBarProps {
   onCreateTrip?: () => void;
-  onExplore?: () => void;
 }
 
-export default function DockBar({ onCreateTrip, onExplore }: DockBarProps = {}) {
+export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
@@ -45,8 +44,8 @@ export default function DockBar({ onCreateTrip, onExplore }: DockBarProps = {}) 
     onClick: () => {
       if (key === "add_trip" && onCreateTrip) {
         onCreateTrip();
-      } else if (key === "explore" && onExplore) {
-        onExplore();
+      } else if (key === "explore") {
+        router.push("/explore");
       } else if (key === "ai") {
         router.push("/ai");
       }

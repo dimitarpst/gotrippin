@@ -136,6 +136,11 @@
     "ai": "AI Assistant",
     "profile": "Profile"
   },
+  "under_development": {
+    "title": "Under development",
+    "message": "This page is under development. Check back soon!",
+    "back_to_trips": "Back to trips"
+  },
   "common": {
     "error_title": "Something went wrong",
     "error_description": "We couldn't load this page. Please try again.",
@@ -404,10 +409,6 @@
     "cancel": "Cancel",
     "done": "Done",
     "select_range": "Select a date range for your trip"
-  },
-  "recommended": {
-    "title": "Recommended Destinations",
-    "subtitle": "Discover your next adventure"
   },
   "weather": {
     "insights": "Weather Insights",
