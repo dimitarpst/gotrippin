@@ -1,0 +1,23 @@
+# gotrippin
+
+> gotrippin is a route-first trip planner. Plan trips together without the chaos — build your route, invite others, and let AI suggest the rest. Ditch messy spreadsheets and endless group chats.
+
+## Description
+
+gotrippin helps travelers create and share trip itineraries. Key features: interactive route maps with drag-to-reorder stops, AI trip assistant for local recommendations, and shareable trips so friends can view and edit the same itinerary.
+
+## Links
+
+- [Home](https://gotrippin.app/home): Landing page and product overview
+- [Sign up / Log in](https://gotrippin.app/auth): Create account or sign in
+- [Explore](https://gotrippin.app/explore): Browse and discover
+
+## Contact
+
+- [GitHub](https://github.com/dimitarpst/gotrippin)
+
+## Optional
+
+- Product: Web app for travel planning and itinerary management
+- Target users: Travelers, groups planning trips together
+- Tech: Next.js, Supabase, Mapbox

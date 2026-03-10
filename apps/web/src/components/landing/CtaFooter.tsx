@@ -5,8 +5,10 @@ import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Logo } from "@/components/Logo"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function CtaFooter() {
+  const { user } = useAuth()
   return (
     <footer className="relative pt-32 pb-10 overflow-hidden border-t border-white/5">
       {/* Background glow */}
@@ -31,10 +33,10 @@ export default function CtaFooter() {
             {"Join travelers building better itineraries with gotrippin."}
           </p>
 
-          <Link href="/auth">
+          <Link href={user ? "/trips" : "/auth"}>
             <Button size="lg" className="relative group overflow-hidden rounded-full px-10 h-16 text-lg font-semibold bg-white text-black hover:scale-105 transition-all duration-300 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)]">
               <span className="relative z-10 flex items-center">
-                Create your first trip
+                {user ? "Go to Dashboard" : "Create your first trip"}
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-white via-indigo-200 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

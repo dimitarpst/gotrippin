@@ -5,8 +5,10 @@ import { ArrowRight, MapPin, Sparkles, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useRef } from "react"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function HeroSection() {
+  const { user } = useAuth()
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -64,10 +66,10 @@ export default function HeroSection() {
           transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col sm:flex-row items-center gap-4"
         >
-          <Link href="/auth">
+          <Link href={user ? "/trips" : "/auth"}>
             <Button size="lg" className="relative group overflow-hidden rounded-full px-8 h-14 text-base font-semibold bg-white text-black hover:scale-105 transition-all duration-300 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)]">
               <span className="relative z-10 flex items-center">
-                Start Planning Free
+                {user ? "Go to Dashboard" : "Start Planning Free"}
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-white via-indigo-200 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

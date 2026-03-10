@@ -53,7 +53,7 @@ import { supabase } from "@/lib/supabaseClient";
     try {
       if (isLogin) {
         await signIn(email, password);
-        router.push("/");
+        router.push("/trips");
       } else {
         await signUp(email, password, name);
         setPendingConfirmation(true);

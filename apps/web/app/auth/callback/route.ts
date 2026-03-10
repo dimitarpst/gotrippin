@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth?error=${encodeURIComponent("Server configuration error")}`);
   }
 
-  const redirectTo = NextResponse.redirect(`${origin}/`);
+  const redirectTo = NextResponse.redirect(`${origin}/trips`);
 
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
