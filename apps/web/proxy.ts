@@ -13,7 +13,7 @@ function isProtectedPath(pathname: string): boolean {
   ) {
     return false;
   }
-  return pathname === "/" || pathname.startsWith("/trips") || pathname.startsWith("/user");
+  return pathname.startsWith("/trips") || pathname.startsWith("/user");
 }
 
 export async function proxy(request: NextRequest) {
@@ -53,7 +53,7 @@ export async function proxy(request: NextRequest) {
     !request.nextUrl.pathname.includes("/callback") &&
     !request.nextUrl.pathname.includes("/reset-password")
   ) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/trips", request.url));
   }
 
   return response;
