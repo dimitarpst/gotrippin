@@ -1,4 +1,4 @@
-# Go Trippin' Refactor Plan
+# gotrippin Refactor Plan
 
 > Living document. Update as decisions are made.
 

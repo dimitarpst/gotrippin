@@ -1,4 +1,4 @@
-# Go Trippin' — Backend, Frontend & Mobile Reusability Audit
+# gotrippin — Backend, Frontend & Mobile Reusability Audit
 
 > Deep examination of what lives where, what's reusable, and what would need reconstruction for React Native.
 

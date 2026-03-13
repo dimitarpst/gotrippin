@@ -3,7 +3,7 @@
 **Status:** Planned (see `features.todo` “AI operator” item)  
 **Related docs:** `docs/AI_TRIP_PLANNER.md`, `docs/plan.md`, `docs/route-based-trip-planning-architecture.md`, `readme.md`
 
-This document specifies how to implement the AI operator for Go Trippin’ on top of the existing NestJS backend, Supabase schema, and route‑first trip model, using **glm‑5 via OpenRouter** as the default LLM engine.
+This document specifies how to implement the AI operator for gotrippin on top of the existing NestJS backend, Supabase schema, and route‑first trip model, using **glm‑5 via OpenRouter** as the default LLM engine.
 
 The goal is to keep the agent:
 

@@ -40,7 +40,11 @@ function formatDate(iso: string) {
   });
 }
 
-export default function AiSessionsListClient() {
+export default function AiSessionsListClient({
+  aiUsage,
+}: {
+  aiUsage: { used: number; limit: number | null; percent: number | null };
+}) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<AiSessionListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,21 +181,31 @@ export default function AiSessionsListClient() {
         ref={scrollContainerRef}
         className="relative z-10 flex-1 min-h-0 flex flex-col overflow-y-auto"
       >
-        <header className="sticky top-0 z-20 shrink-0 flex items-center gap-3 px-4 sm:px-6 py-4 bg-[var(--color-background)]/90 backdrop-blur-xl border-b border-white/5">
-          <button
-            type="button"
-            onClick={() => router.push("/trips")}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-card/10 backdrop-blur-md border border-white/5 hover:bg-card/20 transition-colors group shrink-0"
-            aria-label={t("ai.back_to_trips")}
-          >
-            <ArrowLeft className="w-5 h-5 text-white/50 group-hover:text-white/80 transition-colors" />
-          </button>
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <div className="flex items-center gap-2 flex-nowrap">
-              <Logo variant="sm" className="h-8 w-auto shrink-0" />
-              <h1 className="text-lg font-semibold tracking-tight text-white whitespace-nowrap">{t("ai.title_short")}</h1>
+        <header className="sticky top-0 z-20 shrink-0 flex items-center justify-between px-4 sm:px-6 py-4 bg-[var(--color-background)]/90 backdrop-blur-xl border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/trips")}
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-card/10 backdrop-blur-md border border-white/5 hover:bg-card/20 transition-colors group shrink-0"
+              aria-label={t("ai.back_to_trips")}
+            >
+              <ArrowLeft className="w-5 h-5 text-white/50 group-hover:text-white/80 transition-colors" />
+            </button>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <div className="flex items-center gap-2 flex-nowrap">
+                <Logo variant="sm" className="h-8 w-auto shrink-0" />
+                <h1 className="text-lg font-semibold tracking-tight text-white whitespace-nowrap">{t("ai.title_short")}</h1>
+              </div>
+              <p className="text-xs text-white/50 font-medium">{t("ai.recent_chats")}</p>
             </div>
-            <p className="text-xs text-white/50 font-medium">{t("ai.recent_chats")}</p>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-medium text-white/60 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            {aiUsage.percent != null ? `${aiUsage.percent}% used` : "Tracking"}
           </div>
         </header>
 

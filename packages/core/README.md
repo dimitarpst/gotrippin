@@ -1,6 +1,6 @@
 # @gotrippin/core
 
-Shared types, schemas, and utilities for the Go Trippin' monorepo.
+Shared types, schemas, and utilities for the gotrippin monorepo.
 
 ## 📦 What's Inside
 

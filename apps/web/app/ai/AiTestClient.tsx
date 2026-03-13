@@ -35,9 +35,10 @@ interface ChatMessage {
 
 interface AiTestClientProps {
   sessionId: string;
+  aiUsage: { used: number; limit: number | null; percent: number | null };
 }
 
-export default function AiTestClient({ sessionId: initialSessionId }: AiTestClientProps) {
+export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: AiTestClientProps) {
   const [sessionId] = useState<string>(initialSessionId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -280,13 +281,19 @@ export default function AiTestClient({ sessionId: initialSessionId }: AiTestClie
                 <Logo variant="sm" className="h-8 w-auto shrink-0" />
                 <h1 className="text-lg font-semibold tracking-tight text-white whitespace-nowrap">{t("ai.title_short")}</h1>
               </div>
-              <p className="text-xs text-white/50 font-medium flex items-center gap-1.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                {t("ai.online_ready")}
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-white/50 font-medium flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  {t("ai.online_ready")}
+                </p>
+                <div className="h-3 w-px bg-white/10" />
+                <p className="text-[11px] font-medium text-white/40">
+                  {aiUsage.percent != null ? `${aiUsage.percent}% used` : "Tracking"}
+                </p>
+              </div>
             </div>
           </motion.div>
 

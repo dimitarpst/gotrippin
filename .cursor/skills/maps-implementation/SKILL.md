@@ -1,6 +1,6 @@
 ---
 name: maps-implementation
-description: Applies Go Trippin maps architecture: Mapbox (web), react-native-maps (mobile), Google Places for POI. Use when implementing maps, routes, waypoints, markers, or POI search.
+description: Applies gotrippin maps architecture: Mapbox (web), react-native-maps (mobile), Google Places for POI. Use when implementing maps, routes, waypoints, markers, or POI search.
 ---
 
 # Maps Implementation

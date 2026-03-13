@@ -3,7 +3,7 @@
 **Status:** 📋 Planned (Not Yet Implemented)  
 **Last Updated:** December 2024
 
-This document outlines the complete plan for implementing route selection, marking, and POI features across web and mobile platforms in Go Trippin'.
+This document outlines the complete plan for implementing route selection, marking, and POI features across web and mobile platforms in gotrippin.
 
 ---
 

@@ -40,7 +40,11 @@ export interface OpenRouterChatResponse {
     function: { name: string; arguments: string };
   }>;
   finish_reason?: string;
-  usage?: { prompt_tokens: number; completion_tokens: number };
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 @Injectable()
@@ -122,7 +126,11 @@ export class OpenRouterClient {
         finish_reason?: string;
       }>;
       model?: string;
-      usage?: { prompt_tokens: number; completion_tokens: number };
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+      };
     };
 
     const choice = data.choices?.[0];
@@ -130,12 +138,21 @@ export class OpenRouterClient {
     const content = msg?.content ?? '';
     const tool_calls = msg?.tool_calls;
 
+    const promptTokens = data.usage?.prompt_tokens ?? 0;
+    const completionTokens = data.usage?.completion_tokens ?? 0;
+    const totalTokens =
+      data.usage?.total_tokens ?? promptTokens + completionTokens;
+
     return {
       content,
       model: data.model ?? model,
       tool_calls,
       finish_reason: choice?.finish_reason,
-      usage: data.usage,
+      usage: {
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+      },
     };
   }
 }

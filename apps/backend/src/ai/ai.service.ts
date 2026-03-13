@@ -254,6 +254,16 @@ export class AiService {
       );
     }
 
+    const aiLimit = await this.supabaseService.checkUserAiLimit(userId);
+    if (!aiLimit.allowed) {
+      throw new BadRequestException({
+        code: 'AI_TOKEN_LIMIT_REACHED',
+        message: 'You have reached your AI token limit for this month.',
+        used: aiLimit.used,
+        limit: aiLimit.limit,
+      });
+    }
+
     const slots = (session.slots as Record<string, unknown>) ?? {};
     const summary = session.summary ?? '';
     const tripId = session.trip_id as string | null;
@@ -315,6 +325,7 @@ export class AiService {
     try {
       let currentMessages = messages;
       let lastResponseContent = '';
+      let totalTokensUsed = 0;
 
       for (let i = 0; i < MAX_TOOL_LOOPS; i += 1) {
         const response = await this.openRouter.chat({
@@ -325,6 +336,7 @@ export class AiService {
         });
 
         lastResponseContent = response.content?.trim() ?? '';
+        totalTokensUsed += response.usage?.total_tokens ?? 0;
 
         const toolCalls = response.tool_calls ?? [];
         if (!toolCalls.length) {
@@ -454,8 +466,14 @@ export class AiService {
         ...(imageSuggestions ? { image_suggestions: imageSuggestions } : {}),
       });
 
+      if (totalTokensUsed > 0) {
+        await this.supabaseService.updateUserAiUsage(userId, totalTokensUsed);
+      }
+
       const latency = Date.now() - startTime;
-      this.logger.log(`Generated response for session ${sessionId} in ${latency}ms`);
+      this.logger.log(
+        `Generated response for session ${sessionId} in ${latency}ms using ${totalTokensUsed} tokens`,
+      );
 
       return {
         message: finalContent,

@@ -1,14 +1,14 @@
-## Go Trippin'
+## GOTRIPPIN
 
 Intelligent, route‑first trip planning with real‑time collaboration and an AI operator, built as a modern distributed web application.
 
-Go Trippin' is the reference implementation for a full-stack TypeScript monorepo (Next.js + NestJS + Supabase + shared core package) and is used as a competition project for the Bulgarian National Olympiad in IT (direction “Distributed Applications”, XI–XII grade).
+gotrippin is the reference implementation for a full-stack TypeScript monorepo (Next.js + NestJS + Supabase + shared core package) and is used as a competition project for the Bulgarian National Olympiad in IT (direction “Distributed Applications”, XI–XII grade).
 
 ---
 
 ## Overview
 
-Go Trippin' helps small groups plan trips together without juggling spreadsheets, screenshots and chaotic group chats.
+gotrippin helps small groups plan trips together without juggling spreadsheets, screenshots and chaotic group chats.
 
 - **Route‑first planning**: the core of each trip is an ordered route (A → B → C). Locations drive activities, weather, images and collaboration.
 - **AI operator with tools**: a server‑side AI agent with session memory that can call whitelisted backend endpoints (create/update trips, manage locations, etc.).
@@ -17,7 +17,7 @@ Go Trippin' helps small groups plan trips together without juggling spreadsheets
 
 Live deployment:
 
-- Web app: https://gotrippin.app  
+- Web app: https://gotrippin.app
 - API: https://api.gotrippin.app
 
 ---
@@ -72,7 +72,7 @@ Live deployment:
   - `trip_locations` – ordered route, constrained by UNIQUE(trip_id, order_index).
   - `activities` – activities linked to individual trip_locations.
 
-For a more formal technical description (in Bulgarian) see `docs/Go Trippin Документация.md`.
+For a more formal technical description (in Bulgarian) see `docs/gotrippin Документация.md`.
 
 ---
 
@@ -125,7 +125,7 @@ npm run dev
 
 This typically runs:
 
-- Web (Next.js) on http://localhost:3000  
+- Web (Next.js) on http://localhost:3000
 - Backend (NestJS) on http://localhost:3001
 
 ---
@@ -148,4 +148,3 @@ Key internal docs:
 - ✅ Route‑first planning and collaborative editing.
 - ✅ AI operator architecture defined and partially implemented.
 - 🔜 Richer realtime presence (who is editing now), full mobile client (React Native), and deeper integrations with external travel services (“Trip Command Center”).
-

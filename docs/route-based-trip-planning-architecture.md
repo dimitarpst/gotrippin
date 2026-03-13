@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the architecture for implementing route-based trip planning in Go Trippin'. The core concept is that trips are built around **routes** (A → B → C → D), with activities attached to specific locations in the route, and weather fetched per location.
+This document outlines the architecture for implementing route-based trip planning in gotrippin. The core concept is that trips are built around **routes** (A → B → C → D), with activities attached to specific locations in the route, and weather fetched per location.
 
 ## Core Concept
 

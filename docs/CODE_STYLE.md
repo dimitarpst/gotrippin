@@ -1,6 +1,6 @@
 # Code style — readable code rules for PRs
 
-This doc defines formatting and naming conventions for the Go Trippin monorepo so PRs stay consistent. It is based on the current codebase, TypeScript/React best practices, and Context7-backed references (Clean Code TypeScript, ESLint, React docs).
+This doc defines formatting and naming conventions for the gotrippin monorepo so PRs stay consistent. It is based on the current codebase, TypeScript/React best practices, and Context7-backed references (Clean Code TypeScript, ESLint, React docs).
 
 **Scope:** `apps/web` (Next.js), `apps/backend` (NestJS), `packages/core` (shared types/utils).
 

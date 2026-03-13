@@ -28,7 +28,7 @@ Scan date: 2025-03-05. Goal: find user-facing English text that was hardcoded in
 - **train-route-form.tsx:** “No route yet”, “Attach to stop”, placeholders, “Write a note”, “Take a Photo”, error/status messages, toasts.
 - **route-builder.tsx:** “Your route”, helper text, “Set starting point”, “Add destination”, “Trip start”, stop count label.
 - **location-card.tsx:** “Enter location name”, “Set dates” (via `trips.set_dates`).
-- **AiTestClient.tsx:** “Go Trippin' AI”, “Online & ready”, placeholders, aria-labels, “Find images” / “Create a trip” / “Just chat”, error messages.
+- **AiTestClient.tsx:** “GO AI”, “Online & ready”, placeholders, aria-labels, “Find images” / “Create a trip” / “Just chat”, error messages.
 - **AiSessionsListClient.tsx:** “New chat”, “Recent chats”, “No chats yet…”, “Creating…”, “Start a new conversation”, placeholder, aria-labels, confirm and error messages.
 - **TripDetailPageClient.tsx:** All toasts (delete, dates, background, color).
 - **ResetPasswordPageClient.tsx:** All setError messages (invalid link, password length, passwords match, failed reset).

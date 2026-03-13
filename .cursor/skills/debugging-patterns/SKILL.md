@@ -1,6 +1,6 @@
 ---
 name: debugging-patterns
-description: Applies heuristics for common Go Trippin bugs: mount races, Supabase auth deadlocks, profile save timeouts. Use when debugging "nothing in network tab", "click does nothing", "only works after refresh", "save times out", or "half logout".
+description: Applies heuristics for common gotrippin bugs: mount races, Supabase auth deadlocks, profile save timeouts. Use when debugging "nothing in network tab", "click does nothing", "only works after refresh", "save times out", or "half logout".
 ---
 
 # Debugging Patterns

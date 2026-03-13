@@ -1,4 +1,4 @@
-# Server vs Client Components — Go Trippin' Architecture
+# Server vs Client Components — gotrippin Architecture
 
 > **Delete this file once the Server Component migration is complete.**
 
@@ -15,7 +15,7 @@ The client receives the output, not the code. So they're the "read + render" lay
 
 ---
 
-## Where Server Components Fit in Go Trippin'
+## Where Server Components Fit in gotrippin
 
 Use them for **initial data loading** and **layout** — anywhere you're mainly displaying data.
 

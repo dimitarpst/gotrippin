@@ -19,6 +19,8 @@ export interface InitialUserData {
   display_name: string | null;
   avatar_color: string | null;
   avatar_url: string | null;
+  ai_tokens_used_month: number;
+  ai_token_monthly_limit: number | null;
 }
 
 interface UserPageClientProps {
@@ -64,6 +66,19 @@ export default function UserPageClient({ initialUser }: UserPageClientProps) {
     avatarColor: lastSaved.avatarColor || (resolvedUser as typeof initialUser).avatar_color || null,
     avatarUrl: lastSaved.avatarUrl || (resolvedUser as typeof initialUser).avatar_url || (resolvedUser.user_metadata?.avatar_url as string | undefined) || null,
   }), [resolvedUser, lastSaved]);
+
+  const aiUsage = useMemo(() => {
+    const used = initialUser.ai_tokens_used_month ?? 0;
+    const limit = initialUser.ai_token_monthly_limit ?? null;
+    const percent =
+      limit && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : null;
+
+    return {
+      used,
+      limit,
+      percent,
+    };
+  }, [initialUser.ai_token_monthly_limit, initialUser.ai_tokens_used_month]);
 
   const handleSave = async (updates: { displayName: string; avatarColor: string; avatarUrl?: string }) => {
     if (!resolvedUser) {
@@ -138,8 +153,9 @@ export default function UserPageClient({ initialUser }: UserPageClientProps) {
   return (
     <UserProfile
       data={profileData}
+      aiUsage={aiUsage}
       user={identityUser as Parameters<typeof UserProfile>[0]["user"]}
-      onBack={() => router.push("/")}
+      onBack={() => router.back()}
       onSave={handleSave}
       saving={saving}
       error={error}

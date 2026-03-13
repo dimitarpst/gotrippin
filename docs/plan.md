@@ -1,4 +1,4 @@
-# Go Trippin' — Product & AI-Orchestrated Planning Plan
+# gotrippin — Product & AI-Orchestrated Planning Plan
 
 This file captures the evolving product direction and the "AI operator" concept. It is intentionally high-level so we can add/remove ideas without touching `readme.md`.
 

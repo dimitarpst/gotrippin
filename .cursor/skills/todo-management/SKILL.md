@@ -1,6 +1,6 @@
 ---
 name: todo-management
-description: Manages the root todo file (features.todo) for Go Trippin. Use when completing a task (mark done), adding a new todo item, or when the user asks to update or create TODO entries.
+description: Manages the root todo file (features.todo) for gotrippin. Use when completing a task (mark done), adding a new todo item, or when the user asks to update or create TODO entries.
 ---
 
 # TODO File Management

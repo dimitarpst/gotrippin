@@ -1,6 +1,6 @@
-# 🧭 Go Trippin' (gotrippin.app) – Next Development Steps
+# 🧭 gotrippin (gotrippin.app) – Next Development Steps
 
-This document defines the current roadmap and next implementation priorities for the Go Trippin' full-stack project.  
+This document defines the current roadmap and next implementation priorities for the gotrippin full-stack project.  
 **Domain Note:** The official domain for this project is `gotrippin.app`. Ensure all dummy URLs in UI components (like the landing page mockups) reflect this domain instead of `.com`.
 
 ---
@@ -523,7 +523,7 @@ npm install @nestjs/axios rxjs
 - ✅ Hotlink images from Unsplash URLs
 - ✅ Trigger download endpoint when user selects image
 - ✅ Display "Photo by [Name] on Unsplash" attribution with links
-- ✅ App distinctly branded as "Go Trippin'"
+- ✅ App distinctly branded as "gotrippin"
 - ✅ **Production access granted — 5,000 requests/hour** (Feb 2026)
 
 > **Note for feature planning:** We have Unsplash Production API access (5,000 req/hour).

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useMemo, useState, useCallback, useRef } from "react";
 import { LogOut, Sparkles } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileHeader from "./ProfileHeader";
 import ProfileHero from "./ProfileHero";
@@ -27,8 +28,15 @@ export type UserProfileData = {
   avatarUrl?: string | null;
 };
 
+export type UserAiUsageData = {
+  used: number;
+  limit: number | null;
+  percent: number | null;
+};
+
 export default function UserProfile({
   data,
+  aiUsage,
   user,
   onBack,
   onSave,
@@ -38,6 +46,7 @@ export default function UserProfile({
   onShowTipsAgain,
 }: {
   data: UserProfileData;
+  aiUsage: UserAiUsageData;
   user: ExtendedUser | null;
   onBack: () => void;
   onSave: (updates: {
@@ -234,6 +243,53 @@ export default function UserProfile({
         />
 
         <ProfileStats />
+
+        {/* AI Usage Card */}
+        <motion.div
+          className="relative rounded-3xl overflow-hidden border border-white/8 mt-6"
+          style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 800, damping: 25, delay: 0.1 }}
+        >
+          <div className="px-4 sm:px-6 py-5">
+            <div className="flex items-start gap-4">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/6 text-white/80">
+                <Logo variant="sm" className="h-5 w-auto" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-base font-medium text-white">
+                    {t("profile.ai_usage")}
+                  </p>
+                  <p className="text-sm font-medium text-white/70">
+                    {aiUsage.percent != null
+                      ? t("profile.ai_usage_value", { percent: aiUsage.percent })
+                      : t("profile.ai_usage_unlimited")}
+                  </p>
+                </div>
+                <p className="mt-1 text-sm text-white/55">
+                  {aiUsage.limit != null
+                    ? t("profile.ai_usage_tokens", {
+                        used: new Intl.NumberFormat().format(aiUsage.used),
+                        limit: new Intl.NumberFormat().format(aiUsage.limit),
+                      })
+                    : t("profile.ai_usage_tokens_used", {
+                        used: new Intl.NumberFormat().format(aiUsage.used),
+                      })}
+                </p>
+                {aiUsage.percent != null ? (
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-[var(--accent)] transition-all"
+                      style={{ width: `${aiUsage.percent}%` }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {error && <ProfileError message={error} clearError={clearError} />}
 

@@ -12,5 +12,27 @@ export default async function AiListPage() {
     redirect("/home");
   }
 
-  return <AiSessionsListClient />;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("ai_tokens_used_month, ai_token_monthly_limit")
+    .eq("id", user.id)
+    .single();
+
+  const aiUsage = {
+    used: profile?.ai_tokens_used_month ?? 0,
+    limit: profile?.ai_token_monthly_limit ?? null,
+    percent:
+      profile?.ai_token_monthly_limit && profile.ai_token_monthly_limit > 0
+        ? Math.min(
+            100,
+            Math.round(
+              ((profile.ai_tokens_used_month ?? 0) /
+                profile.ai_token_monthly_limit) *
+                100,
+            ),
+          )
+        : null,
+  };
+
+  return <AiSessionsListClient aiUsage={aiUsage} />;
 }

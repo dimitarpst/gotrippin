@@ -3,6 +3,19 @@ import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateShareCode } from '@gotrippin/core';
 
+interface ProfileAiUsageRow {
+  ai_tokens_used_total: number | null;
+  ai_tokens_used_month: number | null;
+  ai_tokens_month_start: string | null;
+  ai_token_monthly_limit: number | null;
+}
+
+export interface UserAiLimitStatus {
+  allowed: boolean;
+  used: number;
+  limit: number | null;
+}
+
 @Injectable()
 export class SupabaseService {
   private supabase: SupabaseClient;
@@ -59,6 +72,96 @@ export class SupabaseService {
 
     if (error) throw error;
     return data;
+  }
+
+  async checkUserAiLimit(userId: string): Promise<UserAiLimitStatus> {
+    const usage = await this.getNormalizedProfileAiUsage(userId);
+
+    return {
+      allowed:
+        usage.ai_token_monthly_limit == null ||
+        usage.ai_tokens_used_month < usage.ai_token_monthly_limit,
+      used: usage.ai_tokens_used_month,
+      limit: usage.ai_token_monthly_limit,
+    };
+  }
+
+  async updateUserAiUsage(userId: string, tokensUsed: number) {
+    const usage = await this.getNormalizedProfileAiUsage(userId);
+    const nextTotal = usage.ai_tokens_used_total + tokensUsed;
+    const nextMonth = usage.ai_tokens_used_month + tokensUsed;
+
+    const { data, error } = await this.supabase
+      .from('profiles')
+      .update({
+        ai_tokens_used_total: nextTotal,
+        ai_tokens_used_month: nextMonth,
+        ai_tokens_month_start: usage.ai_tokens_month_start,
+      })
+      .eq('id', userId)
+      .select(
+        'ai_tokens_used_total, ai_tokens_used_month, ai_tokens_month_start, ai_token_monthly_limit',
+      )
+      .single();
+
+    if (error) throw error;
+    return this.normalizeProfileAiUsageRow(data);
+  }
+
+  private async getNormalizedProfileAiUsage(
+    userId: string,
+  ): Promise<Required<ProfileAiUsageRow>> {
+    const { data, error } = await this.supabase
+      .from('profiles')
+      .select(
+        'ai_tokens_used_total, ai_tokens_used_month, ai_tokens_month_start, ai_token_monthly_limit',
+      )
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+
+    const normalized = this.normalizeProfileAiUsageRow(data);
+    const currentMonthStart = this.getCurrentMonthStart();
+
+    if (normalized.ai_tokens_month_start === currentMonthStart) {
+      return normalized;
+    }
+
+    const { data: resetData, error: resetError } = await this.supabase
+      .from('profiles')
+      .update({
+        ai_tokens_used_month: 0,
+        ai_tokens_month_start: currentMonthStart,
+      })
+      .eq('id', userId)
+      .select(
+        'ai_tokens_used_total, ai_tokens_used_month, ai_tokens_month_start, ai_token_monthly_limit',
+      )
+      .single();
+
+    if (resetError) throw resetError;
+    return this.normalizeProfileAiUsageRow(resetData);
+  }
+
+  private normalizeProfileAiUsageRow(
+    row: ProfileAiUsageRow | null,
+  ): Required<ProfileAiUsageRow> {
+    return {
+      ai_tokens_used_total: row?.ai_tokens_used_total ?? 0,
+      ai_tokens_used_month: row?.ai_tokens_used_month ?? 0,
+      ai_tokens_month_start:
+        row?.ai_tokens_month_start ?? this.getCurrentMonthStart(),
+      ai_token_monthly_limit: row?.ai_token_monthly_limit ?? null,
+    };
+  }
+
+  private getCurrentMonthStart(): string {
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+
+    return `${year}-${month}-01`;
   }
 
   // Helper method to create trips
