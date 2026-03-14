@@ -33,15 +33,23 @@ interface ChatMessage {
   image_suggestions?: AiImageSuggestion[];
 }
 
+type SelectedTool =
+  | { kind: "image_pick"; label: string; message: string }
+  | { kind: "quick_reply"; action: string; label: string }
+  | { kind: "find_images"; label: string; messagePrefix: string };
+
 interface AiTestClientProps {
   sessionId: string;
   aiUsage: { used: number; limit: number | null; percent: number | null };
 }
 
-export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: AiTestClientProps) {
+export default function AiTestClient({ sessionId: initialSessionId, aiUsage: initialAiUsage }: AiTestClientProps) {
   const [sessionId] = useState<string>(initialSessionId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [selectedTool, setSelectedTool] = useState<SelectedTool | null>(null);
+  const [inputAreaMounted, setInputAreaMounted] = useState(false);
+  const [aiUsage, setAiUsage] = useState(initialAiUsage);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -85,6 +93,10 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
     setEditingIndex(null);
     setEditingDraft("");
   }
+
+  useEffect(() => {
+    setInputAreaMounted(true);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,6 +167,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
           image_suggestions: res.image_suggestions,
         },
       ]);
+      if (res.usage) setAiUsage(res.usage);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         if (fromIndex !== null) {
@@ -176,23 +189,61 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
   }
 
   async function handleSend() {
+    if (!sessionId || loading) return;
+    if (selectedTool) {
+      if (selectedTool.kind === "quick_reply") {
+        const extra = input.trim();
+        setSelectedTool(null);
+        setInput("");
+        await handleQuickReplyClick(selectedTool.action, selectedTool.label, extra);
+      } else if (selectedTool.kind === "find_images") {
+        const text = (selectedTool.messagePrefix + input.trim()).trim();
+        setSelectedTool(null);
+        setInput("");
+        if (text) await sendMessage(text, null);
+      } else {
+        setSelectedTool(null);
+        await sendMessage(selectedTool.message, null);
+      }
+      return;
+    }
     const text = input.trim();
-    if (!text || !sessionId || loading) return;
+    if (!text) return;
     await sendMessage(text, null);
   }
 
-  async function handleQuickReplyClick(action: string, label: string) {
+  function actionToDisplayLabel(action: string): string {
+    switch (action) {
+      case "find_images":
+        return t("ai.find_images");
+      case "create_trip":
+        return t("ai.create_trip");
+      case "just_chat":
+        return t("ai.just_chat");
+      default:
+        return action;
+    }
+  }
+
+  async function handleQuickReplyClick(action: string, label: string, extraText?: string) {
     if (!sessionId || loading) return;
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    setMessages((prev) => [...prev, { role: "user", content: label }]);
+    const displayContent = extraText?.trim()
+      ? extraText.trim()
+      : (label?.trim() || actionToDisplayLabel(action));
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: displayContent },
+    ]);
     setLoading(true);
     setError(null);
 
+    const payload = extraText ? `${action}: ${extraText}` : action;
     try {
-      const res = await postAiMessage(sessionId, action, {
+      const res = await postAiMessage(sessionId, payload, {
         signal: controller.signal,
       });
       const safeMessage =
@@ -208,6 +259,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
           image_suggestions: res.image_suggestions,
         },
       ]);
+      if (res.usage) setAiUsage(res.usage);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
@@ -258,18 +310,18 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
 
 
   return (
-    <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden font-sans">
+    <main className="relative h-dvh flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden font-sans">
       {/* Dynamic Background */}
       <div className="absolute inset-0 z-0 opacity-40 mix-blend-screen pointer-events-none">
         <AuroraBackground />
       </div>
 
-      {/* Top Gradient Overlay for header reading clarity */}
-      <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-background via-background/80 to-transparent z-10 pointer-events-none" />
+      {/* Top gradient for header */}
+      <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-background/90 to-transparent z-10 pointer-events-none" />
 
-      <div className="relative z-10 flex flex-col flex-1 min-h-0">
-        {/* Header — sticky so back/close is always reachable when scrolling */}
-        <header className="sticky top-0 shrink-0 px-4 sm:px-6 py-4 flex items-center justify-between z-20 bg-[var(--color-background)]/80 backdrop-blur-xl border-b border-white/5">
+      <div className="relative z-10 flex flex-col flex-1 min-h-0 h-full">
+        {/* Header — always visible at top */}
+        <header className="shrink-0 px-4 sm:px-6 py-4 flex items-center justify-between bg-[var(--color-background)]/80 backdrop-blur-xl border-b border-white/5">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -281,19 +333,13 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
                 <Logo variant="sm" className="h-8 w-auto shrink-0" />
                 <h1 className="text-lg font-semibold tracking-tight text-white whitespace-nowrap">{t("ai.title_short")}</h1>
               </div>
-              <div className="flex items-center gap-3">
-                <p className="text-xs text-white/50 font-medium flex items-center gap-1.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
-                  {t("ai.online_ready")}
-                </p>
-                <div className="h-3 w-px bg-white/10" />
-                <p className="text-[11px] font-medium text-white/40">
-                  {aiUsage.percent != null ? `${aiUsage.percent}% used` : "Tracking"}
-                </p>
-              </div>
+              <p className="text-xs text-white/50 font-medium flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                {t("ai.online_ready")}
+              </p>
             </div>
           </motion.div>
 
@@ -301,7 +347,11 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
+            className="flex items-center gap-3"
           >
+            <div className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-medium text-white/60">
+              {aiUsage.percent != null ? `${aiUsage.percent}% used` : "Tracking"}
+            </div>
             <button
               onClick={() => router.push("/ai")}
               className="w-10 h-10 rounded-full flex items-center justify-center bg-card/10 backdrop-blur-md border border-white/5 hover:bg-card/20 transition-colors group"
@@ -312,9 +362,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
           </motion.div>
         </header>
 
-        {/* Chat Area */}
-        <div className="flex-1 min-h-0 overflow-y-auto pb-32">
-          <div className="max-w-3xl mx-auto px-4 py-6 space-y-8">
+        {/* Chat Area — only this scrolls */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div className="max-w-3xl mx-auto px-4 py-6 pb-4 space-y-8">
             <AnimatePresence initial={false}>
               {messages.map((m, i) => (
                 <motion.div
@@ -357,8 +407,11 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
                                 key={img.id || idx}
                                 type="button"
                                 onClick={() => {
-                                  const label = `Use image ${idx + 1}`;
-                                  setInput(label);
+                                  setSelectedTool({
+                                    kind: "image_pick",
+                                    label: `Image ${idx + 1}`,
+                                    message: `Use image ${idx + 1}`,
+                                  });
                                 }}
                                 className="relative aspect-[3/4] rounded-xl overflow-hidden group border border-white/10 bg-black/40"
                               >
@@ -483,7 +536,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
         </div>
 
         {error && (
-          <div className="absolute bottom-28 left-4 right-4 z-20">
+          <div className="px-4 pt-2">
             <div className="max-w-3xl mx-auto">
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
@@ -499,92 +552,145 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage }: A
           </div>
         )}
 
-        {/* Floating Input Area */}
-        <div className="absolute bottom-6 left-0 right-0 px-4 z-20">
+        {/* Input Area — always visible at bottom */}
+        <div className="shrink-0 px-4 py-4 pb-6 pt-2">
           <div className="max-w-3xl mx-auto">
             <motion.div 
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.5, type: "spring" }}
-              className="relative p-2 rounded-[2rem] bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] flex gap-2 items-center"
+              className={`relative rounded-[2rem] bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col gap-0 min-w-0 ${selectedTool ? "p-2 pb-2 pt-3" : "p-2"}`}
             >
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <AnimatePresence mode="wait">
+                {selectedTool && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center gap-2 overflow-hidden shrink-0 mb-2"
+                  >
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/40 px-3 py-1.5 text-sm font-medium shrink-0">
+                      {selectedTool.kind === "image_pick" ? (
+                        <ImageIcon className="w-4 h-4" />
+                      ) : selectedTool.kind === "find_images" ? (
+                        <ImageIcon className="w-4 h-4" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                      <span>{selectedTool.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTool(null)}
+                        className="rounded-full p-0.5 hover:bg-[var(--color-accent)]/20 -mr-0.5"
+                        aria-label={t("ai.remove_tool")}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <div className="flex gap-2 items-center min-w-0">
+                {!inputAreaMounted ? (
                   <Button
                     type="button"
                     size="icon"
-                    className="w-10 h-10 rounded-full bg-card/70 text-white/80 hover:bg-card hover:text-white border border-white/10 mr-1"
+                    className="w-10 h-10 rounded-full bg-card/70 text-white/80 border border-white/10 shrink-0"
+                    aria-hidden
+                    tabIndex={-1}
                   >
                     <Plus className="w-5 h-5" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (!loading) {
-                        setInput((prev) =>
-                          prev && prev.length > 0
-                            ? prev
-                            : "Find some Unsplash images for ",
-                        );
-                      }
-                    }}
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        className="w-10 h-10 rounded-full bg-card/70 text-white/80 hover:bg-card hover:text-white border border-white/10 shrink-0"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (!loading) {
+                            setSelectedTool({
+                              kind: "find_images",
+                              label: t("ai.find_images"),
+                              messagePrefix: "Find some Unsplash images for ",
+                            });
+                            setInput("");
+                          }
+                        }}
+                      >
+                        <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
+                        <span>{t("ai.find_images")}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (!loading) {
+                            setSelectedTool({
+                              kind: "quick_reply",
+                              action: "create_trip",
+                              label: t("ai.create_trip"),
+                            });
+                          }
+                        }}
+                      >
+                        <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
+                        <span>{t("ai.create_trip")}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (!loading) {
+                            setSelectedTool({
+                              kind: "quick_reply",
+                              action: "just_chat",
+                              label: t("ai.just_chat"),
+                            });
+                          }
+                        }}
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        <span>{t("ai.just_chat")}</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                <Input
+                  placeholder={t("ai.placeholder")}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && !e.shiftKey && !loading && handleSend()
+                  }
+                  disabled={loading}
+                  className="flex-1 min-w-0 h-12 border-0 bg-transparent px-4 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
+                />
+                {loading ? (
+                  <Button
+                    type="button"
+                    onClick={stopGeneration}
+                    size="icon"
+                    aria-label={t("ai.stop_generating")}
+                    className="w-12 h-12 shrink-0 rounded-full bg-destructive/90 text-destructive-foreground hover:bg-destructive transition-all flex items-center justify-center"
                   >
-                    <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
-                    <span>{t("ai.find_images")}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (!loading) {
-                        void handleQuickReplyClick("create_trip", t("ai.create_trip"));
-                      }
-                    }}
+                    <Square className="w-5 h-5 fill-current" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSend}
+                    disabled={!input.trim() && !selectedTool}
+                    size="icon"
+                    className="w-12 h-12 shrink-0 rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 hover:scale-105 transition-all shadow-[0_0_15px_rgba(255,107,107,0.4)] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center"
                   >
-                    <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
-                    <span>{t("ai.create_trip")}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (!loading) {
-                        void handleQuickReplyClick("just_chat", t("ai.just_chat"));
-                      }
-                    }}
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    <span>{t("ai.just_chat")}</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Input
-                placeholder={t("ai.placeholder")}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && !e.shiftKey && !loading && handleSend()
-                }
-                disabled={loading}
-                className="flex-1 h-12 border-0 bg-transparent px-4 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
-              />
-              {loading ? (
-                <Button
-                  type="button"
-                  onClick={stopGeneration}
-                  size="icon"
-                  aria-label={t("ai.stop_generating")}
-                  className="w-12 h-12 shrink-0 rounded-full bg-destructive/90 text-destructive-foreground hover:bg-destructive transition-all flex items-center justify-center"
-                >
-                  <Square className="w-5 h-5 fill-current" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSend}
-                  disabled={!input.trim()}
-                  size="icon"
-                  className="w-12 h-12 shrink-0 rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 hover:scale-105 transition-all shadow-[0_0_15px_rgba(255,107,107,0.4)] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center"
-                >
-                  <Send className="w-5 h-5 -ml-0.5 mt-0.5" />
-                </Button>
-              )}
+                    <Send className="w-5 h-5 -ml-0.5 mt-0.5" />
+                  </Button>
+                )}
+              </div>
             </motion.div>
           </div>
         </div>

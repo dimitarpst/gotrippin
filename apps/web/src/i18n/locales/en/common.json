@@ -193,7 +193,8 @@
     "failed_rename_chat": "Failed to rename chat",
     "failed_delete_chat": "Failed to delete chat",
     "session_not_found": "Session not found",
-    "online_ready": "Online & ready"
+    "online_ready": "Online & ready",
+    "remove_tool": "Remove"
   },
   "trips": {
     "my_trips": "My Trips",

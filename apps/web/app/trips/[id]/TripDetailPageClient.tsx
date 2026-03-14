@@ -55,14 +55,14 @@ export default function TripDetailPageClient({
         };
         if (routes[screen]) router.push(routes[screen]);
       },
-      onBack: () => router.push("/"),
+      onBack: () => router.push("/trips"),
       onEdit: () => router.push(`/trips/${shareCode}/edit`),
       onDelete: async () => {
         if (!trip?.id) return;
         const result = await deleteTripAction(trip.id);
         if (result.success) {
           toast.success(t("trips.delete_success"));
-          router.push("/");
+          router.push("/trips");
         } else {
           toast.error(t("trips.delete_failed"), { description: result.error });
         }

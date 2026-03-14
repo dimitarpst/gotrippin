@@ -109,7 +109,7 @@ export const AI_TOOLS: OpenRouterTool[] = [
     function: {
       name: 'searchCoverImage',
       description:
-        'Search Unsplash for potential trip cover images. Use when the user asks for photos or cover images.',
+        'Search Unsplash for potential trip cover images. Use only when the user asks for new/different photos. Do NOT call this when the user is choosing from images you already showed (e.g. "the second one") — use selectCoverImage with the pending_cover_images list from context instead.',
       parameters: {
         type: 'object',
         properties: {
@@ -136,7 +136,7 @@ export const AI_TOOLS: OpenRouterTool[] = [
     function: {
       name: 'selectCoverImage',
       description:
-        'Set the cover image for a trip using an Unsplash photo. Use after the user has chosen one of the suggested images.',
+        'Set the cover image for a trip using an Unsplash photo. Use when the user picks one of the images from the pending_cover_images list (e.g. "the second one", "number 3"). Use the exact object from that list — do not invent or re-fetch; the IDs must match what was shown.',
       parameters: {
         type: 'object',
         properties: {

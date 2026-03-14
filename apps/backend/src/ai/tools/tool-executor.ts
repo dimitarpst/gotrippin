@@ -150,10 +150,12 @@ export class ToolExecutor {
         }
         case 'searchCoverImage': {
           const parsed = SearchCoverImageSchema.parse(args);
+          const page = parsed.page ?? 1;
+          const perPage = parsed.per_page ?? 6;
           const data = await this.imagesService.searchImages(
             parsed.query,
-            parsed.page,
-            parsed.per_page,
+            page,
+            perPage,
           );
           return data;
         }

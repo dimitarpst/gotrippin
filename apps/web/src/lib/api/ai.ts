@@ -186,6 +186,7 @@ export interface PostMessageResponse {
   quick_replies?: Array<{ label: string; action: string }>;
   image_suggestions?: AiImageSuggestion[];
   tool_calls?: string[];
+  usage?: { used: number; limit: number | null; percent: number | null };
 }
 
 export interface PostAiMessageOptions {

@@ -51,7 +51,7 @@ export default function CreateTripPageClient() {
   }
 
   const handleBack = () => {
-    router.push("/")
+    router.push("/trips")
   }
 
   if (!mounted) {

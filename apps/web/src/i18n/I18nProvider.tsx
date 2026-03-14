@@ -37,9 +37,8 @@ export default function I18nProvider({
     lastLanguageRef.current = language;
   };
 
-  // Ensure server and client share the same initial language
-  applyLanguage(initialLanguage);
-
+  // Apply language in effects only; calling changeLanguage during render would
+  // update i18n subscribers (e.g. AiTestClient) and cause "setState during render".
   useEffect(() => {
     applyLanguage(initialLanguage);
   }, [initialLanguage]);
