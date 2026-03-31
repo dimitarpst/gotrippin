@@ -225,4 +225,33 @@ export class ImagesService {
 
     return photo.id;
   }
+
+  /**
+   * Registers a trip cover image already uploaded to R2 via presigned URL (browser → R2).
+   * `storageKey` must be `trip-images/uploads/{userId}/...` for the current user.
+   */
+  async registerUploadedTripCoverPhoto(userId: string, storageKey: string): Promise<string> {
+    const expectedPrefix = `trip-images/uploads/${userId}/`;
+    if (!storageKey.startsWith(expectedPrefix)) {
+      throw new Error('Invalid trip cover upload storage key');
+    }
+
+    const supabase = this.supabaseService.getClient();
+    const { data: photo, error } = await supabase
+      .from('photos')
+      .insert({
+        storage_key: storageKey,
+        source: 'upload',
+        unsplash_photo_id: null,
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create photos row: ${error.message}`);
+    }
+
+    this.logger.log(`Registered user-uploaded trip cover ${photo.id} at ${storageKey}`);
+    return photo.id;
+  }
 }

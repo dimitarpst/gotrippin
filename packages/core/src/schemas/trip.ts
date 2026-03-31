@@ -129,7 +129,20 @@ export const TripUpdateDataSchema = TripSchema.omit({
   id: true,
   created_at: true,
   cover_photo: true,
-}).partial().extend({ cover_photo: CoverPhotoInputSchema.optional() });
+})
+  .partial()
+  .extend({
+    cover_photo: CoverPhotoInputSchema.optional(),
+    /** R2 key from a prior browser upload (`trip-images/uploads/{userId}/…`). Mutually exclusive with `cover_photo`. */
+    cover_upload_storage_key: z.string().min(1).optional(),
+  })
+  .refine(
+    (data) => !(data.cover_photo && data.cover_upload_storage_key),
+    {
+      message: 'Send either cover_photo (Unsplash) or cover_upload_storage_key, not both',
+      path: ['cover_upload_storage_key'],
+    }
+  );
 
 /**
  * Schema for adding a member to a trip
@@ -158,7 +171,10 @@ export const TripCreateDataSchema = TripSchema.omit({
   cover_photo: true,
 })
   .partial()
-  .extend({ cover_photo: CoverPhotoInputSchema.optional() })
+  .extend({
+    cover_photo: CoverPhotoInputSchema.optional(),
+    cover_upload_storage_key: z.string().min(1).optional(),
+  })
   .refine(
     (data) => {
       if (data.start_date && data.end_date) {
@@ -169,6 +185,13 @@ export const TripCreateDataSchema = TripSchema.omit({
     {
       message: 'End date must be after or equal to start date',
       path: ['end_date'],
+    }
+  )
+  .refine(
+    (data) => !(data.cover_photo && data.cover_upload_storage_key),
+    {
+      message: 'Send either cover_photo (Unsplash) or cover_upload_storage_key, not both',
+      path: ['cover_upload_storage_key'],
     }
   );
 

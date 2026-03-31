@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Search, Loader2 } from "lucide-react"
+import { X, Search, Loader2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
@@ -14,12 +14,16 @@ import { useImageSearch } from "@/hooks/useImageSearch"
 import { useTranslation } from "react-i18next"
 import type { CoverPhotoInput } from "@gotrippin/core"
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
+import { uploadTripCoverAction } from "@/actions/upload"
+import { toast } from "sonner"
 
 interface BackgroundPickerProps {
   open: boolean
   onClose: () => void
   onSelect: (type: "image", value: CoverPhotoInput) => void
   onSelectColor: (color: string) => void
+  /** After a successful device upload to R2; parent saves `storage_key` on trip create/update. */
+  onSelectUpload?: (payload: { storage_key: string }) => void
   defaultSearchQuery?: string
 }
 
@@ -41,12 +45,14 @@ const sampleGradients = [
   "linear-gradient(to bottom, #558b2f 0%, #33691e 100%)", // Deep lime green
 ]
 
-export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, defaultSearchQuery }: BackgroundPickerProps) {
+export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, onSelectUpload, defaultSearchQuery }: BackgroundPickerProps) {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<"images" | "colors">("images")
   const [searchInput, setSearchInput] = useState("")
   const [hasSearched, setHasSearched] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
   const observerRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const justOpenedRef = useRef(false)
   const { images, loading, loadingMore, error, hasMore, loadMore, setQuery } = useImageSearch()
 
@@ -115,6 +121,27 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, defau
     })
   }
 
+  const handleTripCoverFile = async (fileList: FileList | null) => {
+    const file = fileList?.[0]
+    if (!file || !onSelectUpload) return
+    setUploadingCover(true)
+    try {
+      const fd = new FormData()
+      fd.set("file", file)
+      const result = await uploadTripCoverAction(fd)
+      if (!result.success) {
+        console.error("Trip cover upload failed:", result.error)
+        toast.error(t("background_picker.upload_error"), { description: result.error })
+        return
+      }
+      onSelectUpload({ storage_key: result.key })
+      onClose()
+    } finally {
+      setUploadingCover(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
   return (
     <Drawer open={open} onOpenChange={(o) => { if (!o) onClose() }}>
       <DrawerContent>
@@ -148,6 +175,33 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, defau
             {t('background_picker.colors')}
           </button>
         </div>
+
+        {activeTab === "images" && onSelectUpload && (
+          <div className="px-4 pb-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="sr-only"
+              onChange={(e) => void handleTripCoverFile(e.target.files)}
+            />
+            <button
+              type="button"
+              disabled={uploadingCover}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:opacity-60"
+            >
+              {uploadingCover ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Upload className="h-5 w-5" />
+              )}
+              {uploadingCover
+                ? t("background_picker.uploading")
+                : t("background_picker.upload_from_device")}
+            </button>
+          </div>
+        )}
 
         {activeTab === "images" && (
           <div className="px-4 pb-4">

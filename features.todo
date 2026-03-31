@@ -2,7 +2,7 @@ Todo:
   ☐ AI operator — Phase 3b: Dock as collapse bubble (compact on side, expand left/right); keep off AI page
   ☐ AI operator — Phase 5: Collaboration features and advanced planning behaviours (multi-user chat, locks, refinements)
   ✔ Teacher feedback — when changing the main date, update the date under it as well — shift route + activity datetimes by start delta; trip overview date picker dots + long-press detail toast
-  ☐ Teacher feedback — trip photos should be uploadable by the person
+  ✔ Teacher feedback — trip photos should be uploadable by the person — cover: device upload to R2 (`trip-images/uploads/{userId}/…`), `photos.source=upload`, create/edit trip + background picker @done(26-03-31)
   ☐ Teacher feedback — more activities and notes
   ☐ Teacher feedback — export trip as PDF
   ☐ Teacher feedback — button to extend the last route

@@ -8,6 +8,7 @@ import { DatePicker, type DatePickerTimelineContext } from "./date-picker";
 import type { DateRange } from "react-day-picker";
 import { useTranslation } from "react-i18next";
 import type { CoverPhotoInput, Photo } from "@gotrippin/core";
+import { getR2PublicUrl } from "@/lib/r2";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -29,12 +30,14 @@ import {
 
 interface CreateTripProps {
   onBack: () => void
-  onSave: (data: { 
-    title: string; 
+  onSave: (data: {
+    title: string;
     coverPhoto?: CoverPhotoInput;
-    color?: string; 
+    /** R2 key after device upload; backend creates `photos` row with source=upload. */
+    coverUploadStorageKey?: string;
+    color?: string;
     dateRange?: DateRange;
-  }) => Promise<void>
+  }) => Promise<void>;
   initialData?: {
     title: string
     initialCoverPhoto?: Photo | null
@@ -64,14 +67,19 @@ export default function CreateTrip({
   const [showDatePicker, setShowDatePicker] = useState(false);
   // New cover photo: selected by user this session (takes precedence over initialCoverPhoto for display)
   const [selectedCoverPhoto, setSelectedCoverPhoto] = useState<CoverPhotoInput | null>(null);
+  const [selectedCoverUploadKey, setSelectedCoverUploadKey] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(initialData?.color || null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(initialData?.dateRange);
-  // Newly selected photo takes precedence; fall back to existing cover photo from R2
-  const previewImageUrl = selectedCoverPhoto
-    ? selectedCoverPhoto.image_url
-    : initialData?.initialCoverPhoto?.storage_key
-      ? `${process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? ""}/${initialData.initialCoverPhoto.storage_key}`
+  const initialCoverFromR2 =
+    initialData?.initialCoverPhoto?.storage_key != null
+      ? getR2PublicUrl(initialData.initialCoverPhoto.storage_key)
       : null;
+  // Upload key or Unsplash preview or existing cover from DB
+  const previewImageUrl = selectedCoverUploadKey
+    ? getR2PublicUrl(selectedCoverUploadKey)
+    : selectedCoverPhoto
+      ? selectedCoverPhoto.image_url
+      : initialCoverFromR2;
   
   const [saving, setSaving] = useState(false);
 
@@ -146,6 +154,7 @@ export default function CreateTrip({
       await onSave({
         title: tripName,
         coverPhoto: selectedCoverPhoto || undefined,
+        coverUploadStorageKey: selectedCoverUploadKey || undefined,
         color: selectedColor || undefined,
         dateRange,
       });
@@ -158,6 +167,14 @@ export default function CreateTrip({
 
   const handleBackgroundSelect = (type: "image", value: CoverPhotoInput) => {
     setSelectedCoverPhoto(value);
+    setSelectedCoverUploadKey(null);
+    setSelectedColor(null);
+    setShowBackgroundPicker(false);
+  };
+
+  const handleCoverUploadSelect = (payload: { storage_key: string }) => {
+    setSelectedCoverUploadKey(payload.storage_key);
+    setSelectedCoverPhoto(null);
     setSelectedColor(null);
     setShowBackgroundPicker(false);
   };
@@ -165,6 +182,7 @@ export default function CreateTrip({
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
     setSelectedCoverPhoto(null);
+    setSelectedCoverUploadKey(null);
     setShowBackgroundPicker(false);
   };
 
@@ -328,6 +346,7 @@ export default function CreateTrip({
         onClose={() => setShowBackgroundPicker(false)}
         onSelect={handleBackgroundSelect}
         onSelectColor={handleColorSelect}
+        onSelectUpload={handleCoverUploadSelect}
         defaultSearchQuery={tripName}
       />
       

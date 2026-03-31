@@ -63,14 +63,20 @@ export class TripsService {
     start_date?: string;
     end_date?: string;
     cover_photo?: CoverPhotoInput;
+    cover_upload_storage_key?: string;
     color?: string;
     description?: string;
   }) {
     try {
-      const { cover_photo, ...rest } = tripData;
+      const { cover_photo, cover_upload_storage_key, ...rest } = tripData;
 
       let cover_photo_id: string | undefined;
-      if (cover_photo) {
+      if (cover_upload_storage_key) {
+        cover_photo_id = await this.imagesService.registerUploadedTripCoverPhoto(
+          userId,
+          cover_upload_storage_key,
+        );
+      } else if (cover_photo) {
         cover_photo_id = await this.imagesService.downloadAndStorePhoto(cover_photo);
       } else if (!rest.color) {
         // No photo and no color selected — assign a random travel photo as the default cover
@@ -102,6 +108,7 @@ export class TripsService {
     start_date: string;
     end_date: string;
     cover_photo: CoverPhotoInput;
+    cover_upload_storage_key: string;
     color: string;
     description: string;
   }>) {
@@ -113,10 +120,15 @@ export class TripsService {
         throw new ForbiddenException('Trip not found or access denied');
       }
 
-      const { cover_photo, ...rest } = updateData;
+      const { cover_photo, cover_upload_storage_key, ...rest } = updateData;
 
       let cover_photo_id: string | undefined;
-      if (cover_photo) {
+      if (cover_upload_storage_key) {
+        cover_photo_id = await this.imagesService.registerUploadedTripCoverPhoto(
+          userId,
+          cover_upload_storage_key,
+        );
+      } else if (cover_photo) {
         cover_photo_id = await this.imagesService.downloadAndStorePhoto(cover_photo);
       }
 

@@ -420,7 +420,10 @@
     "error": "Failed to load images",
     "check_connection": "Please check your connection and try again",
     "no_results": "No results yet",
-    "search_hint": "Search for a city or destination"
+    "search_hint": "Search for a city or destination",
+    "upload_from_device": "Upload from your device",
+    "uploading": "Uploading…",
+    "upload_error": "Could not upload image"
   },
   "date_picker": {
     "title": "Select Dates",

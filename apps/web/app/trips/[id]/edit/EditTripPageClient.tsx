@@ -32,6 +32,7 @@ export default function EditTripPageClient({
   const handleSave = async (data: {
     title: string
     coverPhoto?: import("@gotrippin/core").CoverPhotoInput
+    coverUploadStorageKey?: string
     color?: string
     dateRange?: DateRange
   }) => {
@@ -39,7 +40,8 @@ export default function EditTripPageClient({
       const tripData: Record<string, unknown> = {}
 
       if (data.title !== trip.title) tripData.title = data.title
-      if (data.coverPhoto) tripData.cover_photo = data.coverPhoto
+      if (data.coverUploadStorageKey) tripData.cover_upload_storage_key = data.coverUploadStorageKey
+      else if (data.coverPhoto) tripData.cover_photo = data.coverPhoto
       if (data.color !== trip.color) tripData.color = data.color
 
       if (data.dateRange?.from) {

@@ -18,6 +18,7 @@ export default function CreateTripPageClient() {
   const [pendingData, setPendingData] = useState<{
     title: string
     coverPhoto?: import("@gotrippin/core").CoverPhotoInput
+    coverUploadStorageKey?: string
     color?: string
     dateRange?: DateRange
   } | null>(null)
@@ -25,6 +26,7 @@ export default function CreateTripPageClient() {
   const handleDetailsNext = async (data: {
     title: string
     coverPhoto?: import("@gotrippin/core").CoverPhotoInput
+    coverUploadStorageKey?: string
     color?: string
     dateRange?: DateRange
   }) => {
@@ -37,7 +39,11 @@ export default function CreateTripPageClient() {
     const tripData: Record<string, unknown> = {
       title: pendingData.title,
     }
-    if (pendingData.coverPhoto) tripData.cover_photo = pendingData.coverPhoto
+    if (pendingData.coverUploadStorageKey) {
+      tripData.cover_upload_storage_key = pendingData.coverUploadStorageKey
+    } else if (pendingData.coverPhoto) {
+      tripData.cover_photo = pendingData.coverPhoto
+    }
     tripData.color = pendingData.color ?? getRandomRouteColor()
     if (pendingData.dateRange?.from) tripData.start_date = pendingData.dateRange.from.toISOString()
     if (pendingData.dateRange?.to) tripData.end_date = pendingData.dateRange.to.toISOString()

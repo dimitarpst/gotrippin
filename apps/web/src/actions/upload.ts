@@ -1,12 +1,13 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import {
   PutObjectCommand,
   ListObjectsV2Command,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { r2Client, AVATARS_BUCKET, getR2PublicUrl } from "@/lib/r2";
+import { r2Client, AVATARS_BUCKET, getR2PublicUrl, TRIP_IMAGES_KEY_PREFIX } from "@/lib/r2";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 type PresignedResult =
@@ -34,8 +35,14 @@ async function getAuthUserId(): Promise<string | null> {
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_TRIP_COVER_FILE_SIZE = 8 * 1024 * 1024; // 8MB — trip hero image
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_UPLOADED_AVATARS = 3;
+
+/** User-scoped prefix; must match backend `ImagesService.registerUploadedTripCoverPhoto`. */
+function tripCoverUploadKey(userId: string, fileExtension: string): string {
+  return `${TRIP_IMAGES_KEY_PREFIX}uploads/${userId}/${randomUUID()}.${fileExtension}`;
+}
 
 /**
  * Get a presigned URL for direct browser-to-R2 upload.
@@ -126,6 +133,104 @@ export async function uploadAvatarAction(formData: FormData): Promise<UploadResu
     };
   } catch (err) {
     console.error("R2 upload (fetch) error:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Upload failed",
+    };
+  }
+}
+
+/**
+ * Presigned PUT for a trip cover image. Key is under `trip-images/uploads/{userId}/`.
+ */
+export async function getPresignedTripCoverUploadUrlAction(
+  contentType: string,
+  fileExtension: string
+): Promise<PresignedResult> {
+  const userId = await getAuthUserId();
+  if (!userId) {
+    return { success: false, error: "Authentication required" };
+  }
+
+  if (!ALLOWED_TYPES.includes(contentType)) {
+    return { success: false, error: "Invalid file type. Use JPEG, PNG, WebP, or GIF." };
+  }
+
+  const key = tripCoverUploadKey(userId, fileExtension);
+
+  try {
+    const command = new PutObjectCommand({
+      Bucket: AVATARS_BUCKET,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 300 });
+    return { success: true, uploadUrl, key };
+  } catch (err) {
+    console.error("Presign trip cover error:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to get upload URL",
+    };
+  }
+}
+
+/**
+ * Upload trip cover: server presigns then PUTs bytes to R2 (same pattern as avatar).
+ */
+export async function uploadTripCoverAction(formData: FormData): Promise<UploadResult> {
+  const userId = await getAuthUserId();
+  if (!userId) {
+    return { success: false, error: "Authentication required" };
+  }
+
+  const file = formData.get("file") as File | null;
+  if (!file) {
+    return { success: false, error: "No file provided" };
+  }
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { success: false, error: "Invalid file type. Use JPEG, PNG, WebP, or GIF." };
+  }
+
+  if (file.size > MAX_TRIP_COVER_FILE_SIZE) {
+    return { success: false, error: "File size must be less than 8MB" };
+  }
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const presigned = await getPresignedTripCoverUploadUrlAction(file.type, ext);
+
+  if (!presigned.success) {
+    return presigned;
+  }
+
+  if (!presigned.key.startsWith(`${TRIP_IMAGES_KEY_PREFIX}uploads/${userId}/`)) {
+    return { success: false, error: "Invalid upload key" };
+  }
+
+  try {
+    const body = await file.arrayBuffer();
+    const res = await fetch(presigned.uploadUrl, {
+      method: "PUT",
+      body,
+      headers: { "Content-Type": file.type },
+    });
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: `Upload failed: ${res.status} ${res.statusText}`,
+      };
+    }
+
+    return {
+      success: true,
+      url: getR2PublicUrl(presigned.key),
+      key: presigned.key,
+    };
+  } catch (err) {
+    console.error("R2 trip cover upload error:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Upload failed",

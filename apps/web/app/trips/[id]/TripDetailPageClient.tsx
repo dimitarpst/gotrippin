@@ -265,6 +265,19 @@ export default function TripDetailPageClient({
           toast.error(t("trips.background_update_failed"), { description: result.error });
         }
       },
+      onChangeBackgroundUpload: async ({ storage_key }) => {
+        if (!trip?.id) return;
+        const result = await updateTripAction(trip.id, {
+          cover_upload_storage_key: storage_key,
+          color: undefined,
+        });
+        if (result.success) {
+          toast.success(t("trips.background_updated"));
+          router.refresh();
+        } else {
+          toast.error(t("trips.background_update_failed"), { description: result.error });
+        }
+      },
       onChangeBackgroundColor: async (color) => {
         if (!trip?.id) return;
         const result = await updateTripAction(trip.id, { color, cover_photo: undefined });

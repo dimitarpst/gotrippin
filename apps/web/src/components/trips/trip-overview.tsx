@@ -70,6 +70,8 @@ export interface TripOverviewActions {
   onEditName?: () => void
   onChangeDates?: (dateRange: DateRange | undefined) => void
   onChangeBackground?: (type: "image", value: import("@gotrippin/core").CoverPhotoInput) => void
+  /** Device upload already in R2; persists via `cover_upload_storage_key` on trip update. */
+  onChangeBackgroundUpload?: (payload: { storage_key: string }) => void
   onChangeBackgroundColor?: (color: string) => void
 }
 
@@ -143,6 +145,7 @@ export default function TripOverview({
     onOpenLocation,
     onChangeDates,
     onChangeBackground,
+    onChangeBackgroundUpload,
     onChangeBackgroundColor,
   } = actions
 
@@ -1168,6 +1171,14 @@ export default function TripOverview({
             onChangeBackground(type, value)
             setShowBackgroundPicker(false)
           }}
+          onSelectUpload={
+            onChangeBackgroundUpload
+              ? (payload) => {
+                  onChangeBackgroundUpload(payload)
+                  setShowBackgroundPicker(false)
+                }
+              : undefined
+          }
           onSelectColor={(color) => {
             onChangeBackgroundColor?.(color)
             setShowBackgroundPicker(false)

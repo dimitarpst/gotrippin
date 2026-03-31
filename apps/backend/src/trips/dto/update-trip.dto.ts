@@ -56,6 +56,15 @@ export class UpdateTripDto {
   @Type(() => CoverPhotoDto)
   cover_photo?: CoverPhotoDto;
 
+  @ApiProperty({
+    required: false,
+    description: 'R2 storage key after client upload (trip-images/uploads/{userId}/…); creates photos row with source=upload',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  cover_upload_storage_key?: string;
+
   @ApiProperty({ 
     required: false,
     example: '#ff6b6b',
