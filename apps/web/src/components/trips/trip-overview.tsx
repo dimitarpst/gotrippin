@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useState, useEffect, useRef, useCallback, useMemo } from "react"
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react"
 import {
   Plus,
   MoreHorizontal,
@@ -31,7 +31,13 @@ import {
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Trip, TripLocation, Activity, TripLocationWeather } from "@gotrippin/core"
-import { formatTripDate, calculateDaysUntil, calculateDuration } from "@gotrippin/core"
+import {
+  formatTripDate,
+  calculateDaysUntil,
+  calculateDuration,
+  averageRgbFromImageDataSampled,
+  rgbToHex,
+} from "@gotrippin/core"
 import { useTranslation } from "react-i18next"
 import {
   DropdownMenu,
@@ -85,6 +91,32 @@ export interface TripOverviewWeather {
   loading?: boolean
   error?: string | null
   onRefetch?: () => Promise<void>
+}
+
+/** Pixels above the measured hero bottom where the accent reaches full opacity (then stays solid to viewport bottom). */
+const ACCENT_SCROLL_SOLID_START_OFFSET_PX = 28
+
+/** Scroll distance over which accent “header reveal” ramps (larger = full solid later). */
+const HEADER_BG_OPACITY_FULL_SCROLL = 340
+
+/** Header scrim: start fading in / end fully opaque (smoothed scroll px). Later = full color later. */
+const HEADER_BACKDROP_START_PX = 145
+const HEADER_BACKDROP_RANGE_PX = 260
+
+/** Exponential smoothing for scroll position (0–1). Lower = slower follow, less twitchy. */
+const SCROLL_SMOOTH_LERP = 0.088
+
+/** Ignore subpixel churn when lerping (stops the RAF loop). */
+const SCROLL_SMOOTH_EPSILON = 0.045
+
+function smoothStep01(t: number): number {
+  const x = Math.min(1, Math.max(0, t))
+  return x * x * (3 - 2 * x)
+}
+
+/** Double smoothstep — stays transparent longer, eases in fully later (Ken Perlin-style). */
+function smootherStep01(t: number): number {
+  return smoothStep01(smoothStep01(t))
 }
 
 interface TripOverviewProps {
@@ -141,8 +173,13 @@ export default function TripOverview({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
-  const [scrollY, setScrollY] = useState(0)
-  const rafRef = useRef<number | null>(null)
+  const [smoothScrollY, setSmoothScrollY] = useState(0)
+  const scrollTargetRef = useRef(0)
+  const smoothScrollRef = useRef(0)
+  const scrollSmoothRafRef = useRef<number | null>(null)
+  const [viewportHeight, setViewportHeight] = useState(800)
+  const [heroBottomPx, setHeroBottomPx] = useState<number | null>(null)
+  const heroShellRef = useRef<HTMLDivElement>(null)
 
   // Calculate trip details - memoize to prevent recalculation on every render
   const { daysUntil, duration, startDate, endDate } = useMemo(() => ({
@@ -228,6 +265,10 @@ export default function TripOverview({
   }
 
   const coverUrl = resolveTripCoverUrl(trip as any)
+  const coverStorageKey =
+    (trip.cover_photo as { storage_key?: string } | null | undefined)?.storage_key ?? null
+  const persistedCoverDominant =
+    (trip.cover_photo as { dominant_color?: string | null } | null | undefined)?.dominant_color ?? null
 
   const isGradient = trip.color ? trip.color.startsWith('linear-gradient') : false
   // When a cover image is present: use the extracted dominant color (null while loading, so no flicker).
@@ -238,44 +279,128 @@ export default function TripOverview({
     : (trip.color && !isGradient ? trip.color : null)
   const backgroundColor = coverUrl ? 'transparent' : (tripAccent ?? 'transparent')
 
-  // Throttled scroll handler using requestAnimationFrame for smooth performance
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const scrollTop = e.currentTarget.scrollTop
-
-    // Cancel previous RAF if it exists
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current)
+  const runScrollSmoothing = useCallback(() => {
+    scrollSmoothRafRef.current = null
+    const target = scrollTargetRef.current
+    let current = smoothScrollRef.current
+    const diff = target - current
+    if (Math.abs(diff) < SCROLL_SMOOTH_EPSILON) {
+      if (current !== target) {
+        current = target
+        smoothScrollRef.current = target
+        setSmoothScrollY(target)
+      }
+      return
     }
-
-    // Schedule update on next frame
-    rafRef.current = requestAnimationFrame(() => {
-      setScrollY(scrollTop)
-      rafRef.current = null
-    })
+    current += diff * SCROLL_SMOOTH_LERP
+    smoothScrollRef.current = current
+    setSmoothScrollY(current)
+    scrollSmoothRafRef.current = requestAnimationFrame(runScrollSmoothing)
   }, [])
 
-  // Cleanup RAF on unmount
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      scrollTargetRef.current = e.currentTarget.scrollTop
+      if (scrollSmoothRafRef.current === null) {
+        scrollSmoothRafRef.current = requestAnimationFrame(runScrollSmoothing)
+      }
+    },
+    [runScrollSmoothing],
+  )
+
   useEffect(() => {
     return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current)
+      if (scrollSmoothRafRef.current !== null) {
+        cancelAnimationFrame(scrollSmoothRafRef.current)
       }
     }
   }, [])
 
-  // Extract dominant color from cover image so the gradient overlay matches the photo.
-  // Reset to DB color whenever the trip's cover changes, then refine via canvas extraction.
-  // DB color = instant (no flicker). Canvas = precise (same-origin R2 images only).
   useEffect(() => {
-    const stored = (trip.cover_photo as { dominant_color?: string | null } | null | undefined)?.dominant_color ?? null
-    setDominantColor(stored)
-  }, [trip.cover_photo])
+    scrollTargetRef.current = 0
+    smoothScrollRef.current = 0
+    setSmoothScrollY(0)
+  }, [trip.id])
 
-  // Canvas extraction refines the DB color once the image loads (R2 same-origin only).
-  // On load error (CORB) or getImageData failure: do NOT clear — keep DB-seeded color so gradient stays visible.
+  const measureHeroBottom = useCallback(() => {
+    const el = heroShellRef.current
+    if (!el) return
+    setHeroBottomPx(el.getBoundingClientRect().bottom)
+  }, [])
+
+  useLayoutEffect(() => {
+    const update = () => {
+      setViewportHeight(window.innerHeight)
+      measureHeroBottom()
+    }
+    update()
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
+  }, [measureHeroBottom, coverUrl, trip.id])
+
+  /**
+   * Same overlay geometry: `bottom: 0`, `height: calc(90vh + smoothScrollY * 1.5px)`.
+   * Uses smoothed scroll + smoothstep so the accent fade and header reveal don’t step.
+   */
+  const accentScrollOverlayBackground = useMemo(() => {
+    if (!tripAccent) return undefined
+    const vh = viewportHeight
+    const sy = smoothScrollY
+    const overlayH = 0.9 * vh + sy * 1.5
+    const yTop = vh - overlayH
+    const heroBottom = heroBottomPx ?? 0.45 * vh
+    const headerRevealT = smootherStep01(sy / HEADER_BG_OPACITY_FULL_SCROLL)
+    const solidStart = heroBottom - ACCENT_SCROLL_SOLID_START_OFFSET_PX
+
+    if (yTop >= solidStart) {
+      return `linear-gradient(to bottom, ${tripAccent} 0%, ${tripAccent} 100%)`
+    }
+
+    const p = ((solidStart - yTop) / overlayH) * 100
+    const pClamp = Math.max(0, Math.min(100, p))
+    const pShifted = pClamp * (1 - headerRevealT)
+    const solidMix = smoothStep01((0.52 - pShifted) / 0.52)
+
+    if (solidMix >= 0.995) {
+      return `linear-gradient(to bottom, ${tripAccent} 0%, ${tripAccent} 100%)`
+    }
+
+    const pBlend = pShifted * (1 - solidMix)
+
+    return `linear-gradient(to bottom,
+      transparent 0%,
+      ${tripAccent}99 ${Math.max(0, pBlend - 14)}%,
+      ${tripAccent}dd ${Math.max(0, pBlend - 5)}%,
+      ${tripAccent} ${pBlend}%,
+      ${tripAccent} 100%)`
+  }, [tripAccent, smoothScrollY, heroBottomPx, viewportHeight])
+
+  /** Continuous 0–1 for header scrim; stretches over HEADER_BACKDROP_* so full color comes in later. */
+  const headerBackdropOpacity = useMemo(
+    () => smoothStep01((smoothScrollY - HEADER_BACKDROP_START_PX) / HEADER_BACKDROP_RANGE_PX),
+    [smoothScrollY],
+  )
+
+  const showCollapsedHeaderChrome = headerBackdropOpacity > 0.62
+
+  // Seed from DB when the trip or cover *file* changes — not on every `cover_photo` reference
+  // (router revalidates would reset to stale DB and wipe a successful client extraction).
+  useEffect(() => {
+    const stored =
+      (trip.cover_photo as { dominant_color?: string | null } | null | undefined)?.dominant_color ?? null
+    setDominantColor(stored)
+  }, [trip.id, coverStorageKey])
+
+  // One-time extraction when this cover has no `dominant_color` yet (e.g. new image). If the DB
+  // already has a value, we never run canvas work on repeat visits — only when `storage_key` changes
+  // does the seed effect clear it and this can run again.
   useEffect(() => {
     if (!coverUrl) {
       setDominantColor(null)
+      return
+    }
+
+    if (persistedCoverDominant) {
       return
     }
 
@@ -293,25 +418,12 @@ export default function TripOverview({
       ctx.drawImage(img, 0, 0)
 
       try {
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-        const data = imageData.data
-        let r = 0, g = 0, b = 0
-        const sampleSize = 10
-
-        for (let i = 0; i < data.length; i += 4 * sampleSize) {
-          r += data[i]
-          g += data[i + 1]
-          b += data[i + 2]
-        }
-
-        const pixelCount = data.length / (4 * sampleSize)
-        r = Math.floor(r / pixelCount)
-        g = Math.floor(g / pixelCount)
-        b = Math.floor(b / pixelCount)
-
-        const extracted = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+        const y0 = Math.floor(canvas.height * 0.65)
+        const regionHeight = canvas.height - y0
+        const imageData = ctx.getImageData(0, y0, canvas.width, regionHeight)
+        const raw = averageRgbFromImageDataSampled(imageData, 10)
+        const extracted = rgbToHex(raw.r, raw.g, raw.b)
         setDominantColor(extracted)
-        // Persist so next load has instant gradient (no delay)
         void updateTripCoverDominantColor(trip.id, extracted).catch(() => {})
       } catch (e) {
         console.error("[trip-overview] dominant color extraction failed, keeping DB value", e)
@@ -321,7 +433,7 @@ export default function TripOverview({
     img.onerror = () => {
       // Do not set null — keep DB-seeded dominant_color so the gradient shows immediately with no delay
     }
-  }, [coverUrl])
+  }, [coverUrl, trip.id, coverStorageKey, persistedCoverDominant])
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -329,6 +441,7 @@ export default function TripOverview({
       {(!isGradient || coverUrl) && (
         <>
           <div
+            ref={heroShellRef}
             className="fixed top-0 left-0 w-full h-[45vh] z-[1]"
             style={{
               background: coverUrl ? (tripAccent ?? 'var(--color-background)') : (isGradient ? 'transparent' : backgroundColor),
@@ -374,19 +487,32 @@ export default function TripOverview({
             />
           )}
 
-          {/* Gradient overlay — only shown when trip has a stored color */}
-          {tripAccent && (
+          {/* Dark frosted band: blurs and dims the junction so the transition does not rely on a perfect accent match. */}
+          {coverUrl && !isGradient && (
+            <div
+              className="fixed left-0 right-0 pointer-events-none z-[2]"
+              style={{
+                top: 'calc(45vh - 7rem)',
+                height: '9rem',
+                background:
+                  'linear-gradient(to bottom, transparent 0%, rgba(14, 11, 16, 0.22) 35%, rgba(14, 11, 16, 0.55) 100%)',
+                backdropFilter: 'blur(18px)',
+                WebkitBackdropFilter: 'blur(18px)',
+                maskImage: 'linear-gradient(to bottom, transparent 0%, black 28%, black 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 28%, black 100%)',
+              }}
+              aria-hidden
+            />
+          )}
+
+          {/* Accent scroll overlay: same height animation as before; gradient is to-bottom (transparent → solid above hero bottom → solid to viewport bottom). */}
+          {tripAccent && accentScrollOverlayBackground && (
             <div
               className="fixed left-0 w-full pointer-events-none z-[3]"
               style={{
                 bottom: 0,
-                height: `calc(90vh + ${scrollY * 1.5}px)`,
-                background: `linear-gradient(to top,
-                  ${tripAccent} 0%,
-                  ${tripAccent} 50%,
-                  ${tripAccent}dd 70%,
-                  ${tripAccent}99 85%,
-                  transparent 100%)`,
+                height: `calc(90vh + ${smoothScrollY * 1.5}px)`,
+                background: accentScrollOverlayBackground,
                 willChange: 'height',
               }}
             />
@@ -403,8 +529,8 @@ export default function TripOverview({
             background: tripAccent ? `${tripAccent}f0` : 'rgba(14, 11, 16, 0.9)',
           }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: scrollY > 200 ? 1 : 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
+          animate={{ opacity: headerBackdropOpacity }}
+          transition={{ duration: 0 }}
         />
 
         <div className="relative p-4 flex items-center justify-between">
@@ -501,9 +627,9 @@ export default function TripOverview({
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{
-              opacity: scrollY > 200 ? 1 : 0,
-              scale: scrollY > 200 ? 1 : 0.8,
-              y: scrollY > 200 ? 0 : 20
+              opacity: showCollapsedHeaderChrome ? 1 : 0,
+              scale: showCollapsedHeaderChrome ? 1 : 0.8,
+              y: showCollapsedHeaderChrome ? 0 : 20
             }}
             transition={{
               duration: 0.4,
@@ -559,7 +685,7 @@ export default function TripOverview({
         <motion.div
           className="relative z-10 px-6 pt-60 pb-6 text-center"
           initial="hidden"
-          animate={scrollY > 200 ? "hidden" : "visible"}
+          animate={showCollapsedHeaderChrome ? "hidden" : "visible"}
           variants={{
             hidden: {
               opacity: 0,

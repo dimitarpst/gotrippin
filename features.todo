@@ -9,6 +9,7 @@ Todo:
   ☐ Teacher feedback — AI-readable support (site can be read by AI)
   ☐ Teacher feedback — change home color palette
   ☐ Investigate url of background photo fked up while editing trip - remove extra / from the url when editing a trip.
+  ☐ Explore another weather api cuz current one sucks - look at https://open-meteo.com/en/docs
 
 Archive:
   ✔ shadcn theme alignment — native variable semantics, custom colors only (no overwrites)

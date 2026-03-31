@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { getTripWeather } from "@/lib/api/weather"
 import { useAuth } from "@/contexts/AuthContext"
 import type { Trip, TripWeatherResponse, TripLocationWeather } from "@gotrippin/core"
+import { averageRgbFromImageDataSampled, rgbToHex } from "@gotrippin/core"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import WeatherPageChrome from "./WeatherPageChrome"
@@ -71,20 +72,11 @@ export default function WeatherPageClient({ trip, shareCode, initialWeather, cov
       canvas.height = img.height
       ctx.drawImage(img, 0, 0)
       try {
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-        const data = imageData.data
-        let r = 0, g = 0, b = 0
-        const sampleSize = 10
-        for (let i = 0; i < data.length; i += 4 * sampleSize) {
-          r += data[i]
-          g += data[i + 1]
-          b += data[i + 2]
-        }
-        const pixelCount = data.length / (4 * sampleSize)
-        r = Math.round(r / pixelCount)
-        g = Math.round(g / pixelCount)
-        b = Math.round(b / pixelCount)
-        setDominantColor(`#${[r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")}`)
+        const y0 = Math.floor(canvas.height * 0.65)
+        const regionHeight = canvas.height - y0
+        const imageData = ctx.getImageData(0, y0, canvas.width, regionHeight)
+        const raw = averageRgbFromImageDataSampled(imageData, 10)
+        setDominantColor(rgbToHex(raw.r, raw.g, raw.b))
       } catch {
         setDominantColor(null)
       }

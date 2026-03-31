@@ -94,3 +94,9 @@ export {
   calculateDuration,
 } from './utils/date';
 
+export {
+  averageRgbFromImageDataSampled,
+  rgbToHex,
+  type RgbaImageRegion,
+} from './utils/cover-image-color';
+
