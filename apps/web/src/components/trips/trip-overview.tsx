@@ -72,6 +72,8 @@ export interface TripOverviewTimeline {
   routeLoading?: boolean
   timelineLocations?: TripLocation[]
   activitiesByLocation?: Record<string, Activity[]>
+  /** Activities not tied to a route stop; included in trip date picker timeline dots. */
+  unassignedActivities?: Activity[]
   loading?: boolean
   error?: string | null
   onRefetch?: () => Promise<void>
@@ -117,6 +119,7 @@ export default function TripOverview({
     routeLoading = false,
     timelineLocations = [],
     activitiesByLocation = {},
+    unassignedActivities = [],
     loading: timelineLoading = false,
     error: timelineError = null,
     onRefetch: onRefetchTimeline,
@@ -150,6 +153,15 @@ export default function TripOverview({
   }), [trip.start_date, trip.end_date])
 
   const derivedLocations = timelineLocations.length ? timelineLocations : routeLocations
+
+  const datePickerTimelineContext = useMemo(
+    () => ({
+      locations: derivedLocations,
+      activitiesByLocation,
+      unassigned: unassignedActivities,
+    }),
+    [derivedLocations, activitiesByLocation, unassignedActivities]
+  )
   const loadingRoute = timelineLoading || routeLoading
   const hasRoute = derivedLocations.length > 0
   const routeWaypoints = useMemo(() => tripLocationsToWaypoints(routeLocations), [routeLocations])
@@ -329,42 +341,36 @@ export default function TripOverview({
                 blurHash={(trip.cover_photo as { blur_hash?: string | null } | null | undefined)?.blur_hash ?? undefined}
                 className="absolute inset-0 w-full h-full"
                 imgStyle={{
-                  maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+                  // Fade photo out entirely by ~86% height so the last slice of the hero is only
+                  // tripAccent (matches the block below). No residual bitmap at the 45vh edge.
+                  maskImage:
+                    'linear-gradient(to bottom, black 0%, black 30%, rgba(0,0,0,0.9) 44%, rgba(0,0,0,0.42) 68%, rgba(0,0,0,0.1) 82%, transparent 86%, transparent 100%)',
+                  WebkitMaskImage:
+                    'linear-gradient(to bottom, black 0%, black 30%, rgba(0,0,0,0.9) 44%, rgba(0,0,0,0.42) 68%, rgba(0,0,0,0.1) 82%, transparent 86%, transparent 100%)',
                 }}
               />
             ) : null}
-            {/* Dark overlay for text readability */}
+            {/* Dark overlay for text readability — must fade to transparent at the bottom so the
+                last row of pixels matches the solid tripAccent block below (no seam at 45vh). */}
             <div
               className="absolute inset-0 pointer-events-none"
               style={{
-                background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%)',
+                background:
+                  'linear-gradient(to bottom, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.14) 52%, rgba(0,0,0,0.06) 72%, transparent 100%)',
               }}
             />
           </div>
 
-          {/* Fill rest of viewport below the 45vh image with dominant color — removes the line/gap */}
+          {/* Fill below hero: same color as hero backing. Slight overlap upward avoids a 1px GPU seam between fixed layers. */}
           {!isGradient && (coverUrl ? tripAccent : backgroundColor !== 'transparent') && (
             <div
               className="fixed left-0 w-full z-[1]"
               style={{
-                top: '45vh',
+                top: 'calc(45vh - 1px)',
                 bottom: 0,
                 background: coverUrl ? (tripAccent ?? 'var(--color-background)') : backgroundColor,
               }}
               aria-hidden
-            />
-          )}
-
-          {/* Gradient fade from image to background - only for image/solid color (not gradients) */}
-          {!isGradient && (
-            <div
-              className="fixed left-0 w-full pointer-events-none z-[2]"
-              style={{
-                top: '45vh',
-                height: '20vh',
-                background: `linear-gradient(to bottom, transparent 0%, var(--color-background) 100%)`,
-              }}
             />
           )}
 
@@ -1023,6 +1029,7 @@ export default function TripOverview({
                 }
                 : undefined
           }
+          timelineContext={datePickerTimelineContext}
         />
       )}
 

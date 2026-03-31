@@ -1,0 +1,19 @@
+Documentation:
+  ☐ Diploma thesis documentation (40+ pages) — structure, write, review, finalize
+  ☐ Keep implementation evidence log while developing (what changed, why, files, screenshots, results)
+
+Documentation Notes While Building:
+  ☐ Capture problem statement and why route-first planning solves it better than generic trip lists
+  ☐ Record architecture decisions (Next.js web, NestJS API, Supabase, shared @gotrippin/core)
+  ☐ Track security model decisions (JWT validation, RLS, access boundaries)
+  ☐ Document data model evolution (trips, trip_members, trip_locations, activities with location_id)
+  ☐ Save evidence for route reorder correctness and conflict-safe behavior
+  ☐ Keep before/after notes for teacher feedback tasks and UX impact
+  ☐ Record AI operator scope, safety boundaries, and implemented tool coverage
+  ☐ Track maps decisions and deferred/cut features with rationale
+  ☐ Track weather integration behavior per location and any constraints
+  ☐ Capture i18n progress and remaining EN/BG parity gaps
+  ☐ Log performance/cost optimizations (Unsplash, API calls, caching, rate limits)
+  ☐ Store testing evidence per feature (manual scenarios, edge cases, fixes)
+  ☐ Save deployment/runtime notes (env setup, hosting constraints, production checks)
+  ☐ Maintain thesis-ready assets folder (screenshots, diagrams, flow charts, DB schema exports)

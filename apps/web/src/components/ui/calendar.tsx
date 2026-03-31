@@ -197,7 +197,17 @@ function CalendarDayButton({
     !modifiers.range_start &&
     !modifiers.range_end &&
     !modifiers.range_middle
-  
+
+  /** Selectable days inside trip min/max (route date picker) — subtle tile so they read at a glance. */
+  const isTripWindow =
+    !!mods.tripWindow &&
+    !modifiers.disabled &&
+    !modifiers.outside &&
+    !modifiers.selected &&
+    !modifiers.range_start &&
+    !modifiers.range_end &&
+    !modifiers.range_middle
+
   return (
     <Button
       ref={ref}
@@ -217,6 +227,9 @@ function CalendarDayButton({
         "flex aspect-square h-full w-full items-center justify-center font-normal leading-none",
         "text-white transition-all duration-150 rounded-md",
         "hover:bg-[#ff6b6b]/10",
+        // Trip window (route picker): selectable days stand out vs disabled outside range
+        isTripWindow &&
+          "bg-white/[0.11] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]",
         // Dates used by other route stops (only when not selecting)
         isBusy && "bg-white/8 text-white/80",
         // Trip window boundary markers

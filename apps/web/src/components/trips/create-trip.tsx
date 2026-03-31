@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarIcon, ImageIcon } from "lucide-react";
 import { BackgroundPicker } from "./background-picker";
-import { DatePicker } from "./date-picker";
+import { DatePicker, type DatePickerTimelineContext } from "./date-picker";
 import type { DateRange } from "react-day-picker";
 import { useTranslation } from "react-i18next";
 import type { CoverPhotoInput, Photo } from "@gotrippin/core";
@@ -42,9 +42,17 @@ interface CreateTripProps {
     dateRange?: DateRange
   }
   isEditing?: boolean
+  /** When editing, show route/activity dots on the trip date picker (same as trip overview). */
+  datePickerTimelineContext?: DatePickerTimelineContext
 }
 
-export default function CreateTrip({ onBack, onSave, initialData, isEditing = false }: CreateTripProps) {
+export default function CreateTrip({
+  onBack,
+  onSave,
+  initialData,
+  isEditing = false,
+  datePickerTimelineContext,
+}: CreateTripProps) {
   const { t } = useTranslation();
   const { user, refreshProfile } = useAuth();
   const [tourOpen, setTourOpen] = useState(false);
@@ -328,6 +336,7 @@ export default function CreateTrip({ onBack, onSave, initialData, isEditing = fa
         onClose={() => setShowDatePicker(false)}
         onSelect={setDateRange}
         selectedDateRange={dateRange}
+        timelineContext={datePickerTimelineContext}
       />
 
       {!isEditing && (

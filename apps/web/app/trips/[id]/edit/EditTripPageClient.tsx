@@ -8,13 +8,24 @@ import { updateTripAction } from "@/actions/trips"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
 import type { Trip } from "@gotrippin/core"
+import { getGroupedActivities, normalizeTimelineData } from "@/lib/api/activities"
+import { getLocations } from "@/lib/api/trip-locations"
+import { shiftTripRelatedDatesByCalendarDays } from "@/lib/shift-trip-related-dates"
+import { computeTripStartCalendarDayDelta } from "@/lib/trip-date-shift-calendar"
+import type { DatePickerTimelineContext } from "@/components/trips/date-picker"
 
 interface EditTripPageClientProps {
   trip: Trip
   shareCode: string
+  /** Route + activities for date picker dots (same source as trip detail). */
+  datePickerTimelineContext: DatePickerTimelineContext
 }
 
-export default function EditTripPageClient({ trip, shareCode }: EditTripPageClientProps) {
+export default function EditTripPageClient({
+  trip,
+  shareCode,
+  datePickerTimelineContext,
+}: EditTripPageClientProps) {
   const { t } = useTranslation()
   const router = useRouter()
 
@@ -47,9 +58,39 @@ export default function EditTripPageClient({ trip, shareCode }: EditTripPageClie
 
       if (!trip.id) return
 
+      const previousStartIso = trip.start_date
+      const nextFrom = data.dateRange?.from
+      const calendarDayDelta =
+        previousStartIso && nextFrom
+          ? computeTripStartCalendarDayDelta(previousStartIso, nextFrom)
+          : null
+
       const result = await updateTripAction(trip.id, tripData as import("@gotrippin/core").TripUpdateData)
 
       if (result.success) {
+        if (calendarDayDelta !== null && calendarDayDelta !== 0) {
+          try {
+            const [locations, grouped] = await Promise.all([
+              getLocations(trip.id),
+              getGroupedActivities(trip.id),
+            ])
+            const { activitiesByLocation, unassigned } = normalizeTimelineData(grouped)
+            await shiftTripRelatedDatesByCalendarDays(
+              trip.id,
+              calendarDayDelta,
+              locations,
+              activitiesByLocation,
+              unassigned
+            )
+          } catch (err) {
+            console.error("EditTripPageClient: shift related dates failed", err)
+            toast.error(t("trips.dates_shift_partial_failed"), {
+              description: err instanceof Error ? err.message : String(err),
+            })
+            router.push(`/trips/${shareCode}`)
+            return
+          }
+        }
         toast.success(t("trips.update_success", { defaultValue: "Trip updated successfully!" }))
         router.push(`/trips/${shareCode}`)
       } else {
@@ -88,6 +129,7 @@ export default function EditTripPageClient({ trip, shareCode }: EditTripPageClie
           onSave={handleSave}
           initialData={initialData}
           isEditing={true}
+          datePickerTimelineContext={datePickerTimelineContext}
         />
       </div>
     </main>
