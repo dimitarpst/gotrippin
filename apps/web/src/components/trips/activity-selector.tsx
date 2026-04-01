@@ -6,6 +6,7 @@ import { motion } from "framer-motion"
 import { X, Search, Plane, Hotel, Car, MapPin, Utensils, Palette, Music, ShoppingBag, ChevronRight, Train } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 interface ActivitySelectorProps {
   tripId: string
@@ -58,18 +59,18 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
   const handleActivityClick = (activityLabel: string) => {
     // Map activity labels to core activity types
     const activityTypes: Record<string, string> = {
-      "Flight": "flight",
-      "Lodging": "accommodation",
-      "Route": "custom",
-      "Train": "train",
+      Flight: "flight",
+      Lodging: "accommodation",
+      Route: "custom",
+      Train: "train",
       "Car Rental": "car_rental",
-      "Restaurant": "restaurant",
-      "Café": "restaurant",
-      "Bar": "restaurant",
-      "Museum": "museum",
-      "Concert": "concert",
-      "Gallery": "attraction",
-      "Shopping": "shopping",
+      Restaurant: "restaurant",
+      Café: "restaurant",
+      Bar: "restaurant",
+      Museum: "museum",
+      Concert: "concert",
+      Gallery: "attraction",
+      Shopping: "shopping",
     }
 
     const type = activityTypes[activityLabel] || "custom"
@@ -78,12 +79,12 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
 
   const handleCategoryClick = (categoryLabel: string) => {
     const categoryTypes: Record<string, string> = {
-      "Flights": "flight",
-      "Lodging": "accommodation",
-      "Routes": "custom",
+      Flights: "flight",
+      Lodging: "accommodation",
+      Routes: "custom",
       "Car Rental": "car_rental",
-      "Dining": "restaurant",
-      "Shopping": "shopping",
+      Dining: "restaurant",
+      Shopping: "shopping",
     }
 
     const type = categoryTypes[categoryLabel] || "custom"
@@ -91,32 +92,33 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
+    <div className="min-h-screen bg-muted/50 text-foreground dark:bg-[var(--bg)]">
       <motion.div
-        className="sticky top-0 z-10 border-b border-white/[0.08] px-6 py-4"
-        style={{ backgroundColor: "var(--surface)" }}
+        className="sticky top-0 z-10 border-b border-border bg-card/95 px-6 py-4 shadow-sm backdrop-blur-md dark:border-white/[0.08]"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4, type: "spring", stiffness: 100 }}
       >
         <div className="flex items-center justify-between mb-4">
           <motion.button
+            type="button"
             onClick={onBack}
-            className="text-sm font-medium"
-            style={{ color: "var(--accent)" }}
+            className="text-sm font-semibold text-primary hover:text-primary/90"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             {t("activity.cancel")}
           </motion.button>
-          <h1 className="text-lg font-semibold text-white">{t("activity.new_activity")}</h1>
+          <h1 className="text-lg font-semibold text-foreground dark:text-white">
+            {t("activity.new_activity")}
+          </h1>
           <motion.button
-            className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: "var(--surface-alt)" }}
-            whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 107, 107, 0.1)" }}
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-muted hover:bg-muted/80 dark:hover:bg-white/10"
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <X className="w-5 h-5 text-muted-foreground" />
+            <X className="h-5 w-5 text-muted-foreground" />
           </motion.button>
         </div>
 
@@ -126,26 +128,23 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1 }}
         >
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: "var(--accent)" }} />
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
           <Input
             type="text"
             placeholder={t("activity.search_placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 rounded-full text-white focus:ring-2 transition-all duration-200"
-            style={
-              {
-                backgroundColor: "var(--surface-alt)",
-                borderColor: "var(--border)",
-                "--tw-ring-color": "rgba(255, 107, 107, 0.4)",
-              } as any
-            }
+            className={cn(
+              "h-11 w-full rounded-full border-border bg-muted/80 py-3 pl-12 pr-4 text-foreground shadow-xs",
+              "placeholder:text-muted-foreground",
+              "focus-visible:border-primary/40 focus-visible:ring-primary/25",
+            )}
           />
         </motion.div>
       </motion.div>
 
       <motion.div
-        className="px-6 py-6 overflow-x-auto"
+        className="overflow-x-auto px-6 py-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
@@ -154,8 +153,9 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
           {categories.map((category, index) => (
             <motion.button
               key={category.label}
+              type="button"
               onClick={() => handleCategoryClick(category.label)}
-              className="flex-shrink-0 flex flex-col items-center gap-2 group"
+              className="flex flex-shrink-0 flex-col items-center gap-2 group"
               initial={{ opacity: 0, y: 20, scale: 0.8 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{
@@ -168,7 +168,7 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
               whileTap={{ scale: 0.95 }}
             >
               <motion.div
-                className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-150"
+                className="flex h-16 w-16 items-center justify-center rounded-full transition-all duration-150"
                 style={{
                   backgroundColor: `${category.color}20`,
                   border: `1px solid ${category.color}40`,
@@ -179,9 +179,9 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
                   boxShadow: `0 0 20px ${category.color}40`,
                 }}
               >
-                <category.icon className="w-7 h-7" style={{ color: category.color }} />
+                <category.icon className="h-7 w-7" style={{ color: category.color }} />
               </motion.div>
-              <span className="text-xs group-hover:text-white transition-colors text-muted-foreground">
+              <span className="text-xs text-muted-foreground transition-colors group-hover:text-foreground dark:group-hover:text-white">
                 {category.label}
               </span>
             </motion.button>
@@ -202,29 +202,27 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
               stiffness: 100,
             }}
           >
-            <h2 className="text-sm font-semibold uppercase tracking-wide mb-4 text-muted-foreground">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               {section.section}
             </h2>
             <motion.div
-              className="rounded-2xl overflow-hidden border border-white/[0.08] shadow-card"
-              style={{ backgroundColor: "var(--surface)" }}
-              whileHover={{ boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)" }}
+              className={cn(
+                "overflow-hidden rounded-2xl border border-border bg-card shadow-md",
+                "dark:border-white/[0.08] dark:shadow-[0_10px_40px_rgba(0,0,0,0.3)]",
+              )}
+              whileHover={{ boxShadow: "0 12px 40px -8px color-mix(in oklch, var(--foreground) 12%, transparent)" }}
             >
               {section.items.map((item, itemIndex) => (
                 <div key={item.label}>
                   <motion.button
-                    className="w-full flex items-center gap-4 px-5 py-4 transition-colors group"
-                    style={{
-                      backgroundColor: "transparent",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--surface-alt)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                    type="button"
+                    className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/90 dark:hover:bg-white/[0.06]"
                     onClick={() => handleActivityClick(item.label)}
                     whileHover={{ x: 4 }}
                     whileTap={{ scale: 0.98 }}
                   >
                     <motion.div
-                      className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
                       style={{
                         backgroundColor: `${item.color}20`,
                         border: `1px solid ${item.color}40`,
@@ -234,15 +232,16 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
                         backgroundColor: `${item.color}30`,
                       }}
                     >
-                      <item.icon className="w-5 h-5" style={{ color: item.color }} />
+                      <item.icon className="h-5 w-5" style={{ color: item.color }} />
                     </motion.div>
-                    <span className="text-white text-base flex-1 text-left">{item.label}</span>
-                    <ChevronRight
-                      className="w-5 h-5 transition-colors group-hover:translate-x-1"
-                      style={{ color: "var(--accent)" }}
-                    />
+                    <span className="flex-1 text-base font-medium text-foreground dark:text-white">
+                      {item.label}
+                    </span>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
                   </motion.button>
-                  {itemIndex < section.items.length - 1 && <div className="h-px bg-white/10 mx-5" />}
+                  {itemIndex < section.items.length - 1 && (
+                    <div className="mx-5 h-px bg-border dark:bg-white/10" />
+                  )}
                 </div>
               ))}
             </motion.div>
@@ -252,4 +251,3 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
     </div>
   )
 }
-

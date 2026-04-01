@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, User, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/ui/languageSwitcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function FloatingHeader() {
   const { t, i18n } = useTranslation();
@@ -71,11 +72,7 @@ export default function FloatingHeader() {
       className="fixed top-6 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 flex justify-center"
     >
       <motion.div
-        className="relative w-full max-w-7xl flex items-center justify-between px-8 py-3 rounded-2xl border border-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-        }}
+        className="relative w-full max-w-7xl flex items-center justify-between px-8 py-3 rounded-2xl border border-border bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl shadow-lg dark:border-white/10 dark:from-white/[0.08] dark:to-white/[0.03] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
         initial={{ opacity: 0, y: -20, scale: 0.98 }}
         animate={{
           opacity: isHidden ? 0 : 1,
@@ -90,11 +87,11 @@ export default function FloatingHeader() {
             onClick={() =>
               setOpenMenu(openMenu === "trips" ? null : "trips")
             }
-            className="flex items-center gap-2 text-lg font-semibold text-white/90 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-lg font-semibold text-foreground/90 hover:text-foreground transition-colors dark:text-white/90 dark:hover:text-white"
           >
             {t(`header.${selected}`)}
             <ChevronDown
-              className={`w-5 h-5 text-white/60 transition-transform ${
+              className={`w-5 h-5 text-muted-foreground transition-transform dark:text-white/60 ${
                 openMenu === "trips" ? "rotate-180" : "rotate-0"
               }`}
             />
@@ -104,11 +101,7 @@ export default function FloatingHeader() {
           <AnimatePresence>
             {openMenu === "trips" && (
               <motion.div
-                className="absolute top-[calc(100%+0.5rem)] left-0 w-52 rounded-2xl border border-white/10 overflow-hidden backdrop-blur-2xl shadow-[0_4px_40px_rgba(0,0,0,0.4)]"
-                style={{
-                  background:
-                    "linear-gradient(160deg, rgba(25,25,35,0.9), rgba(40,35,50,0.7))",
-                }}
+                className="absolute top-[calc(100%+0.5rem)] left-0 w-52 rounded-2xl border border-border bg-popover/95 overflow-hidden backdrop-blur-2xl shadow-xl dark:border-white/10 dark:bg-gradient-to-br dark:from-[rgba(25,25,35,0.95)] dark:to-[rgba(40,35,50,0.85)] dark:shadow-[0_4px_40px_rgba(0,0,0,0.4)]"
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -121,12 +114,12 @@ export default function FloatingHeader() {
                       setSelected(key as typeof selected);
                       setOpenMenu(null);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors ${
-                      selected === key ? "text-[#ff6b6b]" : ""
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors dark:text-white/80 dark:hover:text-white dark:hover:bg-white/10 ${
+                      selected === key ? "text-primary dark:text-[#ff6b6b]" : ""
                     }`}
                     whileHover={{ x: 4 }}
                   >
-                    <Icon className="w-4 h-4 text-[#ff6b6b]" />
+                    <Icon className="w-4 h-4 text-primary dark:text-[#ff6b6b]" />
                     {label}
                   </motion.button>
                 ))}
@@ -136,7 +129,8 @@ export default function FloatingHeader() {
         </div>
 
         {/* Right side — Language switcher */}
-        <div className="relative flex items-center">
+        <div className="relative flex items-center gap-1">
+          <ThemeToggle className="h-9 w-9 shrink-0 border border-transparent hover:bg-muted/80 dark:hover:bg-white/5 dark:border-white/10" />
           <LanguageSwitcher
             defaultLanguage={(i18n.language?.split("-")[0] as "en" | "bg") || "en"}
             isOpen={openMenu === "language"}

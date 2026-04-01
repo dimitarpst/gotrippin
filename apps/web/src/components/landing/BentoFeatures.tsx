@@ -8,7 +8,8 @@ const features = [
     title: "Interactive Route Map",
     description: "Visualize your journey. Drag to reorder stops and let the map handle travel times.",
     icon: Map,
-    className: "md:col-span-2 md:row-span-2 bg-gradient-to-br from-white/[0.03] to-transparent ring-1 ring-white/5",
+    className:
+      "md:col-span-2 md:row-span-2 bg-gradient-to-br from-muted/60 to-transparent ring-1 ring-border dark:from-white/[0.03] dark:ring-white/5",
     illustration: (
       <div className="absolute right-8 bottom-8 left-8 top-8 flex items-center justify-end md:justify-center overflow-hidden">
         <motion.svg
@@ -46,7 +47,8 @@ const features = [
     title: "AI Trip Assistant",
     description: "Your personal local guide. Ask for hidden gems or optimal routes instantly.",
     icon: Sparkles,
-    className: "md:col-span-1 md:row-span-1 bg-gradient-to-br from-indigo-500/10 to-transparent ring-1 ring-white/5",
+    className:
+      "md:col-span-1 md:row-span-1 bg-gradient-to-br from-indigo-500/8 to-transparent ring-1 ring-border dark:from-indigo-500/10 dark:ring-white/5",
     illustration: (
       <div className="absolute right-6 top-6 bottom-6 w-24 rounded-2xl bg-gradient-to-b from-indigo-500/10 to-transparent border border-indigo-500/20" />
     )
@@ -55,9 +57,10 @@ const features = [
     title: "Shareable trips",
     description: "Share a link or code. Friends can view and edit the same trip without the chaos.",
     icon: Users,
-    className: "md:col-span-1 md:row-span-1 bg-gradient-to-br from-[#ff6b6b]/10 to-transparent ring-1 ring-white/5",
+    className:
+      "md:col-span-1 md:row-span-1 bg-gradient-to-br from-primary/12 to-transparent ring-1 ring-border dark:from-[#ff6b6b]/10 dark:ring-white/5",
     illustration: (
-      <div className="absolute right-6 bottom-6 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 font-mono text-xs text-white/40 tracking-wider">
+      <div className="absolute right-6 bottom-6 px-3 py-1.5 rounded-lg bg-muted/80 border border-border font-mono text-xs text-muted-foreground tracking-wider dark:bg-white/5 dark:border-white/10 dark:text-white/40">
         /trips/AbC12Xy
       </div>
     )
@@ -71,7 +74,7 @@ export default function BentoFeatures() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl h-[600px] bg-indigo-500/5 blur-[120px] pointer-events-none -z-10 rounded-full" />
       <div className="text-center mb-20">
         <motion.h2
-          className="font-display text-4xl sm:text-5xl font-bold tracking-tight mb-6"
+          className="font-display text-4xl sm:text-5xl font-bold tracking-tight mb-6 text-foreground"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
@@ -93,20 +96,20 @@ export default function BentoFeatures() {
         {features.map((feature, i) => (
           <motion.div
             key={i}
-            className={`relative rounded-3xl border border-white/10 overflow-hidden group hover:border-white/20 transition-colors ${feature.className}`}
+            className={`relative rounded-3xl border border-border overflow-hidden group hover:border-primary/25 transition-colors dark:border-white/10 dark:hover:border-white/20 ${feature.className}`}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
             transition={{ delay: i * 0.1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="absolute inset-0 bg-white/0 group-hover:bg-white/[0.02] transition-colors duration-500" />
+            <div className="absolute inset-0 bg-transparent group-hover:bg-muted/30 transition-colors duration-500 dark:group-hover:bg-white/[0.02]" />
 
             <div className="relative z-10 p-8 h-full flex flex-col">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center mb-6 backdrop-blur-md group-hover:border-white/15 transition-colors duration-300">
-                <feature.icon className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-2xl bg-muted border border-border flex items-center justify-center mb-6 backdrop-blur-md group-hover:border-primary/30 transition-colors duration-300 dark:bg-white/10 dark:border-white/10 dark:group-hover:border-white/15">
+                <feature.icon className="w-6 h-6 text-primary dark:text-white" />
               </div>
-              <h3 className="font-display text-2xl font-bold text-white mb-3">{feature.title}</h3>
-              <p className="text-white/60 max-w-sm leading-relaxed text-[15px]">{feature.description}</p>
+              <h3 className="font-display text-2xl font-bold text-foreground mb-3 dark:text-white">{feature.title}</h3>
+              <p className="text-muted-foreground max-w-sm leading-relaxed text-[15px] dark:text-white/60">{feature.description}</p>
             </div>
 
             {feature.illustration}

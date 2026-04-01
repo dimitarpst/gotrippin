@@ -10,9 +10,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { resolveAvatarUrl } from "@/lib/avatar";
 
 const baseClass =
-  "bg-transparent hover:bg-white/10 text-white/80 hover:text-white transition-all duration-300";
+  "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:text-white/80 dark:hover:text-white dark:hover:bg-white/10 transition-all duration-300";
 const accentClass =
-  "bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:bg-[var(--color-accent)]/80 shadow-[0_0_20px_rgba(255,107,107,0.5)] transition-all duration-300";
+  "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/30 dark:shadow-[0_0_20px_rgba(255,107,107,0.45)] transition-all duration-300";
 
 interface DockBarProps {
   onCreateTrip?: () => void;
@@ -118,14 +118,17 @@ export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
       <Dock
         items={items}
         className="
-          flex gap-2 
+          flex gap-2
           rounded-2xl px-5 py-3
-          backdrop-blur-xl
-          border border-white/10
-          bg-gradient-to-br from-white/10 via-white/5 to-transparent
-          shadow-[0_8px_32px_rgba(0,0,0,0.35)]
+          border-border
+          bg-gradient-to-br from-card/95 via-card/90 to-muted/30
+          shadow-md
           transition-all duration-500
-          hover:shadow-[0_8px_48px_rgba(255,107,107,0.25)]
+          dark:border-white/10
+          dark:from-white/10 dark:via-white/5 dark:to-transparent
+          dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]
+          dark:hover:shadow-[0_8px_48px_rgba(255,107,107,0.25)]
+          hover:shadow-lg
         "
       />
     </motion.div>

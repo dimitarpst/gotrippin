@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/Logo"
 import { useAuth } from "@/contexts/AuthContext"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function LandingNav() {
   const { user } = useAuth()
@@ -16,14 +17,15 @@ export default function LandingNav() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
     >
-      <Link href="/home" className="flex items-center pointer-events-auto group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-lg group-hover:opacity-90 transition-opacity" aria-label="gotrippin home">
+      <Link href="/home" className="flex items-center pointer-events-auto group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg group-hover:opacity-90 transition-opacity" aria-label="gotrippin home">
         <Logo className="h-10 w-auto" />
       </Link>
 
-      <div className="pointer-events-auto">
+      <div className="pointer-events-auto flex items-center gap-1 sm:gap-2">
+        <ThemeToggle className="border border-transparent hover:bg-muted/80 dark:hover:bg-white/5 dark:border-white/10" />
         <Link href={user ? "/trips" : "/auth"}>
           <Button
-            className="relative group overflow-hidden rounded-full px-6 bg-white/5 hover:bg-white/10 text-white border border-white/10 backdrop-blur-md transition-all duration-300 hover:scale-105 focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)]"
+            className="relative group overflow-hidden rounded-full px-6 bg-muted/80 hover:bg-muted text-foreground border border-border backdrop-blur-md transition-all duration-300 hover:scale-105 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-white/5 dark:hover:bg-white/10 dark:text-white dark:border-white/10"
             variant="outline"
           >
             <span className="relative z-10">{user ? "Dashboard" : "Get Started"}</span>

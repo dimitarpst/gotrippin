@@ -1,53 +1,42 @@
 "use client"
 
+import type { CSSProperties } from "react"
+
 interface AuroraBackgroundProps {
   className?: string
 }
 
+/**
+ * Themed page backdrop: light = soft coral/paper wash; dark = original deep aurora.
+ * Layers are driven by `--aurora-0` … `--aurora-4` in `app/globals.css`.
+ */
 export default function AuroraBackground({ className }: AuroraBackgroundProps) {
-  const layers = [
+  const layers: { className?: string; style: CSSProperties }[] = [
+    { style: { background: "var(--aurora-0)" } },
     {
-      s: {
-        background: `radial-gradient(120% 90% at 50% 110%, black 0%, hsl(0 0% 4%) 50%, black 100%)`,
-      },
+      className:
+        "opacity-[0.45] mix-blend-normal dark:opacity-[0.28] dark:mix-blend-screen",
+      style: { background: "var(--aurora-1)" },
     },
     {
-      c: "opacity-[0.28] mix-blend-screen",
-      s: {
-        background: `linear-gradient(135deg,
-          color-mix(in oklab, var(--color-accent) 60%, black 40%) 0%,
-          color-mix(in oklab, var(--color-accent) 30%, black 70%) 60%,
-          transparent 100%)`,
-      },
+      className:
+        "opacity-[0.25] mix-blend-normal dark:opacity-[0.15] dark:mix-blend-overlay",
+      style: { background: "var(--aurora-2)" },
     },
     {
-      c: "opacity-[0.15] mix-blend-overlay",
-      s: {
-        background: `linear-gradient(315deg,
-          color-mix(in oklab, black 80%, var(--color-accent) 20%) 0%,
-          transparent 70%)`,
-      },
+      className: "opacity-[0.08] dark:opacity-[0.05]",
+      style: { background: "var(--aurora-3)" },
     },
     {
-      c: "opacity-[0.05]",
-      s: {
-        backgroundImage:
-          "repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 6px)",
-      },
-    },
-    {
-      s: {
-        background: `radial-gradient(circle at center,
-          transparent 55%,
-          color-mix(in oklab, var(--color-accent) 25%, black 75%) 100%)`,
-      },
+      className: "opacity-90 dark:opacity-100",
+      style: { background: "var(--aurora-4)" },
     },
   ]
 
   return (
     <div className={`absolute inset-0 overflow-hidden pointer-events-none z-0 ${className || ""}`}>
       {layers.map((l, i) => (
-        <div key={i} className={`absolute inset-0 ${l.c || ""}`} style={l.s} />
+        <div key={i} className={`absolute inset-0 ${l.className || ""}`} style={l.style} />
       ))}
     </div>
   )

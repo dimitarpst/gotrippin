@@ -12,6 +12,7 @@ import ProfileError from "./ProfileError";
 import ChangeEmailCard from "./ChangeEmailCard";
 import ChangePasswordCard from "./ChangePasswordCard";
 import LinkedAccountsCard from "./LinkedAccountsCard";
+import ThemeSettingsCard from "./ThemeSettingsCard";
 import EmailConfirmationBanner from "./EmailConfirmationBanner";
 import { useTranslation } from "react-i18next";
 import { ExtendedUser } from "@/contexts/AuthContext";
@@ -295,6 +296,7 @@ export default function UserProfile({
 
         {/* Email and Password Change Cards */}
         <div className="space-y-4 mt-6">
+          <ThemeSettingsCard />
           {hasPassword && <ChangeEmailCard currentEmail={data.email} />}
           <ChangePasswordCard hasPassword={hasPassword ?? false} />
           <LinkedAccountsCard

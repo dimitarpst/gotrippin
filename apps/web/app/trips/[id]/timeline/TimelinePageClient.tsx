@@ -92,12 +92,12 @@ export default function TimelinePageClient({
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => router.push(`/trips/${shareCode}`)}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-white/80 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-foreground/80 hover:text-foreground transition-colors dark:text-white/80 dark:hover:text-white"
           >
             <ArrowLeft className="w-4 h-4" />
             {t("common.back", { defaultValue: "Back" })}
           </button>
-          <div className="flex items-center gap-2 text-white/70 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground text-sm dark:text-white/70">
             <Calendar className="w-4 h-4" />
             <span>{t("trip_overview.route_title")}</span>
           </div>
@@ -112,7 +112,7 @@ export default function TimelinePageClient({
 
         <div className="space-y-4">
           {locations.length === 0 && (
-            <Card className="p-5 border-dashed border-white/15 bg-white/5 text-sm text-white/80">
+            <Card className="p-5 border-dashed border-border bg-muted/40 text-sm text-muted-foreground dark:border-white/15 dark:bg-white/5 dark:text-white/80">
               {t("trip_overview.route_empty")}
             </Card>
           )}
@@ -126,7 +126,7 @@ export default function TimelinePageClient({
             return (
               <Card
                 key={loc.id}
-                className="p-5 border-white/10 bg-white/5 backdrop-blur cursor-pointer transition-colors hover:border-white/20"
+                className="p-5 border-border bg-card/95 text-card-foreground backdrop-blur cursor-pointer transition-colors hover:border-primary/25 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20"
                 onClick={() => router.push(`/trips/${shareCode}/timeline/${loc.id}`)}
                 role="button"
                 tabIndex={0}
@@ -139,33 +139,35 @@ export default function TimelinePageClient({
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-white/60">
+                    <span className="text-xs font-semibold text-muted-foreground dark:text-white/60">
                       {(idx + 1).toString().padStart(2, "0")}
                     </span>
                     <div>
-                      <p className="text-white font-semibold">{loc.location_name || t("trips.untitled_trip")}</p>
-                      {label && <p className="text-xs text-white/60">{label}</p>}
+                      <p className="text-foreground font-semibold dark:text-white">
+                        {loc.location_name || t("trips.untitled_trip")}
+                      </p>
+                      {label && <p className="text-xs text-muted-foreground dark:text-white/60">{label}</p>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-white/60">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground dark:text-white/60">
                     {weatherLoading && (
                       <span>{t("weather.loading", { defaultValue: "Loading weather..." })}</span>
                     )}
                     {!weatherLoading && weatherLabel && (
-                      <span className="text-white/70 whitespace-nowrap">{weatherLabel}</span>
+                      <span className="text-foreground/90 whitespace-nowrap dark:text-white/70">{weatherLabel}</span>
                     )}
                     {!weatherLoading && !weatherLabel && (
-                      <span className="text-white/50 whitespace-nowrap">
+                      <span className="text-muted-foreground whitespace-nowrap dark:text-white/50">
                         {t("weather.no_data", { defaultValue: "No data" })}
                       </span>
                     )}
                     {!weatherLoading && updatedShort && (
-                      <span className="text-white/40 whitespace-nowrap">
+                      <span className="text-muted-foreground whitespace-nowrap dark:text-white/40">
                         {t("weather.updated_short", { defaultValue: "Updated {{time}}", time: updatedShort })}
                       </span>
                     )}
                     {hasIssue ? (
-                      <AlertTriangle className="w-4 h-4 text-amber-200/90" />
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-200/90" />
                     ) : (
                       <div className="w-2 h-2 rounded-full bg-[#ff6b6b]" />
                     )}
@@ -173,29 +175,31 @@ export default function TimelinePageClient({
                 </div>
 
                 {acts.length === 0 ? (
-                  <p className="text-sm text-white/60">{t("route_empty", { defaultValue: "No activities for this stop yet." })}</p>
+                  <p className="text-sm text-muted-foreground dark:text-white/60">
+                    {t("route_empty", { defaultValue: "No activities for this stop yet." })}
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {acts.map((act) => (
                       <div
                         key={act.id}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                        className="rounded-xl border border-border bg-muted/50 px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-muted transition-colors dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                         onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/trips/${shareCode}/activity/${act.id}/edit`);
+                          e.stopPropagation()
+                          router.push(`/trips/${shareCode}/activity/${act.id}/edit`)
                         }}
                       >
                         <div>
-                          <p className="text-white font-medium text-sm">{act.title}</p>
+                          <p className="text-foreground font-medium text-sm dark:text-white">{act.title}</p>
                           {act.start_time && (
-                            <p className="text-xs text-white/60">
+                            <p className="text-xs text-muted-foreground dark:text-white/60">
                               {new Date(act.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           )}
                         </div>
                         {act.type && (
-                          <span className="text-[11px] uppercase tracking-wide text-white/50">
-                            {act.type.replace('_', ' ')}
+                          <span className="text-[11px] uppercase tracking-wide text-muted-foreground dark:text-white/50">
+                            {act.type.replace("_", " ")}
                           </span>
                         )}
                       </div>

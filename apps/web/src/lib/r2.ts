@@ -40,9 +40,21 @@ export const r2Client = new S3Client({
  * - WAF, caching, and access control require a custom domain (not available on r2.dev).
  */
 export function getR2PublicUrl(key: string): string {
+  const trimmed = key.trim();
+  if (!trimmed) {
+    return key;
+  }
+  // Already a full URL — do not concatenate (avoids broken double URLs).
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  // Leading slash on storage_key + "/" after base produced "//" in the path (e.g. on edit preview).
+  const normalizedKey = trimmed.replace(/^\/+/, "");
   const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "";
-  if (!base) return key;
-  return `${base.replace(/\/$/, "")}/${key}`;
+  if (!base) {
+    return normalizedKey;
+  }
+  return `${base.replace(/\/$/, "")}/${normalizedKey}`;
 }
 
 /**

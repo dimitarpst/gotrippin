@@ -12,6 +12,7 @@ import {
   isSupportedLanguage,
 } from "../src/i18n/config";
 import { appConfig } from "@/config/appConfig";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const siteUrl = appConfig.siteUrl || "https://gotrippin.app";
 const defaultTitle = "gotrippin — travel planning made simple";
@@ -116,12 +117,14 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLdStr }}
         />
-        <AuthProvider>
-          <I18nProvider initialLanguage={initialLanguage}>
-            {children}
-            <Toaster position="top-center" expand={true} richColors />
-          </I18nProvider>
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AuthProvider>
+            <I18nProvider initialLanguage={initialLanguage}>
+              {children}
+              <Toaster position="top-center" expand={true} richColors />
+            </I18nProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

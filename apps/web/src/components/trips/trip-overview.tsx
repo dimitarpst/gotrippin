@@ -27,6 +27,7 @@ import {
   Pencil,
   ArrowRight,
   Map as MapIcon,
+  FileDown,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -73,6 +74,8 @@ export interface TripOverviewActions {
   /** Device upload already in R2; persists via `cover_upload_storage_key` on trip update. */
   onChangeBackgroundUpload?: (payload: { storage_key: string }) => void
   onChangeBackgroundColor?: (color: string) => void
+  /** Download a printable PDF of the trip (route + activities). */
+  onExportTripPdf?: () => void | Promise<void>
 }
 
 export interface TripOverviewTimeline {
@@ -147,6 +150,7 @@ export default function TripOverview({
     onChangeBackground,
     onChangeBackgroundUpload,
     onChangeBackgroundColor,
+    onExportTripPdf,
   } = actions
 
   const {
@@ -219,15 +223,27 @@ export default function TripOverview({
 
     if (arrival && departure) {
       return (
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/20 border border-white/10 text-[11px] font-medium text-white/80 shadow-inner">
+        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted border border-border text-[11px] font-medium text-foreground shadow-inner dark:bg-black/20 dark:border-white/10 dark:text-white/80">
           <span>{format(arrival, "MMM d")}</span>
-          <ArrowRight className="w-2.5 h-2.5 text-white/40" />
+          <ArrowRight className="w-2.5 h-2.5 text-muted-foreground dark:text-white/40" />
           <span>{format(departure, "MMM d")}</span>
         </span>
       )
     }
-    if (arrival) return <span className="px-2.5 py-1 rounded-md bg-black/20 border border-white/10 text-[11px] font-medium text-white/80 shadow-inner">{format(arrival, "MMM d")}</span>
-    if (departure) return <span className="px-2.5 py-1 rounded-md bg-black/20 border border-white/10 text-[11px] font-medium text-white/80 shadow-inner">{format(departure, "MMM d")}</span>
+    if (arrival) {
+      return (
+        <span className="px-2.5 py-1 rounded-md bg-muted border border-border text-[11px] font-medium text-foreground shadow-inner dark:bg-black/20 dark:border-white/10 dark:text-white/80">
+          {format(arrival, "MMM d")}
+        </span>
+      )
+    }
+    if (departure) {
+      return (
+        <span className="px-2.5 py-1 rounded-md bg-muted border border-border text-[11px] font-medium text-foreground shadow-inner dark:bg-black/20 dark:border-white/10 dark:text-white/80">
+          {format(departure, "MMM d")}
+        </span>
+      )
+    }
     return null
   }
 
@@ -237,7 +253,7 @@ export default function TripOverview({
 
     if (weatherLoading) {
       return (
-        <span className="text-white/50 text-xs">
+        <span className="text-xs text-muted-foreground">
           {t("weather.loading", { defaultValue: "Loading weather..." })}
         </span>
       )
@@ -258,7 +274,7 @@ export default function TripOverview({
 
     if (entry?.error) {
       return (
-        <span className="text-xs text-white/60">
+        <span className="text-xs text-muted-foreground">
           {t("weather.unavailable", { defaultValue: "Weather unavailable" })}
         </span>
       )
@@ -552,7 +568,7 @@ export default function TripOverview({
             <DropdownMenuContent
               align="start"
               sideOffset={8}
-              className="min-w-[200px] bg-[#0e0b10]/95 backdrop-blur-xl border border-white/10 rounded-xl p-2 shadow-2xl"
+              className="min-w-[200px] bg-popover text-popover-foreground backdrop-blur-xl border border-border rounded-xl p-2 shadow-2xl"
               style={{
                 boxShadow: "0 8px 32px -8px rgba(0, 0, 0, 0.8)",
               }}
@@ -560,7 +576,7 @@ export default function TripOverview({
               {onShare && (
                 <DropdownMenuItem
                   onClick={onShare}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
                 >
                   <Share2 className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_share_trip')}</span>
@@ -569,7 +585,7 @@ export default function TripOverview({
               {onManageGuests && (
                 <DropdownMenuItem
                   onClick={onManageGuests}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
                 >
                   <Users className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_manage_guests')}</span>
@@ -578,7 +594,7 @@ export default function TripOverview({
               {onEditName && (
                 <DropdownMenuItem
                   onClick={onEditName}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
                 >
                   <Pencil className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_edit_name')}</span>
@@ -587,7 +603,7 @@ export default function TripOverview({
               {onChangeDates && (
                 <DropdownMenuItem
                   onClick={() => setShowDatePicker(true)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
                 >
                   <Calendar className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_change_dates')}</span>
@@ -596,17 +612,26 @@ export default function TripOverview({
               {onChangeBackground && (
                 <DropdownMenuItem
                   onClick={() => setShowBackgroundPicker(true)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
                 >
                   <ImageIcon className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_change_background')}</span>
                 </DropdownMenuItem>
               )}
-              {(onEdit || onDelete) && <DropdownMenuSeparator className="bg-white/10 my-2" />}
+              {onExportTripPdf && (
+                <DropdownMenuItem
+                  onClick={() => void onExportTripPdf()}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
+                >
+                  <FileDown className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t("trip_overview.menu_export_pdf")}</span>
+                </DropdownMenuItem>
+              )}
+              {(onEdit || onDelete) && <DropdownMenuSeparator className="bg-border my-2" />}
               {onEdit && (
                 <DropdownMenuItem
                   onClick={onEdit}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white cursor-pointer transition-colors hover:bg-[#ff6b6b]/20 focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
                 >
                   <Edit3 className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trips.edit')}</span>
@@ -768,7 +793,7 @@ export default function TripOverview({
           {/* Itinerary Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
             <Card
-              className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)]"
+              className="border-border dark:border-white/[0.08] rounded-2xl p-5 bg-card text-card-foreground"
             >
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
@@ -776,18 +801,18 @@ export default function TripOverview({
                   className="w-10 h-10 rounded-xl flex items-center justify-center"
                   style={{ background: "#ff6b6b" }}
                 >
-                  <Calendar className="w-5 h-5 text-white" />
+                  <Calendar className="w-5 h-5 text-primary-foreground" />
                 </div>
                   <div className="flex flex-col">
-                    <span className="text-xs uppercase tracking-wide text-white/60">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
                       {t('trip_overview.route_title')}
                     </span>
-                    <span className="text-sm font-semibold text-white">
+                    <span className="text-sm font-semibold text-foreground">
                       {trip.destination || trip.title || t('trips.untitled_trip')}
                     </span>
                   </div>
                 </div>
-                <span className="text-xs text-white/70 whitespace-nowrap">
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {hasRoute ? todayLabel : startDate}
                 </span>
               </div>
@@ -796,8 +821,8 @@ export default function TripOverview({
                 <div className="space-y-4 mb-4">
                   {[0, 1, 2].map((idx) => (
                     <div key={idx} className="flex gap-4">
-                      <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
-                      <div className="flex-1 h-14 rounded-2xl bg-white/5 border border-white/10 animate-pulse" />
+                      <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+                      <div className="flex-1 h-14 rounded-2xl bg-muted/80 border border-border animate-pulse" />
                     </div>
                   ))}
                 </div>
@@ -822,15 +847,15 @@ export default function TripOverview({
                       >
                         <div className="flex flex-col items-center">
                           <div className="w-2 h-2 rounded-full bg-[#ff6b6b] mt-1" />
-                          {index < derivedLocations.length - 1 && <span className="flex-1 w-px bg-white/15 mt-1" />}
+                          {index < derivedLocations.length - 1 && <span className="flex-1 w-px bg-border mt-1 dark:bg-white/15" />}
                         </div>
-                        <div className="flex-1 bg-white/[0.04] rounded-2xl border border-white/[0.08] px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.25)] transition-colors group-hover:border-white/[0.15]">
+                        <div className="flex-1 rounded-2xl border border-border bg-muted/35 px-4 py-3 shadow-sm transition-colors group-hover:border-primary/20 dark:bg-white/[0.04] dark:border-white/[0.08] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] dark:group-hover:border-white/[0.15]">
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="flex items-center gap-3 mt-0.5">
-                              <span className="text-[11px] uppercase tracking-wide text-white/50 font-medium">
+                              <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
                                 {(index + 1).toString().padStart(2, "0")}
                               </span>
-                              <p className="text-white font-semibold truncate text-lg">
+                              <p className="text-foreground font-semibold truncate text-lg">
                                 {location.location_name || t('trips.untitled_trip')}
                               </p>
                             </div>
@@ -840,7 +865,7 @@ export default function TripOverview({
                             {dateLabel ? (
                               <div className="whitespace-nowrap">{dateLabel}</div>
                             ) : <div />}
-                            <span className="text-[10px] uppercase tracking-wider font-semibold text-white/40 group-hover:text-white/60 transition-colors shrink-0">
+                            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground group-hover:text-foreground/80 transition-colors shrink-0 dark:text-white/40 dark:group-hover:text-white/60">
                               {t('trip_overview.view_all_days')}
                             </span>
                           </div>
@@ -852,14 +877,14 @@ export default function TripOverview({
               )}
 
               {!routeLoading && !hasRoute && (
-                <div className="flex items-center justify-between gap-3 border border-dashed border-white/15 rounded-2xl px-4 py-3 mb-3 bg-white/[0.02]">
+                <div className="flex items-center justify-between gap-3 border border-dashed border-border rounded-2xl px-4 py-3 mb-3 bg-muted/40 dark:border-white/15 dark:bg-white/[0.02]">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                      <Plus className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center dark:bg-white/10">
+                      <Plus className="w-5 h-5 text-foreground dark:text-white" />
                     </div>
                     <div>
-                      <p className="text-white font-semibold text-sm">{t('trip_overview.route_empty_title')}</p>
-                      <p className="text-xs text-white/60">{t('trip_overview.route_empty')}</p>
+                      <p className="text-foreground font-semibold text-sm">{t('trip_overview.route_empty_title')}</p>
+                      <p className="text-xs text-muted-foreground">{t('trip_overview.route_empty')}</p>
                     </div>
                   </div>
                   <button className="text-xs font-semibold uppercase tracking-wide text-[#ff6b6b]">
@@ -1009,14 +1034,14 @@ export default function TripOverview({
           {/* Documents Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
             <Card
-              className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)]"
+              className="border-border dark:border-white/[0.08] rounded-2xl p-5 bg-card text-card-foreground"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center dark:bg-white/10">
+                    <FileText className="w-5 h-5 text-primary dark:text-white" />
                   </div>
-                  <h2 className="text-base font-semibold text-white">{t('trip_overview.documents')}</h2>
+                  <h2 className="text-base font-semibold text-foreground">{t('trip_overview.documents')}</h2>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge
@@ -1025,15 +1050,15 @@ export default function TripOverview({
                   >
                     {t('trip_overview.pro_badge')}
                   </Badge>
-                  <Lock className="w-4 h-4 text-white/40" />
+                  <Lock className="w-4 h-4 text-muted-foreground" />
                 </div>
               </div>
 
               <div className="flex justify-center gap-6 mb-4 py-4">
-                <Mail className="w-6 h-6 text-white/40" />
-                <ImageIcon className="w-6 h-6 text-white/40" />
-                <FileType className="w-6 h-6 text-white/40" />
-                <LinkIcon className="w-6 h-6 text-white/40" />
+                <Mail className="w-6 h-6 text-muted-foreground" />
+                <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                <FileType className="w-6 h-6 text-muted-foreground" />
+                <LinkIcon className="w-6 h-6 text-muted-foreground" />
               </div>
 
               <p className="text-muted-foreground text-sm text-center mb-4">
@@ -1049,13 +1074,13 @@ export default function TripOverview({
           {/* Invite Guests Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
             <Card
-              className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)]"
+              className="border-border dark:border-white/[0.08] rounded-2xl p-5 bg-card text-card-foreground"
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center dark:bg-white/10">
+                  <Users className="w-5 h-5 text-primary dark:text-white" />
                 </div>
-                <h2 className="text-base font-semibold text-white">{t('trip_overview.invite_guests')}</h2>
+                <h2 className="text-base font-semibold text-foreground">{t('trip_overview.invite_guests')}</h2>
               </div>
 
               <p className="text-muted-foreground text-sm mb-4">
@@ -1075,13 +1100,12 @@ export default function TripOverview({
             transition={{ delay: 0.8 }}
           >
             <motion.button
-              className="px-6 py-3 rounded-full backdrop-blur-md border border-white/20 flex items-center gap-2 overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.1)" }}
+              className="px-6 py-3 rounded-full backdrop-blur-md border border-border bg-card/90 text-foreground flex items-center gap-2 overflow-hidden shadow-sm dark:border-white/20 dark:bg-white/10 dark:text-white"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Settings className="w-5 h-5 text-white" />
-              <span className="text-white font-semibold">{t('trip_overview.customize')}</span>
+              <Settings className="w-5 h-5" />
+              <span className="font-semibold">{t('trip_overview.customize')}</span>
             </motion.button>
           </motion.div>
         </div>
@@ -1097,7 +1121,7 @@ export default function TripOverview({
           onClick={() => setShowDeleteConfirm(false)}
         >
           <motion.div
-            className="bg-[#0e0b10] border border-white/10 rounded-2xl p-6 mx-6 max-w-md w-full"
+            className="bg-card text-card-foreground border border-border rounded-2xl p-6 mx-6 max-w-md w-full shadow-xl dark:bg-[#0e0b10] dark:border-white/10"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
@@ -1108,17 +1132,17 @@ export default function TripOverview({
                 <Trash2 className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white">{t('trip_overview.delete_trip')}</h3>
-                <p className="text-sm text-white/60">{t('trip_overview.delete_confirmation')}</p>
+                <h3 className="text-lg font-semibold text-foreground">{t('trip_overview.delete_trip')}</h3>
+                <p className="text-sm text-muted-foreground">{t('trip_overview.delete_confirmation')}</p>
               </div>
             </div>
-            <p className="text-white/80 mb-6">
+            <p className="text-muted-foreground mb-6">
               {t('trip_overview.delete_message', { tripName: trip.destination || trip.title })}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 px-4 py-2 rounded-lg bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
+                className="flex-1 px-4 py-2 rounded-lg bg-muted text-foreground font-medium hover:bg-muted/80 transition-colors dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
               >
                 {t('trips.cancel')}
               </button>

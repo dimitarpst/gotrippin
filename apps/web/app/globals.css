@@ -59,10 +59,81 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Aurora × Coral dark theme – semantic vars (shadcn names); app extras at end */
+/* Light (default): warm paper + coral brand (#ff6b6b ≈ hue 25) */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --radius: 0.625rem;
+  --background: oklch(0.985 0.008 85);
+  --foreground: oklch(0.22 0.035 280);
+  --card: oklch(1 0.005 85);
+  --card-foreground: oklch(0.22 0.035 280);
+  --popover: oklch(1 0.005 85);
+  --popover-foreground: oklch(0.22 0.035 280);
+  --primary: oklch(0.62 0.2 25);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.02 85);
+  --secondary-foreground: oklch(0.3 0.04 280);
+  --muted: oklch(0.96 0.015 85);
+  --muted-foreground: oklch(0.48 0.03 280);
+  --accent: oklch(0.96 0.04 25);
+  --accent-foreground: oklch(0.35 0.14 25);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.02 85);
+  --input: oklch(0.92 0.02 85);
+  --ring: oklch(0.62 0.2 25);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.98 0.01 85);
+  --sidebar-foreground: oklch(0.22 0.035 280);
+  --sidebar-primary: oklch(0.62 0.2 25);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0.02 85);
+  --sidebar-accent-foreground: oklch(0.22 0.035 280);
+  --sidebar-border: oklch(0.9 0.02 85);
+  --sidebar-ring: oklch(0.62 0.2 25);
+  --surface: var(--card);
+  --surface-alt: var(--muted);
+  /** Alias for legacy `var(--bg)` (activity picker, forms) */
+  --bg: var(--background);
+  --accent-hover: var(--primary);
+  --brand-coral: oklch(0.62 0.2 25);
+  /* Page backdrop behind trip shells — soft pastel wash (not black-heavy) */
+  --aurora-0: radial-gradient(
+    120% 100% at 50% 118%,
+    color-mix(in oklch, var(--brand-coral) 22%, white 78%) 0%,
+    oklch(0.97 0.02 85) 45%,
+    oklch(0.99 0.006 85) 100%
+  );
+  --aurora-1: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--brand-coral) 18%, white 82%) 0%,
+    color-mix(in oklch, oklch(0.62 0.1 280) 12%, white 88%) 52%,
+    transparent 100%
+  );
+  --aurora-2: linear-gradient(
+    315deg,
+    color-mix(in oklch, oklch(0.88 0.05 25) 35%, white 65%) 0%,
+    transparent 68%
+  );
+  --aurora-3: repeating-linear-gradient(
+    45deg,
+    oklch(0.45 0.02 280 / 0.04) 0 1px,
+    transparent 1px 7px
+  );
+  --aurora-4: radial-gradient(
+    circle at 48% 42%,
+    transparent 52%,
+    color-mix(in oklch, var(--brand-coral) 8%, white 92%) 100%
+  );
+}
+
+/* Dark: deep aurora × coral shell (`--aurora-*` consumed by `AuroraBackground`) */
+.dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
@@ -74,7 +145,7 @@
   --secondary: oklch(0.23 0.01 270);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.28 0.02 270);
-  --muted-foreground: oklch(0.70 0.03 270);
+  --muted-foreground: oklch(0.7 0.03 270);
   --accent: oklch(0.73 0.17 25);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.46 0.22 25);
@@ -95,39 +166,33 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
-  /* app-specific */
   --surface: var(--card);
   --surface-alt: var(--muted);
+  --bg: var(--background);
   --accent-hover: var(--primary);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.67 0.23 25);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --brand-coral: oklch(0.67 0.23 25);
+  --aurora-0: radial-gradient(120% 90% at 50% 110%, black 0%, hsl(0 0% 4%) 50%, black 100%);
+  --aurora-1: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent) 60%, black 40%) 0%,
+    color-mix(in oklab, var(--accent) 30%, black 70%) 60%,
+    transparent 100%
+  );
+  --aurora-2: linear-gradient(
+    315deg,
+    color-mix(in oklab, black 80%, var(--accent) 20%) 0%,
+    transparent 70%
+  );
+  --aurora-3: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.03) 0 1px,
+    transparent 1px 6px
+  );
+  --aurora-4: radial-gradient(
+    circle at center,
+    transparent 55%,
+    color-mix(in oklab, var(--accent) 25%, black 75%) 100%
+  );
 }
 
 @layer base {
@@ -152,5 +217,13 @@
     scrollbar-width: none;
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* Trip print / Save as PDF — preserve dark surfaces and coral accents in exported PDFs */
+@media print {
+  .trip-print-root {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }

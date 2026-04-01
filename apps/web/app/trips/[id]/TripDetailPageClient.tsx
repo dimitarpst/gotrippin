@@ -288,8 +288,28 @@ export default function TripDetailPageClient({
           toast.error(t("trips.color_update_failed"), { description: result.error });
         }
       },
+      onExportTripPdf: () => {
+        const url = `/trips/${shareCode}/print?autoprint=1`;
+        const w = window.open(url, "_blank", "noopener,noreferrer");
+        if (!w) {
+          toast.error(t("trips.export_pdf_failed"), {
+            description: t("trips.export_pdf_popup_blocked"),
+          });
+          return;
+        }
+        toast.success(t("trips.export_pdf_success"));
+      },
     }),
-    [trip?.id, shareCode, router, t, handleChangeDates]
+    [
+      trip,
+      routeLocations,
+      activitiesByLocation,
+      unassignedActivities,
+      shareCode,
+      router,
+      t,
+      handleChangeDates,
+    ]
   );
 
   const timeline: TripOverviewTimeline = useMemo(

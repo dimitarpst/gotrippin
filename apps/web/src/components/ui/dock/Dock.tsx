@@ -74,9 +74,9 @@ export function Dock({
         style={{ height: panelHeight }}
         className={cn(
           "absolute bottom-2 left-1/2 -translate-x-1/2 flex items-end gap-4 px-3 pb-2",
-          "rounded-2xl border border-[color:var(--color-border)]/60",
-          "backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
-          "bg-[color-mix(in_oklab,var(--surface)_70%,black_30%)]",
+          "rounded-2xl border backdrop-blur-2xl",
+          "border-border bg-card/90 shadow-lg",
+          "dark:border-white/10 dark:bg-[color-mix(in_oklab,var(--surface)_70%,black_30%)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
           className,
         )}
       >

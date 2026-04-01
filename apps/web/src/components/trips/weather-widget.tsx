@@ -84,25 +84,29 @@ export default function WeatherWidget({
 
     return (
       <motion.div
-        className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm text-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
+        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-card-foreground shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={onClick}
       >
-        <WeatherIcon className="w-4 h-4 text-white" />
+        <WeatherIcon className="w-4 h-4 text-foreground dark:text-white" />
         <div className="flex items-center gap-1.5">
           {typeof temperature === "number" && (
-            <span className="text-sm font-semibold text-white">{formatTemp(temperature)}</span>
+            <span className="text-sm font-semibold text-foreground dark:text-white">
+              {formatTemp(temperature)}
+            </span>
           )}
-          {!minimal && description && <span className="text-xs text-white/80">{description}</span>}
+          {!minimal && description && (
+            <span className="text-xs text-muted-foreground dark:text-white/80">{description}</span>
+          )}
         </div>
         {!minimal && locationLabel && (
-          <span className="text-[11px] uppercase tracking-wide text-white/60 whitespace-nowrap ml-1">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground whitespace-nowrap ml-1 dark:text-white/60">
             {locationLabel}
           </span>
         )}
         {!minimal && updatedLabel && (
-          <span className="text-[11px] text-white/50 whitespace-nowrap">
+          <span className="text-[11px] text-muted-foreground whitespace-nowrap dark:text-white/50">
             {updatedLabel}
           </span>
         )}
