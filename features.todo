@@ -1,17 +1,21 @@
 Todo:
   ☐ AI operator — Phase 3b: Dock as collapse bubble (compact on side, expand left/right); keep off AI page
   ☐ AI operator — Phase 5: Collaboration features and advanced planning behaviours (multi-user chat, locks, refinements)
-  ✔ Teacher feedback — when changing the main date, update the date under it as well — shift route + activity datetimes by start delta; trip overview date picker dots + long-press detail toast
-  ✔ Teacher feedback — trip photos should be uploadable by the person — cover: device upload to R2 (`trip-images/uploads/{userId}/…`), `photos.source=upload`, create/edit trip + background picker @done(26-03-31)
   ☐ Teacher feedback — more activities and notes
-  ✔ Teacher feedback — export trip as PDF — trip overview menu → `/trips/[id]/print` (site Tailwind + browser Save as PDF) @done(26-03-31)
-  ✘ Teacher feedback — button to extend the last route @cancelled(26-03-31 21:06)
-  ✔ Teacher feedback — AI-readable support (site can be read by AI) — `public/llms.txt`, `app/robots.ts` @done(26-03-31)
-  ✔ Teacher feedback — change home color palette — light/dark via `next-themes` + shadcn tokens; coral primary; landing + trips; trip overview cards/menus use semantic fg/bg (no forced `.dark` on `/trips`) @done(26-03-31)
-  ✔ Investigate url of background photo fked up while editing trip — normalize R2 keys in `getR2PublicUrl` (strip leading `/`, pass through absolute URLs) @done(26-03-31)
   ☐ Explore another weather api cuz current one sucks - look at https://open-meteo.com/en/docs
 
+To plan:
+  ☐ How to display the activities on the map - together with the route? or seperate?
+  ☐ How to display the weather on the map?
+  
 Archive:
+  ✔ (from Todo, 2026-04-02) Teacher feedback — when changing the main date, update the date under it as well — shift route + activity datetimes by start delta; trip overview date picker dots + long-press detail toast
+  ✔ (from Todo, 2026-04-02) Teacher feedback — trip photos should be uploadable by the person — cover: device upload to R2 (`trip-images/uploads/{userId}/…`), `photos.source=upload`, create/edit trip + background picker @done(26-03-31)
+  ✔ (from Todo, 2026-04-02) Teacher feedback — export trip as PDF — trip overview menu → `/trips/[id]/print` (site Tailwind + browser Save as PDF) @done(26-03-31)
+  ✘ Teacher feedback — button to extend the last route @cancelled(26-03-31 21:06)
+  ✔ (from Todo, 2026-04-02) Teacher feedback — AI-readable support (site can be read by AI) — `public/llms.txt`, `app/robots.ts` @done(26-03-31)
+  ✔ (from Todo, 2026-04-02) Teacher feedback — change home color palette — light/dark via `next-themes` + shadcn tokens; coral primary; landing + trips; trip overview cards/menus use semantic fg/bg (no forced `.dark` on `/trips`) @done(26-03-31)
+  ✔ (from Todo, 2026-04-02) Investigate url of background photo fked up while editing trip — normalize R2 keys in `getR2PublicUrl` (strip leading `/`, pass through absolute URLs) @done(26-03-31)
   ✔ shadcn theme alignment — native variable semantics, custom colors only (no overwrites)
     ✔ Phase 1 — globals.css: single :root, shadcn semantics, add --surface-alt
     ✔ Phase 2 — tailwind.config.js: align theme colors to CSS (oklch/vars)

@@ -1,4 +1,5 @@
 import type { TripLocation } from "@gotrippin/core";
+import { isSolidRouteColor } from "@/lib/route-colors";
 import type { MapWaypoint } from "./MapView";
 
 /**
@@ -15,8 +16,13 @@ export function tripLocationsToWaypoints(locations: TripLocation[]): MapWaypoint
         Number.isFinite(loc.longitude)
     )
     .map((loc) => ({
+      id: loc.id,
       lat: loc.latitude as number,
       lng: loc.longitude as number,
       name: loc.location_name,
+      markerColor:
+        loc.marker_color != null && isSolidRouteColor(loc.marker_color)
+          ? loc.marker_color
+          : undefined,
     }));
 }

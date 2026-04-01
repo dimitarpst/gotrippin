@@ -59,6 +59,7 @@ import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 import { toast } from "sonner"
 import { MapView, tripLocationsToWaypoints } from "@/components/maps"
 import { useRouteDirections } from "@/hooks"
+import { getLegColor, isSolidRouteColor } from "@/lib/route-colors"
 
 export interface TripOverviewActions {
   onNavigate: (screen: "activity" | "flight" | "timeline" | "weather" | "map") => void
@@ -97,6 +98,9 @@ export interface TripOverviewWeather {
   error?: string | null
   onRefetch?: () => Promise<void>
 }
+
+/** Max stops shown in the overview itinerary card before "show all". */
+const ITINERARY_OVERVIEW_VISIBLE_MAX = 3
 
 /** Pixels above the measured hero bottom where the accent reaches full opacity (then stays solid to viewport bottom). */
 const ACCENT_SCROLL_SOLID_START_OFFSET_PX = 28
@@ -197,6 +201,12 @@ export default function TripOverview({
   }), [trip.start_date, trip.end_date])
 
   const derivedLocations = timelineLocations.length ? timelineLocations : routeLocations
+
+  const itineraryOverviewVisible = derivedLocations.slice(0, ITINERARY_OVERVIEW_VISIBLE_MAX)
+  const itineraryOverviewMoreCount = Math.max(
+    0,
+    derivedLocations.length - ITINERARY_OVERVIEW_VISIBLE_MAX
+  )
 
   const datePickerTimelineContext = useMemo(
     () => ({
@@ -830,8 +840,12 @@ export default function TripOverview({
 
               {!loadingRoute && hasRoute && (
                 <div className="space-y-3 mb-4">
-                  {derivedLocations.map((location, index) => {
+                  {itineraryOverviewVisible.map((location, index) => {
                     const dateLabel = getLocationDateLabel(location)
+                    const stopDotColor =
+                      location.marker_color != null && isSolidRouteColor(location.marker_color)
+                        ? location.marker_color
+                        : getLegColor(index)
                     return (
                       <div
                         key={location.id}
@@ -846,8 +860,13 @@ export default function TripOverview({
                         }}
                       >
                         <div className="flex flex-col items-center">
-                          <div className="w-2 h-2 rounded-full bg-[#ff6b6b] mt-1" />
-                          {index < derivedLocations.length - 1 && <span className="flex-1 w-px bg-border mt-1 dark:bg-white/15" />}
+                          <div
+                            className="w-2 h-2 rounded-full mt-1 shrink-0"
+                            style={{ backgroundColor: stopDotColor }}
+                          />
+                          {index < itineraryOverviewVisible.length - 1 && (
+                            <span className="flex-1 w-px bg-border mt-1 dark:bg-white/15" />
+                          )}
                         </div>
                         <div className="flex-1 rounded-2xl border border-border bg-muted/35 px-4 py-3 shadow-sm transition-colors group-hover:border-primary/20 dark:bg-white/[0.04] dark:border-white/[0.08] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] dark:group-hover:border-white/[0.15]">
                           <div className="flex items-start justify-between gap-3 mb-2">
@@ -873,6 +892,13 @@ export default function TripOverview({
                       </div>
                     )
                   })}
+                  {itineraryOverviewMoreCount > 0 ? (
+                    <p className="text-xs text-muted-foreground pt-1 dark:text-white/55">
+                      {t("trip_overview.itinerary_more_stops", {
+                        count: itineraryOverviewMoreCount,
+                      })}
+                    </p>
+                  ) : null}
                 </div>
               )}
 
@@ -894,11 +920,16 @@ export default function TripOverview({
               )}
 
               <button
+                type="button"
                 className="font-semibold text-sm"
                 style={{ color: "#ff6b6b" }}
                 onClick={() => onNavigate("timeline")}
               >
-                {t('trip_overview.view_all_days')}
+                {duration > 0
+                  ? t("trip_overview.view_all_days_count", {
+                      count: duration,
+                    })
+                  : t("trip_overview.view_all_days")}
               </button>
             </Card>
           </motion.div>
@@ -1071,33 +1102,11 @@ export default function TripOverview({
             </Card>
           </motion.div>
 
-          {/* Invite Guests Card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
-            <Card
-              className="border-border dark:border-white/[0.08] rounded-2xl p-5 bg-card text-card-foreground"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center dark:bg-white/10">
-                  <Users className="w-5 h-5 text-primary dark:text-white" />
-                </div>
-                <h2 className="text-base font-semibold text-foreground">{t('trip_overview.invite_guests')}</h2>
-              </div>
-
-              <p className="text-muted-foreground text-sm mb-4">
-                {t('trip_overview.invite_guests_description')}
-              </p>
-
-              <button className="w-full font-semibold text-sm" style={{ color: "#ff6b6b" }}>
-                {t('trip_overview.share_trip')}
-              </button>
-            </Card>
-          </motion.div>
-
           <motion.div
             className="flex justify-center pt-4 pb-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
+            transition={{ delay: 0.7 }}
           >
             <motion.button
               className="px-6 py-3 rounded-full backdrop-blur-md border border-border bg-card/90 text-foreground flex items-center gap-2 overflow-hidden shadow-sm dark:border-white/20 dark:bg-white/10 dark:text-white"

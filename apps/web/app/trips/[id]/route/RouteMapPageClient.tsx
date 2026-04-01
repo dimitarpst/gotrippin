@@ -1,9 +1,34 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  type KeyboardEvent,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Check, Compass, HelpCircle, Loader2, Map as MapIcon, Search, Star, Utensils, Bed, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Calendar,
+  Check,
+  Compass,
+  ArrowDownUp,
+  HelpCircle,
+  Loader2,
+  Map as MapIcon,
+  Search,
+  Star,
+  Utensils,
+  Bed,
+  X,
+} from "lucide-react";
+import { KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { ColorPicker } from "@/components/color-picker";
+import { getLegColor, getStablePaletteColorForLocationId, isSolidRouteColor } from "@/lib/route-colors";
 import { useTranslation } from "react-i18next";
 import type { CreateTripLocation, Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
@@ -40,11 +65,25 @@ import {
 } from "@/components/ui/tour";
 import AuroraBackground from "@/components/effects/aurora-background";
 
+/** Vaul snap points: fraction of viewport height (see vaul `snapPoints`). */
+const ROUTE_DRAWER_SNAP_COLLAPSED = 0.42;
+const ROUTE_DRAWER_SNAP_EXPANDED = 0.92;
+
 interface RouteMapPageClientProps {
   trip: Trip;
   routeLocations: TripLocation[];
   shareCode: string;
   isWizard?: boolean;
+}
+
+/** Pending stop before "Add to route" (search, map tap, or along-route). */
+interface RoutePreviewPlace {
+  id: string;
+  name: string;
+  address?: string;
+  lat: number;
+  lng: number;
+  markerColor: string;
 }
 
 export default function RouteMapPageClient({
@@ -57,25 +96,31 @@ export default function RouteMapPageClient({
   const { t } = useTranslation();
   const { user, refreshProfile } = useAuth();
   const [open, setOpen] = useState(true);
+  const [routeDrawerSnap, setRouteDrawerSnap] = useState<number>(ROUTE_DRAWER_SNAP_COLLAPSED);
   const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
-  const [, setSavingOrder] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [routeReorderMode, setRouteReorderMode] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [previewPlace, setPreviewPlace] = useState<{
-    id: string;
-    name: string;
-    address?: string;
-    lat: number;
-    lng: number;
-  } | null>(null);
+  const [previewPlace, setPreviewPlace] = useState<RoutePreviewPlace | null>(null);
   const [previewDateRange, setPreviewDateRange] = useState<DateRange | undefined>(undefined);
   const [showPreviewDatePicker, setShowPreviewDatePicker] = useState(false);
   const [addingPlaceId, setAddingPlaceId] = useState<string | null>(null);
   const [previewSource, setPreviewSource] = useState<"map" | "search" | "along" | null>(null);
   const [focusLngLat, setFocusLngLat] = useState<{ lng: number; lat: number } | null>(null);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [showAlongPanel, setShowAlongPanel] = useState(false);
   const [alongCategory, setAlongCategory] = useState<"food" | "sights" | "stays" | "other" | "all">("food");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const routeReorderSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
   const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
   const [routeTourOpen, setRouteTourOpen] = useState(false);
   const [routeTourStep, setRouteTourStep] = useState(0);
@@ -88,6 +133,12 @@ export default function RouteMapPageClient({
   const tourPendingStep4Ref = useRef(false);
   const tourJustAdvancedToStep3Ref = useRef(false);
   const tourClosingForPrevRef = useRef(false);
+
+  useEffect(() => {
+    if (open) {
+      setRouteDrawerSnap(ROUTE_DRAWER_SNAP_COLLAPSED);
+    }
+  }, [open]);
 
   // When drawer opens for tour step 3, advance only after open animation completes (event-driven).
   const handleDrawerOpenComplete = useCallback(() => {
@@ -289,16 +340,53 @@ export default function RouteMapPageClient({
     tourClosingForPrevRef.current = false;
   };
 
+  const setRouteDrawerSnapFromVaul = useCallback((snapPoint: number | string | null) => {
+    if (typeof snapPoint === "number") {
+      setRouteDrawerSnap(snapPoint);
+    }
+  }, []);
+
+  const routeDrawerHandleProps = useMemo(
+    () => ({
+      preventCycle: true,
+      role: "button",
+      tabIndex: 0,
+      "aria-expanded": routeDrawerSnap === ROUTE_DRAWER_SNAP_EXPANDED,
+      "aria-label":
+        routeDrawerSnap === ROUTE_DRAWER_SNAP_EXPANDED
+          ? t("trip_overview.route_drawer_handle_collapse")
+          : t("trip_overview.route_drawer_handle_expand"),
+      onClick: () => {
+        setRouteDrawerSnap((p) =>
+          p === ROUTE_DRAWER_SNAP_EXPANDED ? ROUTE_DRAWER_SNAP_COLLAPSED : ROUTE_DRAWER_SNAP_EXPANDED,
+        );
+      },
+      onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setRouteDrawerSnap((p) =>
+            p === ROUTE_DRAWER_SNAP_EXPANDED ? ROUTE_DRAWER_SNAP_COLLAPSED : ROUTE_DRAWER_SNAP_EXPANDED,
+          );
+        }
+      },
+      className:
+        "mx-auto mt-2 flex min-h-3 w-full max-w-[100px] shrink-0 justify-center pb-1 touch-none",
+      children: null,
+    }),
+    [routeDrawerSnap, t],
+  );
+
   const handleConfirmAddPlace = useCallback(
     async () => {
       if (!previewPlace || addingPlaceId) return;
       setAddingPlaceId(previewPlace.id);
       try {
         const payload: Omit<CreateTripLocation, "trip_id"> = {
-          location_name: previewPlace.name,
+          location_name: previewPlace.name.trim() || t("trip_overview.route_dropped_pin"),
           latitude: previewPlace.lat,
           longitude: previewPlace.lng,
           order_index: locations.length + 1,
+          marker_color: previewPlace.markerColor,
         };
         if (previewDateRange?.from) {
           payload.arrival_date = previewDateRange.from.toISOString();
@@ -349,11 +437,28 @@ export default function RouteMapPageClient({
     }
   };
 
+  const handleMarkerColorCommit = async (id: string, hex: string) => {
+    if (!isSolidRouteColor(hex)) return;
+    try {
+      const updated = await apiUpdateLocation(trip.id, id, { marker_color: hex });
+      setLocations((prev) => prev.map((loc) => (loc.id === id ? { ...loc, ...updated } : loc)));
+    } catch (error) {
+      console.error("Failed to update marker color", error);
+      toast.error(t("trip_overview.route_marker_color_failed", { defaultValue: "Could not update marker color" }));
+    }
+  };
+
   const handleFocusOnStop = (loc: TripLocation) => {
+    setSelectedLocationId(loc.id);
     if (loc.latitude != null && loc.longitude != null && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) {
       setFocusLngLat({ lng: loc.longitude, lat: loc.latitude });
     }
+    setOpen(false);
   };
+
+  useEffect(() => {
+    if (!open) setRouteReorderMode(false);
+  }, [open]);
 
   return (
     <div className="h-screen w-full bg-[var(--color-background)] flex flex-col overflow-hidden relative">
@@ -450,17 +555,26 @@ export default function RouteMapPageClient({
           focusLngLat={focusLngLat}
           focusZoom={previewPlace?.id.startsWith("pin:") ? 16 : 14}
           previewLngLat={previewPlace ? { lng: previewPlace.lng, lat: previewPlace.lat } : null}
+          previewMarkerColor={previewPlace?.markerColor ?? null}
           defaultCenter={isWizard && locations.length === 0 ? { lng: 23.32, lat: 42.7 } : undefined}
           defaultZoom={isWizard && locations.length === 0 ? 10 : undefined}
+          selectedWaypointId={selectedLocationId}
+          onWaypointClick={({ id }) => {
+            const loc = locations.find((l) => l.id === id);
+            if (loc) handleFocusOnStop(loc);
+          }}
           onMapClick={({ lng, lat }) => {
             if (searchOpen) return;
             if (addingPlaceId) return;
+            setSelectedLocationId(null);
+            setOpen(false);
             const id = `pin:${lng.toFixed(6)},${lat.toFixed(6)}`;
             setPreviewPlace({
               id,
               name: t("trip_overview.route_dropped_pin", { defaultValue: "Dropped pin" }),
               lat,
               lng,
+              markerColor: getLegColor(locations.length),
             });
             setPreviewDateRange(undefined);
             setPreviewSource("map");
@@ -612,6 +726,7 @@ export default function RouteMapPageClient({
                           address: place.address,
                           lat: place.lat,
                           lng: place.lng,
+                          markerColor: getLegColor(locations.length),
                         });
                         setPreviewSource("search");
                         setFocusLngLat({ lng: place.lng, lat: place.lat });
@@ -653,20 +768,50 @@ export default function RouteMapPageClient({
                 <p className="text-xs text-white/70">
                   {t("trip_overview.route_search_confirm_hint")}
                 </p>
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <span className="font-medium text-white truncate text-sm">{previewPlace.name}</span>
-                  {previewPlace.address && (
+                {previewPlace.address ? (
+                  <div className="flex flex-col gap-0.5 min-w-0">
                     <span className="text-[11px] text-white/55 truncate block">{previewPlace.address}</span>
-                  )}
+                  </div>
+                ) : null}
+                <div
+                  className="flex min-h-10 items-center gap-2 min-w-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="text"
+                    value={previewPlace.name}
+                    onChange={(e) =>
+                      setPreviewPlace((prev) => (prev ? { ...prev, name: e.target.value } : prev))
+                    }
+                    autoComplete="off"
+                    aria-label={t("trip_overview.route_stop_name_input", { defaultValue: "Stop name" })}
+                    placeholder={t("trip_overview.route_enter_location_name", {
+                      defaultValue: "Location name",
+                    })}
+                    className="min-h-10 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-semibold text-white placeholder:text-white/35 outline-none focus:ring-0 focus-visible:outline-none"
+                  />
+                  <div className="flex shrink-0 items-center self-stretch">
+                    <ColorPicker
+                      value={previewPlace.markerColor}
+                      onChange={(hex) =>
+                        setPreviewPlace((prev) => (prev ? { ...prev, markerColor: hex } : prev))
+                      }
+                      triggerAriaLabel={t("trip_overview.route_marker_color", {
+                        defaultValue: "Marker color",
+                      })}
+                      className="border border-white/20"
+                    />
+                  </div>
                 </div>
                 {/* When will you be here? (optional but encouraged) */}
                 <button
                   type="button"
                   onClick={() => setShowPreviewDatePicker(true)}
-                  className="w-full inline-flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 py-2.5 px-3 text-left text-xs font-medium text-white transition-colors"
+                  className="w-full inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-left text-sm font-medium text-white/90 transition-colors hover:bg-white/15"
+                  aria-label={t("trip_overview.route_search_when", { defaultValue: "When will you be here?" })}
                 >
-                  <Calendar className="w-3.5 h-3.5 shrink-0 text-[#ff6b6b]" />
-                  <span>
+                  <Calendar className="h-4 w-4 shrink-0 text-white/90" strokeWidth={2} aria-hidden />
+                  <span className="min-w-0 truncate">
                     {previewDateRange?.from
                       ? previewDateRange.to
                         ? `${previewDateRange.from.toLocaleDateString(undefined, { month: "short", day: "numeric" })} → ${previewDateRange.to.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
@@ -750,6 +895,10 @@ export default function RouteMapPageClient({
             onOpenChange={handleDrawerOpenChange}
             onOpenComplete={handleDrawerOpenComplete}
             onCloseComplete={handleDrawerCloseComplete}
+            handleOnly
+            snapPoints={[ROUTE_DRAWER_SNAP_COLLAPSED, ROUTE_DRAWER_SNAP_EXPANDED]}
+            activeSnapPoint={routeDrawerSnap}
+            setActiveSnapPoint={setRouteDrawerSnapFromVaul}
           >
         <DrawerTrigger asChild>
           <button
@@ -767,7 +916,11 @@ export default function RouteMapPageClient({
           </button>
         </DrawerTrigger>
 
-        <DrawerContent id="route-drawer-root" className="border-none bg-black/80 backdrop-blur-2xl max-h-[70vh] max-w-5xl mx-auto mb-4 px-0">
+        <DrawerContent
+          id="route-drawer-root"
+          handleProps={routeDrawerHandleProps}
+          className="border-none bg-black/80 backdrop-blur-2xl max-h-[100dvh] max-w-5xl mx-auto mb-4 px-0"
+        >
           <div id="route-drawer-content" className="flex flex-1 flex-col min-h-0">
           {/* Header: route title + N stops */}
           <div className="px-4 pb-3 shrink-0">
@@ -780,22 +933,64 @@ export default function RouteMapPageClient({
                   {routeSummary || trip.destination || trip.title || t("trips.untitled_trip")}
                 </span>
               </div>
-              <div className="text-xs text-white/60 shrink-0">
-                {locations.length === 0
-                  ? t("trip_overview.route_empty_title")
-                  : locations.length === 1
-                  ? "1 stop"
-                  : `${locations.length} stops`}
+              <div className="flex shrink-0 items-center gap-2">
+                {locations.length >= 2 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRouteReorderMode((v) => {
+                        const next = !v;
+                        if (next) {
+                          setRouteDrawerSnap(ROUTE_DRAWER_SNAP_EXPANDED);
+                        }
+                        return next;
+                      });
+                    }}
+                    aria-pressed={routeReorderMode}
+                    aria-label={
+                      routeReorderMode
+                        ? t("trip_overview.route_reorder_done", { defaultValue: "Done reordering" })
+                        : t("trip_overview.route_reorder_start", { defaultValue: "Reorder stops" })
+                    }
+                    className={`flex h-9 max-w-[9.5rem] shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-white/90 transition-colors sm:max-w-none ${
+                      routeReorderMode
+                        ? "border-[#ff6b6b] bg-[#ff6b6b]/20 text-white"
+                        : "border-white/15 bg-white/5 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <ArrowDownUp className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                    <span className="text-[11px] font-semibold leading-tight">
+                      {routeReorderMode
+                        ? t("trip_overview.route_reorder_done_short", { defaultValue: "Done" })
+                        : t("trip_overview.route_reorder_action", { defaultValue: "Reorder" })}
+                    </span>
+                  </button>
+                ) : null}
+                <div className="text-xs text-white/60 tabular-nums">
+                  {locations.length === 0
+                    ? t("trip_overview.route_empty_title")
+                    : locations.length === 1
+                      ? t("trip_overview.route_one_stop", { defaultValue: "1 stop" })
+                      : t("trip_overview.route_stops_count", { count: locations.length })}
+                </div>
               </div>
             </div>
+            {routeReorderMode && locations.length >= 2 ? (
+              <p className="mt-2 text-[11px] text-white/50">
+                {t("trip_overview.route_reorder_hint", {
+                  defaultValue: "Drag a card by its edges to change the order of stops.",
+                })}
+              </p>
+            ) : null}
           </div>
 
-          {/* Editable, reorderable route list */}
+          {/* Route list: browse vs drag-handle reorder mode */}
           <div className="flex-1 overflow-y-auto px-4 pb-4 min-h-0">
             {locations.length === 0 ? (
               <p className="text-sm text-white/60">{t("trip_overview.route_empty")}</p>
-            ) : (
+            ) : routeReorderMode ? (
               <Sortable.Root
+                sensors={routeReorderSensors}
                 value={locations}
                 onValueChange={(next) => setLocations(next)}
                 getItemValue={(item) => item.id}
@@ -811,7 +1006,7 @@ export default function RouteMapPageClient({
                     setLocations(newOrder);
                   } catch (error) {
                     console.error("Failed to reorder locations", error);
-                    toast.error("Failed to reorder stops");
+                    toast.error(t("trip_overview.route_reorder_failed", { defaultValue: "Failed to reorder stops" }));
                   } finally {
                     setSavingOrder(false);
                   }
@@ -819,21 +1014,53 @@ export default function RouteMapPageClient({
               >
                 <Sortable.Content className="space-y-3">
                   {locations.map((loc, index) => (
-                    <Sortable.Item key={loc.id} value={loc.id} asChild>
-                      <RouteLocationRow
-                        location={loc}
-                        index={index}
-                        allLocations={locations}
-                        onNameCommit={handleNameCommit}
-                        onDatesCommit={handleDatesCommit}
-                        onFocusMap={handleFocusOnStop}
-                        minDate={tripMinDate}
-                        maxDate={tripMaxDate}
+                    <Sortable.Item
+                      key={loc.id}
+                      value={loc.id}
+                      disabled={savingOrder}
+                      className="relative rounded-2xl outline-none data-dragging:z-[1] data-dragging:shadow-xl"
+                    >
+                      <div className="relative z-0">
+                        <RouteLocationRow
+                          location={loc}
+                          index={index}
+                          allLocations={locations}
+                          reorderMode
+                          onNameCommit={handleNameCommit}
+                          onDatesCommit={handleDatesCommit}
+                          onMarkerColorCommit={handleMarkerColorCommit}
+                          onFocusMap={handleFocusOnStop}
+                          minDate={tripMinDate}
+                          maxDate={tripMaxDate}
+                        />
+                      </div>
+                      <Sortable.ItemHandle
+                        className="absolute inset-0 z-[1] cursor-grab touch-none rounded-2xl border-0 bg-transparent p-0 shadow-none ring-0 outline-none focus-visible:ring-2 focus-visible:ring-white/50 active:cursor-grabbing"
+                        aria-label={t("trip_overview.route_drag_row", {
+                          name: loc.location_name?.trim() || t("trips.untitled_trip"),
+                        })}
                       />
                     </Sortable.Item>
                   ))}
                 </Sortable.Content>
               </Sortable.Root>
+            ) : (
+              <div className="space-y-3">
+                {locations.map((loc, index) => (
+                  <RouteLocationRow
+                    key={loc.id}
+                    location={loc}
+                    index={index}
+                    allLocations={locations}
+                    onNameCommit={handleNameCommit}
+                    onDatesCommit={handleDatesCommit}
+                    onMarkerColorCommit={handleMarkerColorCommit}
+                    onFocusMap={handleFocusOnStop}
+                    minDate={tripMinDate}
+                    maxDate={tripMaxDate}
+                  />
+                ))}
+              </div>
             )}
           </div>
           </div>
@@ -931,6 +1158,7 @@ export default function RouteMapPageClient({
                             address: place.address,
                             lat: place.lat,
                             lng: place.lng,
+                            markerColor: getLegColor(locations.length),
                           });
                           setPreviewDateRange(undefined);
                           setPreviewSource("along");
@@ -1101,8 +1329,11 @@ interface RouteLocationRowProps {
   location: TripLocation;
   index: number;
   allLocations: TripLocation[];
+  /** When true, row is styled for drag-reorder (dashed card); row body does not focus the map on click. */
+  reorderMode?: boolean;
   onNameCommit: (id: string, name: string) => void;
   onDatesCommit: (id: string, range: DateRange | undefined) => void;
+  onMarkerColorCommit: (id: string, hex: string) => void;
   onFocusMap?: (location: TripLocation) => void;
   minDate?: Date;
   maxDate?: Date;
@@ -1112,8 +1343,10 @@ function RouteLocationRow({
   location,
   index,
   allLocations,
+  reorderMode = false,
   onNameCommit,
   onDatesCommit,
+  onMarkerColorCommit,
   onFocusMap,
   minDate,
   maxDate,
@@ -1121,11 +1354,27 @@ function RouteLocationRow({
   const { t } = useTranslation();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [draftName, setDraftName] = useState(location.location_name || "");
+
+  useEffect(() => {
+    setDraftName(location.location_name || "");
+  }, [location.id, location.location_name]);
+
+  useEffect(() => {
+    if (reorderMode) {
+      setShowDatePicker(false);
+    }
+  }, [reorderMode]);
+
   const hasCoords =
     location.latitude != null &&
     location.longitude != null &&
     Number.isFinite(location.latitude) &&
     Number.isFinite(location.longitude);
+
+  const markerPickerValue =
+    location.marker_color != null && isSolidRouteColor(location.marker_color)
+      ? location.marker_color
+      : getStablePaletteColorForLocationId(location.id);
 
   const selectedRange: DateRange | undefined = location.arrival_date
     ? {
@@ -1146,59 +1395,117 @@ function RouteLocationRow({
   const dateLabel = formatDateLabel(selectedRange);
 
   const handleRowClick = () => {
+    if (reorderMode) return;
     if (hasCoords && onFocusMap) onFocusMap(location);
   };
+
+  const rowFocusable = !reorderMode && hasCoords && onFocusMap;
 
   return (
     <>
       <div
-        role="button"
-        tabIndex={0}
+        role={rowFocusable ? "button" : undefined}
+        tabIndex={rowFocusable ? 0 : undefined}
         onClick={handleRowClick}
         onKeyDown={(e) => {
+          if (reorderMode) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             handleRowClick();
           }
         }}
-        className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 px-3 py-3 cursor-pointer hover:bg-white/[0.07] transition-colors"
+        className={
+          reorderMode
+            ? "flex select-none items-center gap-3 rounded-2xl border border-dashed border-white/35 bg-white/[0.04] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors"
+            : "flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 transition-colors hover:bg-white/[0.07]"
+        }
       >
-        <div className="flex flex-col items-center mr-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onFocusMap?.(location);
-            }}
-            disabled={!hasCoords || !onFocusMap}
-            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-semibold text-white/80 border border-white/10 hover:bg-white/20 hover:border-white/20 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-            title={hasCoords ? t("trip_overview.route_focus_map") : undefined}
-          >
-            {index + 1}
-          </button>
-          {index < allLocations.length - 1 && <div className="flex-1 w-px bg-white/10 mt-1" />}
+        <div
+          className="mr-1 flex shrink-0 flex-col items-center"
+          onClick={reorderMode ? undefined : (e) => e.stopPropagation()}
+        >
+          {reorderMode ? (
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-white/25 text-[11px] font-semibold text-white shadow-md"
+              style={{ backgroundColor: markerPickerValue }}
+              aria-hidden
+            >
+              {index + 1}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFocusMap?.(location);
+              }}
+              disabled={!hasCoords || !onFocusMap}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-white/25 text-[11px] font-semibold text-white shadow-md transition-colors disabled:pointer-events-none disabled:opacity-50"
+              style={{ backgroundColor: markerPickerValue }}
+              title={hasCoords ? t("trip_overview.route_focus_map") : undefined}
+            >
+              {index + 1}
+            </button>
+          )}
+          {!reorderMode && index < allLocations.length - 1 ? (
+            <div className="mt-1 flex-1 bg-white/10 w-px" />
+          ) : null}
         </div>
 
-        <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-          <input
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onBlur={() => onNameCommit(location.id, draftName)}
-            placeholder={t("trips.untitled_trip")}
-            className="w-full bg-transparent text-sm font-semibold text-white placeholder:text-white/30 outline-none border-none p-0 focus:ring-0"
-          />
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDatePicker(true);
-            }}
-            className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-[#ff6b6b] hover:text-[#ff8585] transition-colors"
-          >
-            <Calendar className="w-3 h-3" />
-            <span>{dateLabel}</span>
-          </button>
+        <div
+          className="min-w-0 flex-1"
+          onClick={reorderMode ? undefined : (e) => e.stopPropagation()}
+        >
+          {reorderMode ? (
+            <div className="flex min-h-10 flex-col gap-2">
+              <p className="line-clamp-2 text-sm font-semibold text-white">
+                {draftName.trim() || t("trips.untitled_trip")}
+              </p>
+              <div className="inline-flex min-h-10 w-full items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-white/70 sm:w-auto">
+                <Calendar className="h-4 w-4 shrink-0 text-white/60" strokeWidth={2} aria-hidden />
+                <span>{dateLabel}</span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex min-h-10 items-center gap-2">
+                <div className="flex min-h-10 min-w-0 flex-1 items-center">
+                  <input
+                    value={draftName}
+                    onChange={(e) => setDraftName(e.target.value)}
+                    onBlur={() => onNameCommit(location.id, draftName)}
+                    placeholder={t("trips.untitled_trip")}
+                    className="h-10 w-full border-0 bg-transparent p-0 text-sm font-semibold text-white placeholder:text-white/30 outline-none focus:ring-0 focus-visible:outline-none"
+                  />
+                </div>
+                <div
+                  className="flex shrink-0 items-center self-stretch"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <ColorPicker
+                    value={markerPickerValue}
+                    onChange={(hex) => onMarkerColorCommit(location.id, hex)}
+                    triggerAriaLabel={t("trip_overview.route_marker_color", {
+                      defaultValue: "Marker color",
+                    })}
+                    className="border border-white/20"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDatePicker(true);
+                }}
+                className="mt-2 inline-flex min-h-10 w-full items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-left text-sm font-medium text-white/90 transition-colors hover:bg-white/15 sm:w-auto"
+                aria-label={`${t("date_picker.title")}: ${dateLabel}`}
+              >
+                <Calendar className="h-4 w-4 shrink-0 text-white/90" strokeWidth={2} aria-hidden />
+                <span>{dateLabel}</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 

@@ -69,8 +69,12 @@ function DrawerContent({
   className,
   children,
   onAnimationEnd,
+  handleProps,
   ...props
-}: React.ComponentProps<typeof VaulDrawer.Content>) {
+}: React.ComponentProps<typeof VaulDrawer.Content> & {
+  /** Optional props for Vaul’s drag handle (use with `handleOnly` + `snapPoints` on `Drawer`). */
+  handleProps?: React.ComponentProps<typeof VaulDrawer.Handle>;
+}) {
   const { t } = useTranslation();
   const ctx = React.useContext(DrawerContext);
 
@@ -84,6 +88,12 @@ function DrawerContent({
     },
     [ctx, onAnimationEnd]
   );
+
+  const {
+    children: handleChildren,
+    className: handleClassName,
+    ...handleRest
+  } = handleProps ?? {};
 
   return (
     <DrawerPortal>
@@ -106,7 +116,19 @@ function DrawerContent({
         {/* Accessible title and description so Radix/Dialog does not warn */}
         <VaulDrawer.Title className="sr-only">{t("ui.drawer")}</VaulDrawer.Title>
         <VaulDrawer.Description className="sr-only">{t("ui.panel_content")}</VaulDrawer.Description>
-        <div className="mx-auto mt-4 h-2 w-[100px] shrink-0 rounded-full bg-muted" />
+        <VaulDrawer.Handle
+          {...handleRest}
+          className={cn(
+            "mx-auto mt-4 flex shrink-0 cursor-grab justify-center pb-1 active:cursor-grabbing",
+            handleClassName,
+          )}
+        >
+          {handleChildren === undefined ? (
+            <span className="block h-2 w-[100px] shrink-0 rounded-full bg-muted" aria-hidden />
+          ) : (
+            handleChildren
+          )}
+        </VaulDrawer.Handle>
         {children}
       </VaulDrawer.Content>
     </DrawerPortal>

@@ -20,6 +20,18 @@ export function getLegColor(legIndex: number): string {
   return ROUTE_COLOR_PALETTE[legIndex % ROUTE_COLOR_PALETTE.length];
 }
 
+/**
+ * Stable palette color for a trip location when `marker_color` is unset.
+ * Same UUID always maps to the same swatch so reordering does not recolor markers or legs.
+ */
+export function getStablePaletteColorForLocationId(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    h = (Math.imul(31, h) + id.charCodeAt(i)) >>> 0;
+  }
+  return getLegColor(h);
+}
+
 const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
 export function isSolidRouteColor(value: string | null | undefined): value is string {

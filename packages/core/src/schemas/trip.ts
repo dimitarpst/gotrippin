@@ -249,6 +249,11 @@ export const TripLocationSchema = z.object({
   order_index: z.number().int().positive('Order index must be positive'),
   arrival_date: z.string().datetime({ message: 'Invalid arrival date format' }).nullable().optional(),
   departure_date: z.string().datetime({ message: 'Invalid departure date format' }).nullable().optional(),
+  marker_color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid marker color format')
+    .nullable()
+    .optional(),
   created_at: z.string().datetime({ message: 'Invalid creation date format' }),
   updated_at: z.string().datetime({ message: 'Invalid update date format' }),
 }).refine(
@@ -278,6 +283,10 @@ export const CreateTripLocationSchema = z.object({
   order_index: z.number().int().positive('Order index must be positive').optional(),
   arrival_date: z.string().datetime({ message: 'Invalid arrival date format' }).nullable().optional(),
   departure_date: z.string().datetime({ message: 'Invalid departure date format' }).nullable().optional(),
+  marker_color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid marker color format')
+    .optional(),
 }).refine(
   (data) => {
     if (data.arrival_date && data.departure_date) {
@@ -305,6 +314,11 @@ export const UpdateTripLocationSchema = z.object({
   order_index: z.number().int().positive('Order index must be positive').optional(),
   arrival_date: z.string().datetime({ message: 'Invalid arrival date format' }).nullable().optional(),
   departure_date: z.string().datetime({ message: 'Invalid departure date format' }).nullable().optional(),
+  marker_color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid marker color format')
+    .nullable()
+    .optional(),
 });
 
 /**

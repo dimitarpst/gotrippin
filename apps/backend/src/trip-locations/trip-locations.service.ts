@@ -2,6 +2,9 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateTripLocationDto, UpdateTripLocationDto, ReorderLocationsDto } from './dto';
 
+/** Staging values for two-phase reorder; must stay positive (DB check on `order_index`). */
+const REORDER_TEMP_ORDER_BASE = 1_000_000;
+
 @Injectable()
 export class TripLocationsService {
   constructor(private supabaseService: SupabaseService) {}
@@ -91,6 +94,7 @@ export class TripLocationsService {
       order_index: orderIndex,
       arrival_date: dto.arrival_date ?? null,
       departure_date: dto.departure_date ?? null,
+      marker_color: dto.marker_color ?? null,
     };
 
     const { data, error } = await this.supabaseService.getClient()
@@ -235,12 +239,11 @@ export class TripLocationsService {
     }
 
     // Update order_index for each location
-    // Use a transaction-like approach: update to negative values first, then positive
-    // This avoids unique constraint violations during reorder
+    // Two-phase: move to large positive staging indices, then 1..n (negatives violate trip_locations_order_index_check)
     const updates = location_ids.map(async (id, index) => {
       const { error } = await this.supabaseService.getClient()
         .from('trip_locations')
-        .update({ order_index: -(index + 1) }) // Temporary negative value
+        .update({ order_index: REORDER_TEMP_ORDER_BASE + index + 1 })
         .eq('id', id);
 
       if (error) {

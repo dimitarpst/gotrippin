@@ -1,13 +1,16 @@
 "use client"
 
+import { useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { MapPin, ArrowLeft, Calendar, Navigation, Sparkles } from "lucide-react"
+import { MapPin, ArrowLeft, Calendar, Navigation, Sparkles, ArrowRight, Map as MapIcon } from "lucide-react"
 import AuroraBackground from "@/components/effects/aurora-background"
 import WeatherWidget from "@/components/trips/weather-widget"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { MapView, tripLocationsToWaypoints } from "@/components/maps"
 import { useTripWeather } from "@/hooks/useWeather"
+import { useRouteDirections } from "@/hooks"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import type { Trip, TripLocation, Activity } from "@gotrippin/core"
@@ -51,6 +54,12 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
   const locationWeather = weatherByLocation[locationId]?.weather
   const locationWeatherError = weatherByLocation[locationId]?.error
   const dateLabel = formatDateRange(location)
+
+  const mapWaypoints = useMemo(() => tripLocationsToWaypoints(locations), [locations])
+  const { routeGeo } = useRouteDirections(mapWaypoints)
+  const mapboxToken =
+    typeof process !== "undefined" ? process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN : undefined
+  const canShowRouteMap = mapWaypoints.length > 0 && Boolean(mapboxToken)
 
   const handleBack = () => router.push(`/trips/${shareCode}/timeline`)
 
@@ -153,19 +162,17 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
             >
               <div className="flex items-center gap-2 text-muted-foreground text-sm dark:text-white/70">
                 <Navigation className="w-4 h-4" />
-                <span>{t("trip_overview.route_title")}</span>
+                <span>{t("timeline_location.context_section_label")}</span>
               </div>
               <p className="text-lg font-semibold text-foreground dark:text-white">
-                {t("trip_overview.invite_guests_description", { defaultValue: "Outline what happens at this stop and pin key details." })}
+                {t("timeline_location.context_lead")}
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed dark:text-white/70">
-                {t("trip_overview.add_documents_description", {
-                  defaultValue: "Use this space to capture notes, meeting points, or context for travelers. You can attach activities, travel legs, and documents here.",
-                })}
+                {t("timeline_location.context_body")}
               </p>
               <div className="flex flex-wrap gap-2">
                 <span className="px-3 py-1 rounded-full border border-border text-xs text-muted-foreground bg-muted/60 dark:border-white/10 dark:text-white/70 dark:bg-white/5">
-                  {activities.length} {t("trip_overview.invite_guests", { defaultValue: "activities" })}
+                  {t("timeline_location.activities_count", { count: activities.length })}
                 </span>
                 {dateLabel && (
                   <span className="px-3 py-1 rounded-full border border-border text-xs text-muted-foreground bg-muted/60 dark:border-white/10 dark:text-white/70 dark:bg-white/5">
@@ -191,29 +198,66 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, type: "spring", stiffness: 320, damping: 26 }}
             >
-              <div
-                className="absolute inset-0 dark:hidden"
-                style={{
-                  background:
-                    "radial-gradient(circle at 20% 20%, color-mix(in oklch, var(--brand-coral) 18%, white 82%), transparent 45%), radial-gradient(circle at 80% 30%, oklch(0.88 0.06 280 / 0.35), transparent 40%), linear-gradient(135deg, oklch(0.97 0.02 85), oklch(0.94 0.03 25))",
-                }}
-              />
-              <div
-                className="absolute inset-0 hidden dark:block"
-                style={{
-                  background:
-                    "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 40%), radial-gradient(circle at 80% 30%, rgba(109,118,255,0.12), transparent 35%), linear-gradient(135deg, rgba(0,0,0,0.35), rgba(0,0,0,0.6))",
-                }}
-              />
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-foreground dark:text-white">
-                <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-border flex items-center justify-center dark:bg-white/15 dark:border-white/20">
-                  <MapPin className="w-6 h-6 text-primary dark:text-white" />
-                </div>
-                <p className="text-sm font-semibold">{t("trip_overview.route_title", { defaultValue: "Route map" })}</p>
-                <p className="text-xs text-muted-foreground dark:text-white/70">
-                  {t("trip_overview.route_empty", { defaultValue: "Map coming soon" })}
-                </p>
-              </div>
+              {canShowRouteMap ? (
+                <button
+                  type="button"
+                  className="absolute inset-0 block h-full min-h-[260px] w-full cursor-pointer text-left group"
+                  onClick={() => router.push(`/trips/${shareCode}/map`)}
+                >
+                  <div className="absolute inset-0 z-0 min-h-[260px] pointer-events-none group-hover:scale-[1.02] transition-transform duration-500 ease-out">
+                    <MapView
+                      className="min-h-[260px] h-full"
+                      waypoints={mapWaypoints}
+                      routeLineGeo={routeGeo}
+                      fitToRoute
+                      fitPadding={36}
+                      interactive={false}
+                    />
+                    <div className="absolute inset-0 bg-black/35 group-hover:bg-black/25 transition-colors duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0e0b10]/90 via-[#0e0b10]/35 to-transparent" />
+                  </div>
+                  <div className="relative z-10 flex h-full min-h-[260px] flex-col items-center justify-end gap-2 px-4 pb-5 text-center pointer-events-none">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff6b6b] drop-shadow-md">
+                      {t("trip_overview.route_map_title")}
+                    </span>
+                    <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-white/90 shadow-lg backdrop-blur-md group-hover:text-white">
+                      <MapIcon className="h-4 w-4" aria-hidden />
+                      <span className="text-[11px] font-bold uppercase tracking-widest">
+                        {t("timeline_location.open_full_map")}
+                      </span>
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                    </div>
+                  </div>
+                </button>
+              ) : (
+                <>
+                  <div
+                    className="absolute inset-0 dark:hidden"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 20% 20%, color-mix(in oklch, var(--brand-coral) 18%, white 82%), transparent 45%), radial-gradient(circle at 80% 30%, oklch(0.88 0.06 280 / 0.35), transparent 40%), linear-gradient(135deg, oklch(0.97 0.02 85), oklch(0.94 0.03 25))",
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0 hidden dark:block"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 40%), radial-gradient(circle at 80% 30%, rgba(109,118,255,0.12), transparent 35%), linear-gradient(135deg, rgba(0,0,0,0.35), rgba(0,0,0,0.6))",
+                    }}
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center text-foreground dark:text-white">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-primary/15 dark:border-white/20 dark:bg-white/15">
+                      <MapPin className="h-6 w-6 text-primary dark:text-white" aria-hidden />
+                    </div>
+                    <p className="text-sm font-semibold">{t("trip_overview.route_map_title")}</p>
+                    <p className="max-w-[220px] text-xs text-muted-foreground dark:text-white/70">
+                      {mapboxToken
+                        ? t("timeline_location.map_need_coordinates")
+                        : t("timeline_location.map_unavailable")}
+                    </p>
+                  </div>
+                </>
+              )}
             </motion.div>
           </div>
 

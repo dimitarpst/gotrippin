@@ -97,3 +97,16 @@ Phase 4.2 — One NestJS endpoint per screen (web server component + mobile reus
 Phase 5 — Public Trip Sharing (done for now):
   ✔ Add color picker — replace native input[type=color] in profile
   ✔ Add newest drawer element from shadcn/ui
+
+---
+
+## From root `features.todo` (2026-04-02)
+
+Moved completed lines out of the active **Todo:** section into **Archive:** in `features.todo` (housekeeping).
+
+- Teacher feedback — when changing the main date, update the date under it as well — shift route + activity datetimes by start delta; trip overview date picker dots + long-press detail toast
+- Teacher feedback — trip photos uploadable by the person (R2, `photos.source=upload`, background picker) @done(26-03-31)
+- Teacher feedback — export trip as PDF (`/trips/[id]/print`) @done(26-03-31)
+- Teacher feedback — AI-readable support (`public/llms.txt`, `app/robots.ts`) @done(26-03-31)
+- Teacher feedback — change home color palette (next-themes, shadcn tokens) @done(26-03-31)
+- Investigate background photo URL while editing trip — normalize R2 keys in `getR2PublicUrl` @done(26-03-31)

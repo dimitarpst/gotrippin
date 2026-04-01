@@ -16,6 +16,8 @@ interface ColorPickerProps {
   onChange: (hex: string) => void;
   icon?: React.ReactNode;
   label?: string;
+  /** Use when `label` is omitted (icon-only); passed to the trigger for a11y. */
+  triggerAriaLabel?: string;
   className?: string;
 }
 
@@ -24,6 +26,7 @@ export function ColorPicker({
   onChange,
   icon,
   label,
+  triggerAriaLabel,
   className,
 }: ColorPickerProps) {
   const [open, setOpen] = useState(false);
@@ -43,9 +46,11 @@ export function ColorPicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <PickerButton
-          icon={icon ?? <Palette className="w-4 h-4" />}
+          icon={icon ?? <Palette className="h-4 w-4" strokeWidth={2} />}
           isOpen={open}
           label={label}
+          aria-label={triggerAriaLabel}
+          className={className}
         />
       </PopoverTrigger>
       <PopoverContent align="start" sideOffset={8} className="w-72">

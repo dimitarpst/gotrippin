@@ -4,7 +4,7 @@
  * suitable for data-driven line styling in Mapbox GL.
  */
 
-import { getLegColor } from "@/lib/route-colors";
+import { getLegColor, getStablePaletteColorForLocationId, isSolidRouteColor } from "@/lib/route-colors";
 
 const DIRECTIONS_BASE = "https://api.mapbox.com/directions/v5";
 const DEFAULT_PROFILE = "mapbox/driving";
@@ -154,6 +154,44 @@ export async function fetchRoute(
   }
 
   return legsToFeatureCollection(legs);
+}
+
+/**
+ * Reassigns each leg's `properties.color` from waypoint marker colors (destination,
+ * then origin, then route palette). Expects `features.length === waypointsWithCoords - 1`.
+ */
+export function recolorRouteGeoByWaypointMarkers(
+  geo: RouteLegsGeoJSON | null,
+  waypoints: Array<{ id?: string; lat: number; lng: number; markerColor?: string }>
+): RouteLegsGeoJSON | null {
+  if (!geo?.features.length) return geo;
+  const withCoords = waypoints.filter(
+    (w) => Number.isFinite(w.lat) && Number.isFinite(w.lng)
+  );
+  const numLegs = withCoords.length - 1;
+  if (numLegs < 1 || geo.features.length !== numLegs) return geo;
+
+  const legPaletteIndex = (legIdx: number) =>
+    withCoords.length <= 1 ? 0 : Math.min(legIdx, Math.max(numLegs - 1, 0));
+
+  return {
+    type: "FeatureCollection",
+    features: geo.features.map((feature, i) => {
+      const from = withCoords[i];
+      const to = withCoords[i + 1];
+      const dest =
+        to.markerColor != null && isSolidRouteColor(to.markerColor) ? to.markerColor : undefined;
+      const src =
+        from.markerColor != null && isSolidRouteColor(from.markerColor) ? from.markerColor : undefined;
+      const stableTo = to.id != null ? getStablePaletteColorForLocationId(to.id) : undefined;
+      const stableFrom = from.id != null ? getStablePaletteColorForLocationId(from.id) : undefined;
+      const color = dest ?? src ?? stableTo ?? stableFrom ?? getLegColor(legPaletteIndex(i));
+      return {
+        ...feature,
+        properties: { ...feature.properties, color, legIndex: i },
+      };
+    }),
+  };
 }
 
 /** Builds a straight-line FeatureCollection (fallback when Directions hasn't loaded). */

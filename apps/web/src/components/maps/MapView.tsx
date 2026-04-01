@@ -4,8 +4,12 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import Map, { Marker, Source, Layer, useMap } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "mapbox-gl";
-import { straightLineLegs, type RouteLegsGeoJSON } from "@/lib/mapbox-directions";
-import { getLegColor } from "@/lib/route-colors";
+import {
+  recolorRouteGeoByWaypointMarkers,
+  straightLineLegs,
+  type RouteLegsGeoJSON,
+} from "@/lib/mapbox-directions";
+import { getLegColor, getStablePaletteColorForLocationId } from "@/lib/route-colors";
 
 // Console: WEBGL_debug_renderer_info, texSubImage, and CORS to events.mapbox.com are expected/harmless (see docs/MAPS_IMPLEMENTATION.md).
 
@@ -13,6 +17,10 @@ export interface MapWaypoint {
   lat: number;
   lng: number;
   name?: string;
+  /** `trip_locations.id` when the waypoint comes from the trip route (for clicks / selection). */
+  id?: string;
+  /** When set, map marker uses this #RRGGBB instead of the route palette. */
+  markerColor?: string;
 }
 
 const DEFAULT_CENTER = { longitude: 23.32, latitude: 42.7 };
@@ -89,8 +97,17 @@ interface MapViewProps {
   focusZoom?: number;
   /** When set, shows a highlight marker at this point (e.g. preview before adding a stop). */
   previewLngLat?: { lng: number; lat: number } | null;
+  /** Fill color for the preview marker (defaults to amber). */
+  previewMarkerColor?: string | null;
   /** Called when user clicks the map (useful for adding stops by dropping a pin). */
   onMapClick?: ((lngLat: { lng: number; lat: number }) => void) | null;
+  /**
+   * Called when user activates a route waypoint marker (large touch target; click does not propagate to the map).
+   * Only fired when `onWaypointClick` is provided and the waypoint has `id`.
+   */
+  onWaypointClick?: ((detail: { id: string; index: number; lat: number; lng: number }) => void) | null;
+  /** Highlights the waypoint whose `id` matches (ring / scale). */
+  selectedWaypointId?: string | null;
   /** Optional callback when map stops moving; used for nearby POIs. */
   onMoveEnd?: ((state: { center: { lng: number; lat: number }; zoom: number }) => void) | null;
   /** Per-leg route geometry from Mapbox Directions; when set, drawn instead of straight segments. */
@@ -112,7 +129,10 @@ export default function MapView({
   focusLngLat = null,
   focusZoom = FOCUS_ZOOM,
   previewLngLat = null,
+  previewMarkerColor = null,
   onMapClick = null,
+  onWaypointClick = null,
+  selectedWaypointId = null,
   onMoveEnd = null,
   routeLineGeo = null,
   defaultCenter,
@@ -128,7 +148,8 @@ export default function MapView({
       withCoords.length >= 2
         ? straightLineLegs(withCoords.map((w) => ({ lng: w.lng, lat: w.lat })))
         : null;
-    const lineGeo = routeLineGeo ?? fallback;
+    const rawLineGeo = routeLineGeo ?? fallback;
+    const lineGeo = recolorRouteGeoByWaypointMarkers(rawLineGeo, withCoords);
     let initialViewState: { longitude: number; latitude: number; zoom: number } | { bounds: [[number, number], [number, number]]; fitBoundsOptions: { padding: number; maxZoom: number } };
     if (fitToRoute && bounds) {
       initialViewState = {
@@ -167,6 +188,8 @@ export default function MapView({
     (w) => Number.isFinite(w.lat) && Number.isFinite(w.lng)
   );
   const numLegs = Math.max(validWaypoints.length - 1, 0);
+  const paletteIndex = (i: number) =>
+    validWaypoints.length <= 1 ? 0 : Math.min(i, Math.max(numLegs - 1, 0));
 
   return (
     <div className={className} style={{ width: "100%", height: "100%" }}>
@@ -195,7 +218,13 @@ export default function MapView({
           anchor="bottom"
         >
           <div
-            className="h-8 w-8 rounded-full border-2 border-white bg-amber-400/90 shadow-lg ring-4 ring-amber-400/30"
+            className="h-8 w-8 rounded-full border-2 border-white shadow-lg"
+            style={{
+              backgroundColor: previewMarkerColor ?? "#fbbf24",
+              boxShadow: previewMarkerColor
+                ? `0 0 0 4px ${previewMarkerColor}33`
+                : "0 0 0 4px rgba(251, 191, 36, 0.35)",
+            }}
           />
         </Marker>
       )}
@@ -204,20 +233,52 @@ export default function MapView({
           <Layer id="route-line-layer" type="line" paint={LINE_PAINT} layout={LINE_LAYOUT} />
         </Source>
       )}
-      {validWaypoints.map((w, i) => (
+      {validWaypoints.map((w, i) => {
+        const isSelected = w.id != null && w.id === selectedWaypointId;
+        const canActivateWaypoint = Boolean(onWaypointClick && w.id);
+        const fill = w.markerColor ?? (w.id ? getStablePaletteColorForLocationId(w.id) : getLegColor(paletteIndex(i)));
+        const dot = (
+          <div
+            className="h-6 w-6 rounded-full border-2 border-white shadow-lg transition-[transform,box-shadow] duration-150"
+            style={{
+              backgroundColor: fill,
+              transform: isSelected ? "scale(1.08)" : undefined,
+              boxShadow: isSelected
+                ? "0 0 0 2px rgba(255,255,255,0.95), 0 0 14px 3px rgba(255,255,255,0.35), 0 6px 16px rgba(0,0,0,0.35)"
+                : undefined,
+            }}
+            title={w.name}
+          />
+        );
+        return (
           <Marker
-            key={`${w.lng}-${w.lat}-${i}`}
+            key={w.id ?? `${w.lng}-${w.lat}-${i}`}
             longitude={w.lng}
             latitude={w.lat}
             anchor="bottom"
           >
-            <div
-              className="h-6 w-6 rounded-full border-2 border-white shadow-lg"
-              style={{ backgroundColor: getLegColor(Math.min(i, numLegs - 1)) }}
-              title={w.name}
-            />
+            {canActivateWaypoint ? (
+              <button
+                type="button"
+                className="flex min-h-11 min-w-11 touch-manipulation items-end justify-center pb-0.5"
+                aria-label={w.name ?? `Route stop ${i + 1}`}
+                aria-pressed={isSelected}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (w.id) {
+                    onWaypointClick?.({ id: w.id, index: i, lat: w.lat, lng: w.lng });
+                  }
+                }}
+              >
+                {dot}
+              </button>
+            ) : (
+              dot
+            )}
           </Marker>
-        ))}
+        );
+      })}
       {children}
       </Map>
     </div>

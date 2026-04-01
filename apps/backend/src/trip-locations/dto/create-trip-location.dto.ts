@@ -1,4 +1,4 @@
-import { IsString, IsUUID, IsNumber, IsOptional, Min, Max, IsInt, IsPositive, IsDateString } from 'class-validator';
+import { IsString, IsUUID, IsNumber, IsOptional, Min, Max, IsInt, IsPositive, IsDateString, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateTripLocationDto {
@@ -35,5 +35,10 @@ export class CreateTripLocationDto {
   @IsOptional()
   @IsDateString()
   departure_date?: string;
+
+  @ApiPropertyOptional({ description: 'Map marker color (#RRGGBB)', example: '#ff6b6b' })
+  @IsOptional()
+  @Matches(/^#[0-9A-Fa-f]{6}$/)
+  marker_color?: string;
 }
 
