@@ -4,11 +4,12 @@ import { motion } from "framer-motion"
 import { Calendar } from "lucide-react"
 import Image from "next/image"
 
+/** ~2× displayed width on mobile (~360px) to save bytes vs 640w source */
 const HERO_MAP_UNSPLASH =
-  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=640&h=430&q=70"
+  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=400&h=268&q=62"
 
 const HERO_CARD_UNSPLASH =
-  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=320&h=214&q=50"
+  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=280&h=188&q=48"
 
 export default function HeroMockup() {
   return (
@@ -72,8 +73,8 @@ export default function HeroMockup() {
               alt="Kyoto map aesthetic background in product mockup"
               fill
               className="object-cover opacity-30 mix-blend-luminosity grayscale"
-              sizes="(max-width: 768px) 100vw, 50vw"
-              quality={70}
+              sizes="(max-width: 768px) 75vw, 42vw"
+              quality={60}
               loading="lazy"
               fetchPriority="low"
             />
@@ -104,8 +105,8 @@ export default function HeroMockup() {
                 alt="Trip cover preview in mockup"
                 fill
                 className="object-cover"
-                sizes="(max-width: 640px) 80vw, 280px"
-                quality={45}
+                sizes="(max-width: 640px) 72vw, 260px"
+                quality={40}
                 loading="lazy"
                 fetchPriority="low"
               />

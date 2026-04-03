@@ -3,7 +3,7 @@ import HeroMockupDeferred from "./HeroMockupDeferred"
 
 /**
  * Server component: hero copy is not nested under a client parent (better mobile LCP).
- * Mockup loads client-only after paint (`HeroMockupDeferred`).
+ * Mockup is a separate client chunk (`HeroMockupDeferred`) but still SSR’d (`ssr: true`).
  */
 export default function HomeHeroSection({ signedIn }: { signedIn: boolean }) {
   return (
