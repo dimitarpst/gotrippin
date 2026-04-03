@@ -109,7 +109,7 @@ export default function HeroMockup() {
                 fill
                 className="object-cover"
                 sizes="(max-width: 640px) 70vw, 240px"
-                quality={50}
+                quality={40}
                 loading="lazy"
                 fetchPriority="low"
               />

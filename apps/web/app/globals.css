@@ -4,6 +4,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * /home hero only: system UI stack so LCP headline paints without waiting on Figtree (Slow 4G / PSI).
+ * Rest of the app still uses next/font on <html> (see app/layout.tsx).
+ */
+.landing-hero-lcp-font {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+.landing-hero-lcp-font :is(button, a) {
+  font-family: inherit;
+}
+
 /* Body + display: next/font on <html> sets --font-figtree and --font-martian (see app/layout.tsx). */
 
 @theme inline {

@@ -16,14 +16,14 @@ export default function HeroTopServer({ signedIn }: { signedIn: boolean }) {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl bg-gradient-to-b from-transparent via-[var(--color-background)] to-[var(--color-background)]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-6 flex flex-col items-center text-center">
+      <div className="landing-hero-lcp-font relative z-10 w-full max-w-5xl mx-auto px-6 flex flex-col items-center text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-sm font-medium text-primary mb-8 dark:bg-white/5 dark:border-white/10 dark:text-[#ff7670]">
           <Sparkles className="w-4 h-4 shrink-0" aria-hidden />
           <span>An intelligent, route-first trip planner</span>
         </div>
 
-        {/* font-sans (Figtree) for LCP: avoids Martian VF on Slow 4G — display font still used below fold (Bento, mockup) */}
-        <h1 className="font-sans text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-foreground via-foreground/90 to-foreground/65 dark:from-white dark:via-white/95 dark:to-white/70 mb-8">
+        {/* System stack via .landing-hero-lcp-font — no Figtree wait on throttled mobile (LCP render delay). */}
+        <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-foreground via-foreground/90 to-foreground/65 dark:from-white dark:via-white/95 dark:to-white/70 mb-8">
           Plan trips together
           <br className="hidden sm:block" /> without the chaos.
         </h1>
