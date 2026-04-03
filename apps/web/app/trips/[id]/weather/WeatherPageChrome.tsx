@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronLeft, CloudOff } from "lucide-react"
+import { AlertCircle, ChevronLeft, CloudOff } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Trip, TripWeatherResponse, TripLocationWeather } from "@gotrippin/core"
