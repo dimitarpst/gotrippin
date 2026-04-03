@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronLeft, AlertCircle } from "lucide-react"
+import { ChevronLeft, CloudOff } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Trip, TripWeatherResponse, TripLocationWeather } from "@gotrippin/core"
@@ -92,10 +92,14 @@ export default function WeatherPageChrome({
       {hasError && (
         <div className="mb-6">
           <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 backdrop-blur-xl rounded-[24px] p-5">
-            <AlertCircle className="size-4" />
-            <AlertTitle>{t("weather.unavailable", { defaultValue: "Weather unavailable" })}</AlertTitle>
+            <CloudOff className="size-4" aria-hidden />
+            <AlertTitle className="sr-only">
+              {t("weather.unavailable", { defaultValue: "Weather unavailable" })}
+            </AlertTitle>
             <AlertDescription>
-              <div className="text-xs text-white/70 mb-4">{error || t("weather.unavailable", { defaultValue: "Weather unavailable" })}</div>
+              {error ? (
+                <div className="text-xs text-white/70 mb-4">{error}</div>
+              ) : null}
               <div className="flex gap-3">
                 <button
                   onClick={onRetry}

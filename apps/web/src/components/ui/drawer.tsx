@@ -72,7 +72,7 @@ function DrawerContent({
   handleProps,
   ...props
 }: React.ComponentProps<typeof VaulDrawer.Content> & {
-  /** Optional props for Vaul’s drag handle (use with `handleOnly` + `snapPoints` on `Drawer`). */
+  /** Optional props for Vaul’s drag handle (use with `handleOnly` + `snapPoints` on `Drawer`). Pass `children` only if you need extra markup; default is Vaul’s built-in pill only. */
   handleProps?: React.ComponentProps<typeof VaulDrawer.Handle>;
 }) {
   const { t } = useTranslation();
@@ -123,11 +123,8 @@ function DrawerContent({
             handleClassName,
           )}
         >
-          {handleChildren === undefined ? (
-            <span className="block h-2 w-[100px] shrink-0 rounded-full bg-muted" aria-hidden />
-          ) : (
-            handleChildren
-          )}
+          {/* Vaul’s own `[data-vaul-handle]` styles draw the pill; do not add a second bar here. */}
+          {handleChildren ?? null}
         </VaulDrawer.Handle>
         {children}
       </VaulDrawer.Content>

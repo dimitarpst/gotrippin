@@ -47,9 +47,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DatePicker } from "./date-picker"
 import { BackgroundPicker } from "./background-picker"
 import WeatherWidget from "./weather-widget"
+import {
+  WeatherUnavailableIndicator,
+  WeatherUnavailableSummaryCard,
+} from "./weather-unavailable-indicator"
 import type { DateRange } from "react-day-picker"
 import type { WeatherData } from "@gotrippin/core"
 import { format } from "date-fns"
@@ -70,7 +75,7 @@ export interface TripOverviewActions {
   onShare?: () => void
   onManageGuests?: () => void
   onEditName?: () => void
-  onChangeDates?: (dateRange: DateRange | undefined) => void
+  onChangeDates?: (dateRange: DateRange | undefined) => void | Promise<void>
   onChangeBackground?: (type: "image", value: import("@gotrippin/core").CoverPhotoInput) => void
   /** Device upload already in R2; persists via `cover_upload_storage_key` on trip update. */
   onChangeBackgroundUpload?: (payload: { storage_key: string }) => void
@@ -184,6 +189,7 @@ export default function TripOverview({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
+  const [customizePopoverOpen, setCustomizePopoverOpen] = useState(false)
   const [smoothScrollY, setSmoothScrollY] = useState(0)
   const scrollTargetRef = useRef(0)
   const smoothScrollRef = useRef(0)
@@ -199,6 +205,8 @@ export default function TripOverview({
     startDate: trip.start_date ? formatTripDate(trip.start_date) : "—",
     endDate: trip.end_date ? formatTripDate(trip.end_date) : "—",
   }), [trip.start_date, trip.end_date])
+
+  const hasCustomizeActions = Boolean(onEditName || onChangeDates || onChangeBackground)
 
   const derivedLocations = timelineLocations.length ? timelineLocations : routeLocations
 
@@ -283,11 +291,7 @@ export default function TripOverview({
     }
 
     if (entry?.error) {
-      return (
-        <span className="text-xs text-muted-foreground">
-          {t("weather.unavailable", { defaultValue: "Weather unavailable" })}
-        </span>
-      )
+      return <WeatherUnavailableIndicator />
     }
 
     return null
@@ -599,33 +603,6 @@ export default function TripOverview({
                 >
                   <Users className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_manage_guests')}</span>
-                </DropdownMenuItem>
-              )}
-              {onEditName && (
-                <DropdownMenuItem
-                  onClick={onEditName}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
-                >
-                  <Pencil className="w-4 h-4" />
-                  <span className="text-sm font-medium">{t('trip_overview.menu_edit_name')}</span>
-                </DropdownMenuItem>
-              )}
-              {onChangeDates && (
-                <DropdownMenuItem
-                  onClick={() => setShowDatePicker(true)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
-                >
-                  <Calendar className="w-4 h-4" />
-                  <span className="text-sm font-medium">{t('trip_overview.menu_change_dates')}</span>
-                </DropdownMenuItem>
-              )}
-              {onChangeBackground && (
-                <DropdownMenuItem
-                  onClick={() => setShowBackgroundPicker(true)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{t('trip_overview.menu_change_background')}</span>
                 </DropdownMenuItem>
               )}
               {onExportTripPdf && (
@@ -1023,40 +1000,21 @@ export default function TripOverview({
                 }
 
                 return (
-                  <Card
-                    className="relative overflow-hidden border-0 rounded-3xl shadow-xl"
-                    style={{
-                      background: `linear-gradient(135deg, ${accent} 0%, ${accent}dd 100%)`,
-                    }}
-                  >
-                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-linear-to-b from-white/10 to-transparent pointer-events-none" />
-                    <div className="relative p-6 z-10">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="text-white/90 text-sm font-semibold truncate">
-                            {weatherLocationLabel}
-                          </div>
-                          <div className="text-white/70 text-sm mt-1">
-                            {weatherError
-                              ? weatherError
-                              : t("weather.unavailable", { defaultValue: "Weather unavailable" })}
-                          </div>
-                        </div>
-                        {onRefetchWeather && (
-                          <button
-                            type="button"
-                            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-sm font-semibold text-white"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onRefetchWeather().catch((e: unknown) => toast.error("Retry failed", { description: e instanceof Error ? e.message : String(e) }))
-                            }}
-                          >
-                            {t("weather.retry", { defaultValue: "Retry" })}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
+                  <WeatherUnavailableSummaryCard
+                    color={accent}
+                    locationLabel={weatherLocationLabel}
+                    errorMessage={weatherError}
+                    onRetry={
+                      onRefetchWeather
+                        ? () =>
+                            onRefetchWeather().catch((e: unknown) =>
+                              toast.error("Retry failed", {
+                                description: e instanceof Error ? e.message : String(e),
+                              })
+                            )
+                        : undefined
+                    }
+                  />
                 )
               })()}
             </div>
@@ -1102,21 +1060,76 @@ export default function TripOverview({
             </Card>
           </motion.div>
 
-          <motion.div
-            className="flex justify-center pt-4 pb-2"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-          >
-            <motion.button
-              className="px-6 py-3 rounded-full backdrop-blur-md border border-border bg-card/90 text-foreground flex items-center gap-2 overflow-hidden shadow-sm dark:border-white/20 dark:bg-white/10 dark:text-white"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+          {hasCustomizeActions && (
+            <motion.div
+              className="flex justify-center pt-4 pb-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
             >
-              <Settings className="w-5 h-5" />
-              <span className="font-semibold">{t('trip_overview.customize')}</span>
-            </motion.button>
-          </motion.div>
+              <Popover open={customizePopoverOpen} onOpenChange={setCustomizePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <motion.button
+                    type="button"
+                    className="flex items-center gap-2 overflow-hidden rounded-full border border-border bg-card/90 px-6 py-3 text-foreground shadow-sm backdrop-blur-md dark:border-white/20 dark:bg-white/10 dark:text-white"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Settings className="h-5 w-5 shrink-0" />
+                    <span className="font-semibold">{t("trip_overview.customize")}</span>
+                  </motion.button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="center"
+                  side="top"
+                  sideOffset={8}
+                  className="w-max max-w-[min(100vw-1.5rem,13.5rem)] rounded-lg border border-border bg-popover p-1 shadow-lg"
+                >
+                  <div className="flex flex-col">
+                    {onEditName ? (
+                      <button
+                        type="button"
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-popover-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-[#ff7670]/20"
+                        onClick={() => {
+                          setCustomizePopoverOpen(false)
+                          onEditName()
+                        }}
+                      >
+                        <Pencil className="h-4 w-4 shrink-0" />
+                        {t("trip_overview.menu_edit_name")}
+                      </button>
+                    ) : null}
+                    {onChangeDates ? (
+                      <button
+                        type="button"
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-popover-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-[#ff7670]/20"
+                        onClick={() => {
+                          setCustomizePopoverOpen(false)
+                          setShowDatePicker(true)
+                        }}
+                      >
+                        <Calendar className="h-4 w-4 shrink-0" />
+                        {t("trip_overview.menu_change_dates")}
+                      </button>
+                    ) : null}
+                    {onChangeBackground ? (
+                      <button
+                        type="button"
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-popover-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-[#ff7670]/20"
+                        onClick={() => {
+                          setCustomizePopoverOpen(false)
+                          setShowBackgroundPicker(true)
+                        }}
+                      >
+                        <ImageIcon className="h-4 w-4 shrink-0" />
+                        {t("trip_overview.menu_change_background")}
+                      </button>
+                    ) : null}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -1174,9 +1187,17 @@ export default function TripOverview({
         <DatePicker
           open={showDatePicker}
           onClose={() => setShowDatePicker(false)}
-          onSelect={(dateRange) => {
-            onChangeDates(dateRange)
-            setShowDatePicker(false)
+          onSelect={async (dateRange) => {
+            try {
+              await Promise.resolve(onChangeDates(dateRange));
+            } catch (err) {
+              console.error("TripOverview: onChangeDates failed", err);
+              toast.error(t("common.error_occurred", { defaultValue: "An error occurred" }), {
+                description: err instanceof Error ? err.message : String(err),
+              });
+            } finally {
+              setShowDatePicker(false);
+            }
           }}
           selectedDateRange={
             trip.start_date && trip.end_date

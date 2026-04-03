@@ -103,7 +103,7 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          "group/day relative flex aspect-square min-h-0 w-full min-w-0 select-none items-center justify-center p-0 text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md",
+          "group/day relative flex aspect-square min-h-0 w-full min-w-0 select-none items-center justify-center p-0 text-center",
           defaultClassNames.day
         ),
         range_start: cn(
@@ -113,11 +113,11 @@ function Calendar({
         range_middle: cn("rounded-none", defaultClassNames.range_middle),
         range_end: cn("bg-accent rounded-r-md", defaultClassNames.range_end),
         today: cn(
-          "bg-transparent text-white rounded-md data-[selected=true]:rounded-none",
+          "rounded-md bg-transparent text-foreground data-[selected=true]:rounded-none",
           defaultClassNames.today
         ),
         outside: cn(
-          "text-white/30 opacity-50",
+          "text-muted-foreground/60 opacity-50",
           defaultClassNames.outside
         ),
         disabled: cn(
@@ -214,6 +214,22 @@ function CalendarDayButton({
     !modifiers.range_end &&
     !modifiers.range_middle
 
+  const inRange =
+    modifiers.range_start || modifiers.range_end || modifiers.range_middle
+  const rangeSingleDay =
+    Boolean(modifiers.range_start && modifiers.range_end && !modifiers.range_middle)
+
+  /** Connect range across week rows: no blanket `rounded-md` on span cells — square inward edges. */
+  const rangeCornerClass = !inRange
+    ? "rounded-md"
+    : rangeSingleDay
+      ? "rounded-md"
+      : modifiers.range_middle
+        ? "rounded-none"
+        : modifiers.range_start
+          ? "rounded-l-md rounded-r-none"
+          : "rounded-l-none rounded-r-md"
+
   return (
     <Button
       ref={ref}
@@ -231,24 +247,27 @@ function CalendarDayButton({
       data-range-middle={modifiers.range_middle}
       className={cn(
         "flex aspect-square h-full w-full items-center justify-center font-normal leading-none",
-        "text-white transition-all duration-150 rounded-md",
+        rangeCornerClass,
+        "text-foreground transition-all duration-150",
         "hover:bg-[#ff7670]/10",
         // Trip window (route picker): selectable days stand out vs disabled outside range
         isTripWindow &&
-          "bg-white/[0.11] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]",
+          "bg-primary/12 text-foreground shadow-[inset_0_0_0_1px_rgba(255,118,112,0.22)] dark:bg-white/[0.11] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]",
         // Dates used by other route stops (only when not selecting)
-        isBusy && "bg-white/8 text-white/80",
+        isBusy &&
+          "bg-muted/80 text-muted-foreground dark:bg-white/8 dark:text-white/80",
         // Trip window boundary markers
-        isTripBoundary && "outline outline-1 outline-white/25 outline-offset-[-2px]",
+        isTripBoundary &&
+          "outline outline-1 outline-offset-[-2px] outline-primary/35 dark:outline-white/25",
         // Today's date - subtle fill + ring (when not selected / not in range)
         isToday && "bg-[#ff7670]/20 ring-2 ring-[#ff7670]/45 ring-inset",
         // Selected single
         "data-[selected-single=true]:bg-[#ff7670] data-[selected-single=true]:text-white data-[selected-single=true]:font-semibold data-[selected-single=true]:hover:bg-[var(--brand-coral-hover)]",
-        // Range start/end
-        "data-[range-start=true]:bg-[#ff7670] data-[range-start=true]:text-white data-[range-start=true]:font-semibold data-[range-start=true]:rounded-l-md data-[range-start=true]:hover:bg-[var(--brand-coral-hover)]",
-        "data-[range-end=true]:bg-[#ff7670] data-[range-end=true]:text-white data-[range-end=true]:font-semibold data-[range-end=true]:rounded-r-md data-[range-end=true]:hover:bg-[var(--brand-coral-hover)]",
+        // Range start/end (corners via rangeCornerClass so row wraps stay flush)
+        "data-[range-start=true]:bg-[#ff7670] data-[range-start=true]:text-white data-[range-start=true]:font-semibold data-[range-start=true]:hover:bg-[var(--brand-coral-hover)]",
+        "data-[range-end=true]:bg-[#ff7670] data-[range-end=true]:text-white data-[range-end=true]:font-semibold data-[range-end=true]:hover:bg-[var(--brand-coral-hover)]",
         // Range middle
-        "data-[range-middle=true]:bg-[#ff7670]/15 data-[range-middle=true]:text-white data-[range-middle=true]:rounded-none",
+        "data-[range-middle=true]:bg-[#ff7670]/15 data-[range-middle=true]:text-foreground dark:data-[range-middle=true]:text-white",
         defaultClassNames.day,
         className
       )}

@@ -110,20 +110,32 @@ export function TripScheduleRepairDrawer({
 
       for (const act of activities) {
         const day = activityDays[act.id];
-        if (!day || !act.start_time) {
+        if (!day) {
           continue;
         }
-        const newStart = mergeCalendarDayWithTimeFromIso(day, act.start_time);
-        let newEnd: string | undefined;
-        if (act.end_time) {
-          newEnd = mergeCalendarDayWithTimeFromIso(day, act.end_time);
-          if (new Date(newEnd) < new Date(newStart)) {
-            newEnd = new Date(new Date(newStart).getTime() + 60 * 60 * 1000).toISOString();
+        const baseIso = act.start_time ?? act.end_time;
+        if (baseIso) {
+          const newStart = mergeCalendarDayWithTimeFromIso(day, baseIso);
+          let newEnd: string | undefined;
+          if (act.end_time) {
+            newEnd = mergeCalendarDayWithTimeFromIso(day, act.end_time);
+            if (new Date(newEnd) < new Date(newStart)) {
+              newEnd = new Date(new Date(newStart).getTime() + 60 * 60 * 1000).toISOString();
+            }
           }
+          await updateActivity(tripId, act.id, {
+            start_time: newStart,
+            ...(newEnd ? { end_time: newEnd } : {}),
+          });
+          continue;
         }
+        const noon = new Date(day);
+        noon.setHours(12, 0, 0, 0);
+        const newStart = noon.toISOString();
+        const newEnd = new Date(noon.getTime() + 60 * 60 * 1000).toISOString();
         await updateActivity(tripId, act.id, {
           start_time: newStart,
-          ...(newEnd ? { end_time: newEnd } : {}),
+          end_time: newEnd,
         });
       }
 

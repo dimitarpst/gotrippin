@@ -26,6 +26,8 @@ export function findTripScheduleViolations(
     }
   }
 
+  const badLocationIds = new Set(badLocations.map((l) => l.id));
+
   const seen = new Set<string>();
   const badActivities: Activity[] = [];
 
@@ -33,11 +35,17 @@ export function findTripScheduleViolations(
     if (seen.has(act.id)) {
       return;
     }
-    if (!act.start_time) {
+    const dayIso = act.start_time ?? act.end_time;
+    if (dayIso) {
+      const d = startOfDay(new Date(dayIso));
+      if (isBefore(d, ws) || isAfter(d, we)) {
+        seen.add(act.id);
+        badActivities.push(act);
+      }
       return;
     }
-    const d = startOfDay(new Date(act.start_time));
-    if (isBefore(d, ws) || isAfter(d, we)) {
+    // Untimed activity: still needs moving if its stop is outside the new trip window.
+    if (act.location_id && badLocationIds.has(act.location_id)) {
       seen.add(act.id);
       badActivities.push(act);
     }
@@ -102,8 +110,9 @@ export function suggestedLocationRange(
 
 /** Suggested calendar day for an activity inside the trip window. */
 export function suggestedActivityDay(act: Activity, tripStart: Date, tripEnd: Date): Date {
-  if (!act.start_time) {
+  const iso = act.start_time ?? act.end_time;
+  if (!iso) {
     return startOfDay(tripStart);
   }
-  return clampDateToTripWindow(new Date(act.start_time), tripStart, tripEnd);
+  return clampDateToTripWindow(new Date(iso), tripStart, tripEnd);
 }

@@ -122,10 +122,10 @@ export default function EditTripPageClient({
   }
 
   return (
-    <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
+    <main className="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
       <AuroraBackground />
 
-      <div className="flex-1 relative z-10">
+      <div className="relative z-10 flex-1">
         <CreateTrip
           onBack={handleBack}
           onSave={handleSave}

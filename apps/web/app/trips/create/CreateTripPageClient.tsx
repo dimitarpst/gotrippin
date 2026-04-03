@@ -65,45 +65,45 @@ export default function CreateTripPageClient() {
   }
 
   return (
-    <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
+    <main className="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
       <AuroraBackground />
 
-      <div className="flex-1 relative z-10">
+      <div className="relative z-10 flex-1">
         {step === 1 ? (
           <CreateTrip onBack={handleBack} onSave={handleDetailsNext} />
         ) : (
-          <div className="min-h-screen relative overflow-hidden flex flex-col">
+          <div className="relative flex min-h-screen flex-col overflow-hidden">
             {/* Same top bar as step 1: Back | step dots | CTA */}
-            <div className="relative z-10 px-6 pt-12 flex items-center justify-between">
+            <div className="relative z-10 flex items-center justify-between px-6 pt-12">
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="px-4 py-2 rounded-full text-[#ff7670] text-lg font-medium backdrop-blur-md border border-white/20 hover:bg-white/5 transition-colors"
+                className="rounded-full border border-border bg-background/70 px-4 py-2 text-lg font-medium text-primary backdrop-blur-md transition-colors hover:bg-muted/90 dark:border-white/20 dark:bg-background/40 dark:hover:bg-white/10"
               >
                 {t("common.back", { defaultValue: "Back" })}
               </button>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90">
-                <span className="text-white/50">1</span>
-                <span className="text-white/40">/</span>
-                <span className="text-white">2</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/90 px-2.5 py-1 text-xs font-medium text-foreground dark:bg-white/10 dark:text-white/90">
+                <span className="text-muted-foreground dark:text-white/50">1</span>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-foreground dark:text-white">2</span>
               </span>
               <button
                 type="button"
                 onClick={handleOpenRouteEditor}
-                className="px-6 py-2 rounded-full bg-white text-black font-semibold hover:bg-white/90 transition-colors"
+                className="rounded-full bg-primary px-6 py-2 font-semibold text-primary-foreground transition-colors hover:brightness-[0.96] active:brightness-[0.92]"
               >
                 {t("trips.route_step_ready_cta", { defaultValue: "Open route editor" })}
               </button>
             </div>
             {/* Centered content: trip name + short line, same feel as step 1 */}
-            <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pb-32">
-              <p className="text-white/60 text-lg mb-2">
+            <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-32">
+              <p className="mb-2 text-lg text-muted-foreground">
                 {t("trips.route_step_label", { defaultValue: "Step 2 of 2" })}
               </p>
-              <h1 className="text-white text-4xl md:text-5xl font-bold text-center mb-4">
+              <h1 className="mb-4 text-center text-4xl font-bold text-foreground md:text-5xl">
                 {pendingData?.title || t("trips.untitled_trip")}
               </h1>
-              <p className="text-white/70 text-center text-lg max-w-sm">
+              <p className="max-w-sm text-center text-lg text-muted-foreground">
                 {t("trips.route_step_ready_short", {
                   defaultValue: "Add your first stop on the map — we’ll create your trip when you do.",
                 })}

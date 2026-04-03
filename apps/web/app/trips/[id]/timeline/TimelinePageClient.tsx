@@ -9,6 +9,7 @@ import { formatTripDate } from "@gotrippin/core";
 
 import AuroraBackground from "@/components/effects/aurora-background";
 import WeatherWidget from "@/components/trips/weather-widget";
+import { WeatherUnavailableIndicator } from "@/components/trips/weather-unavailable-indicator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,11 +78,7 @@ function renderLocationWeather(
   }
 
   if (entry?.error) {
-    return (
-      <span className="text-xs text-muted-foreground">
-        {t("weather.unavailable", { defaultValue: "Weather unavailable" })}
-      </span>
-    );
+    return <WeatherUnavailableIndicator />;
   }
 
   return null;

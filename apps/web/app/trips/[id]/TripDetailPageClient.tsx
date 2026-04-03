@@ -156,34 +156,42 @@ export default function TripDetailPageClient({
         }
       }
 
-      const [locs, grouped] = await Promise.all([
-        getLocations(trip.id),
-        getGroupedActivities(trip.id),
-      ]);
-      const norm = normalizeTimelineData(grouped as GroupedActivitiesResponse);
-      const violations = findTripScheduleViolations(
-        dateRange.from,
-        dateRange.to,
-        locs,
-        norm.activitiesByLocation,
-        norm.unassigned
-      );
+      try {
+        const [locs, grouped] = await Promise.all([
+          getLocations(trip.id),
+          getGroupedActivities(trip.id),
+        ]);
+        const norm = normalizeTimelineData(grouped as GroupedActivitiesResponse);
+        const violations = findTripScheduleViolations(
+          dateRange.from,
+          dateRange.to,
+          locs,
+          norm.activitiesByLocation,
+          norm.unassigned
+        );
 
-      if (violations.locations.length > 0 || violations.activities.length > 0) {
-        setScheduleRepair({
-          tripStart: dateRange.from,
-          tripEnd: dateRange.to,
-          rollback,
-          calendarDayDeltaApplied: appliedDelta,
-          locations: violations.locations,
-          activities: violations.activities,
+        if (violations.locations.length > 0 || violations.activities.length > 0) {
+          setScheduleRepair({
+            tripStart: dateRange.from,
+            tripEnd: dateRange.to,
+            rollback,
+            calendarDayDeltaApplied: appliedDelta,
+            locations: violations.locations,
+            activities: violations.activities,
+          });
+          toast.info(t("trips.schedule_repair_needed"));
+          return;
+        }
+
+        toast.success(t("trips.dates_updated"));
+        router.refresh();
+      } catch (err) {
+        console.error("TripDetailPageClient: schedule violation check failed", err);
+        toast.error(t("common.error_occurred", { defaultValue: "An error occurred" }), {
+          description: err instanceof Error ? err.message : String(err),
         });
-        toast.info(t("trips.schedule_repair_needed"));
-        return;
+        router.refresh();
       }
-
-      toast.success(t("trips.dates_updated"));
-      router.refresh();
     },
     [
       trip?.id,

@@ -27,6 +27,16 @@ import {
   TourPrev,
   TourNext,
 } from "@/components/ui/tour";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface CreateTripProps {
   onBack: () => void
@@ -65,6 +75,7 @@ export default function CreateTrip({
   const [tripName, setTripName] = useState(initialData?.title || "");
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showBackgroundNudge, setShowBackgroundNudge] = useState(false);
   // New cover photo: selected by user this session (takes precedence over initialCoverPhoto for display)
   const [selectedCoverPhoto, setSelectedCoverPhoto] = useState<CoverPhotoInput | null>(null);
   const [selectedCoverUploadKey, setSelectedCoverUploadKey] = useState<string | null>(null);
@@ -80,7 +91,10 @@ export default function CreateTrip({
     : selectedCoverPhoto
       ? selectedCoverPhoto.image_url
       : initialCoverFromR2;
-  
+
+  /** Full-bleed cover image or chosen color — use light text + scrim. Otherwise show page aurora + theme text. */
+  const immersiveChrome = Boolean(previewImageUrl || selectedColor);
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -144,8 +158,9 @@ export default function CreateTrip({
     }
   };
 
-  const handleSave = async () => {
-    // Basic validation
+  const hasChosenBackground = Boolean(previewImageUrl || selectedColor);
+
+  const completeStep = async () => {
     if (!tripName.trim()) return;
     if (!dateRange?.from || !dateRange?.to) return;
 
@@ -163,6 +178,15 @@ export default function CreateTrip({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleNextClick = () => {
+    if (!tripName.trim() || !dateRange?.from || !dateRange?.to || saving) return;
+    if (!isEditing && !hasChosenBackground) {
+      setShowBackgroundNudge(true);
+      return;
+    }
+    void completeStep();
   };
 
   const handleBackgroundSelect = (type: "image", value: CoverPhotoInput) => {
@@ -200,65 +224,54 @@ export default function CreateTrip({
     return `${fromMonth} ${fromDay} → ${toMonth} ${toDay}`;
   };
 
-  const renderBackground = () => (
-    <div className="fixed inset-0 -z-10">
-      <AnimatePresence mode="wait">
-        {previewImageUrl ? (
-          <motion.div
-            key="image"
-            className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <img
-              src={previewImageUrl}
-              alt="Trip background"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
-          </motion.div>
-        ) : selectedColor ? (
-          <motion.div
-            key="color"
-            className="absolute inset-0"
-            style={{
-              // Avoid mixing `background` shorthand with `backgroundColor` across renders.
-              // Use stable `backgroundColor` + `backgroundImage` only.
-              backgroundColor: selectedColor.startsWith("linear-gradient")
-                ? "#0a0a0a"
-                : selectedColor,
-              backgroundImage: selectedColor.startsWith("linear-gradient")
-                ? selectedColor
-                : undefined,
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            {!selectedColor.startsWith('linear-gradient') && (
-              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
-            )}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="default"
-            className="absolute inset-0"
-            style={{
-              backgroundColor: "#0a0a0a",
-              backgroundImage:
-                "radial-gradient(circle at 20% 50%, rgba(255, 118, 112, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255, 118, 112, 0.1) 0%, transparent 50%)",
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          />
-        )}
-      </AnimatePresence>
-      {/* Global dark overlay to ensure content is always readable over backgrounds */}
-      <div className="absolute inset-0 bg-black/55" />
-    </div>
-  );
+  const renderBackground = () => {
+    if (!immersiveChrome) {
+      return null;
+    }
+    return (
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <AnimatePresence mode="wait">
+          {previewImageUrl ? (
+            <motion.div
+              key="image"
+              className="absolute inset-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <img
+                src={previewImageUrl}
+                alt="Trip background"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/30 to-black/65 dark:from-black/60 dark:via-black/40 dark:to-black/80" />
+            </motion.div>
+          ) : selectedColor ? (
+            <motion.div
+              key="color"
+              className="absolute inset-0"
+              style={{
+                backgroundColor: selectedColor.startsWith("linear-gradient")
+                  ? "#0a0a0a"
+                  : selectedColor,
+                backgroundImage: selectedColor.startsWith("linear-gradient")
+                  ? selectedColor
+                  : undefined,
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              {!selectedColor.startsWith("linear-gradient") && (
+                <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/15 to-black/40 dark:from-black/40 dark:via-black/20 dark:to-black/60" />
+              )}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        <div className="absolute inset-0 bg-black/35 dark:bg-black/55" />
+      </div>
+    );
+  };
 
   return (
     <>
@@ -266,26 +279,45 @@ export default function CreateTrip({
         {renderBackground()}
 
         <div className="relative z-10 px-6 pt-12 flex items-center justify-between">
-          <button 
-            onClick={onBack} 
-            className="px-4 py-2 rounded-full text-[#ff7670] text-lg font-medium backdrop-blur-md border border-white/20 disabled:opacity-50 hover:bg-white/5 transition-colors"
+          <button
+            type="button"
+            onClick={onBack}
+            className={cn(
+              "rounded-full px-4 py-2 text-lg font-medium transition-colors disabled:opacity-50",
+              immersiveChrome
+                ? "border border-white/20 text-[#ff7670] backdrop-blur-md hover:bg-white/5"
+                : "border border-border bg-background/70 text-primary backdrop-blur-md hover:bg-muted/90 dark:border-white/20 dark:bg-background/40 dark:hover:bg-white/10",
+            )}
             disabled={saving}
           >
             {t("trips.cancel")}
           </button>
 
           {!isEditing && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/90">
-              <span className="text-white">1</span>
-              <span className="text-white/40">/</span>
-              <span className="text-white/50">2</span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                immersiveChrome
+                  ? "bg-white/10 text-white/90"
+                  : "bg-muted/90 text-foreground dark:bg-white/10 dark:text-white/90",
+              )}
+            >
+              <span className={immersiveChrome ? "text-white" : "text-foreground dark:text-white"}>1</span>
+              <span className={immersiveChrome ? "text-white/40" : "text-muted-foreground"}>/</span>
+              <span className={immersiveChrome ? "text-white/50" : "text-muted-foreground"}>2</span>
             </span>
           )}
 
-          <button 
+          <button
+            type="button"
             id="create-trip-next-button"
-            onClick={handleSave} 
-            className="px-6 py-2 rounded-full bg-white text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/90 transition-colors flex items-center gap-2"
+            onClick={handleNextClick}
+            className={cn(
+              "flex items-center gap-2 rounded-full px-6 py-2 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+              immersiveChrome
+                ? "bg-white text-black hover:bg-white/90"
+                : "bg-primary text-primary-foreground hover:brightness-[0.96] active:brightness-[0.92]",
+            )}
             disabled={
               (!tripName.trim()) || 
               (!dateRange?.from || !dateRange?.to) ||
@@ -310,29 +342,60 @@ export default function CreateTrip({
               value={tripName}
               onChange={(e) => setTripName(e.target.value)}
               placeholder={t("trips.trip_name")}
-              className="w-full bg-transparent border-none text-white text-5xl font-bold placeholder:text-white/40 focus:outline-none text-center mb-4"
+              className={cn(
+                "mb-4 w-full border-none bg-transparent text-center text-5xl font-bold focus:outline-none",
+                immersiveChrome
+                  ? "text-white placeholder:text-white/40"
+                  : "text-foreground placeholder:text-muted-foreground",
+              )}
               style={{ caretColor: "#ff7670" }}
               autoFocus
             />
-            <p className="text-white/60 text-lg">{formatDateRange()}</p>
+            <button
+              type="button"
+              onClick={() => setShowDatePicker(true)}
+              className={cn(
+                "-mx-1 rounded-md px-1 text-lg transition-colors focus-visible:outline-none focus-visible:ring-2",
+                immersiveChrome
+                  ? "text-white/60 hover:text-white/85 focus-visible:text-white/90 focus-visible:ring-white/40"
+                  : "text-muted-foreground hover:text-foreground focus-visible:text-foreground focus-visible:ring-ring/60",
+              )}
+              aria-label={t("trips.set_dates")}
+            >
+              {formatDateRange()}
+            </button>
           </div>
 
           <div className="relative z-10 px-6 pb-12 flex items-center justify-center gap-1">
             <button
+              type="button"
               onClick={() => setShowDatePicker(true)}
               id="create-trip-dates-button"
-              className="flex-1 flex flex-col items-center gap-2 py-4 text-white/80 hover:text-white transition-colors"
+              className={cn(
+                "flex flex-1 flex-col items-center gap-2 py-4 transition-colors",
+                immersiveChrome
+                  ? "text-white/80 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
-              <CalendarIcon className="w-6 h-6" />
+              <CalendarIcon className="h-6 w-6" />
               <span className="text-sm font-medium">{t("trips.set_dates")}</span>
             </button>
 
-            <div className="w-px h-12 bg-white/20" />
+            <div
+              className={cn("h-12 w-px", immersiveChrome ? "bg-white/20" : "bg-border dark:bg-white/20")}
+            />
 
             <button
+              type="button"
               onClick={() => setShowBackgroundPicker(true)}
               id="create-trip-background-button"
-              className="flex-1 flex flex-col items-center gap-2 py-4 text-white/80 hover:text-white transition-colors"
+              className={cn(
+                "flex flex-1 flex-col items-center gap-2 py-4 transition-colors",
+                immersiveChrome
+                  ? "text-white/80 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
               <ImageIcon className="w-6 h-6" />
               <span className="text-sm font-medium">{t("trips.background")}</span>
@@ -357,6 +420,45 @@ export default function CreateTrip({
         selectedDateRange={dateRange}
         timelineContext={datePickerTimelineContext}
       />
+
+      <Dialog open={showBackgroundNudge} onOpenChange={setShowBackgroundNudge}>
+        <DialogContent showCloseButton className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t("trips.create_background_nudge_title", {
+                defaultValue: "Add a trip background?",
+              })}
+            </DialogTitle>
+            <DialogDescription>
+              {t("trips.create_background_nudge_description", {
+                defaultValue:
+                  "Pick a cover photo or color, or skip — we will use a default style on your map.",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowBackgroundNudge(false);
+                void completeStep();
+              }}
+            >
+              {t("trips.create_background_nudge_no", { defaultValue: "Skip for now" })}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setShowBackgroundNudge(false);
+                setShowBackgroundPicker(true);
+              }}
+            >
+              {t("trips.create_background_nudge_yes", { defaultValue: "Choose background" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {!isEditing && (
         <Tour

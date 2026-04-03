@@ -1,6 +1,7 @@
-import "@fontsource/figtree/latin.css";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { Figtree } from "next/font/google";
+import localFont from "next/font/local";
 import { cookies } from "next/headers";
 import I18nProvider from "../src/i18n/I18nProvider";
 import { AuthProvider } from "../src/contexts/AuthContext";
@@ -13,6 +14,20 @@ import {
 } from "../src/i18n/config";
 import { appConfig } from "@/config/appConfig";
 import { ThemeProvider } from "@/components/theme-provider";
+
+const figtree = Figtree({
+  subsets: ["latin"],
+  variable: "--font-figtree",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  adjustFontFallback: true,
+});
+
+const martianGrotesk = localFont({
+  src: "../public/fonts/MartianGrotesk-VFVF.woff2",
+  variable: "--font-martian",
+  display: "swap",
+});
 
 const siteUrl = appConfig.siteUrl || "https://gotrippin.app";
 const defaultTitle = "gotrippin — travel planning made simple";
@@ -95,9 +110,6 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
-  alternates: {
-    canonical: siteUrl,
-  },
 };
 
 const resolveInitialLanguage = async (): Promise<SupportedLanguage> => {
@@ -116,7 +128,11 @@ export default async function RootLayout({
   const jsonLdStr = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
 
   return (
-    <html lang={initialLanguage} suppressHydrationWarning>
+    <html
+      lang={initialLanguage}
+      suppressHydrationWarning
+      className={`${figtree.variable} ${martianGrotesk.variable}`}
+    >
       <body suppressHydrationWarning>
         <script
           type="application/ld+json"

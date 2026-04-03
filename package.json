@@ -1,6 +1,13 @@
 {
   "name": "gotrippin",
   "private": true,
+  "browserslist": [
+    "Chrome >= 120",
+    "Edge >= 120",
+    "Firefox >= 121",
+    "Safari >= 17",
+    "ios_saf >= 17"
+  ],
   "workspaces": [
     "apps/*",
     "packages/*"

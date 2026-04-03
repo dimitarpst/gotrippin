@@ -6,6 +6,7 @@ import { motion } from "framer-motion"
 import { MapPin, ArrowLeft, Calendar, Navigation, Sparkles, ArrowRight, Map as MapIcon } from "lucide-react"
 import AuroraBackground from "@/components/effects/aurora-background"
 import WeatherWidget from "@/components/trips/weather-widget"
+import { WeatherUnavailableIndicator } from "@/components/trips/weather-unavailable-indicator"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MapView, tripLocationsToWaypoints } from "@/components/maps"
@@ -124,7 +125,14 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                   />
                 ) : (
                   <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 backdrop-blur-sm text-muted-foreground text-xs dark:border-white/10 dark:bg-white/5 dark:text-white/70">
-                    {locationWeatherError ? t("weather.unavailable", { defaultValue: "Weather unavailable" }) : t("weather.no_data", { defaultValue: "No data" })}
+                    {locationWeatherError ? (
+                      <WeatherUnavailableIndicator
+                        variant="bare"
+                        detailsSrOnly={locationWeatherError}
+                      />
+                    ) : (
+                      t("weather.no_data", { defaultValue: "No data" })
+                    )}
                     <button
                       type="button"
                       className="underline decoration-dotted text-foreground/90 dark:text-white/80"
@@ -323,9 +331,13 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                 />
               ) : (
                 <div className="text-sm text-muted-foreground dark:text-white/70">
-                  {weatherLoading
-                    ? t("weather.loading", { defaultValue: "Loading weather..." })
-                    : locationWeatherError || weatherError || t("weather.unavailable", { defaultValue: "Weather unavailable" })}
+                  {weatherLoading ? (
+                    t("weather.loading", { defaultValue: "Loading weather..." })
+                  ) : (
+                    <WeatherUnavailableIndicator
+                      detailsSrOnly={locationWeatherError || weatherError || null}
+                    />
+                  )}
                   {!weatherLoading && (
                     <div className="mt-3">
                       <button

@@ -315,7 +315,7 @@ function TimelineDayButton({
 interface DatePickerProps {
   open: boolean;
   onClose: () => void;
-  onSelect: (dateRange: DateRange | undefined) => void;
+  onSelect: (dateRange: DateRange | undefined) => void | Promise<void>;
   selectedDateRange?: DateRange;
   minDate?: Date;
   maxDate?: Date;
@@ -349,7 +349,9 @@ export function DatePicker({
 
   const handleDone = () => {
     if (localRange?.from && localRange?.to) {
-      onSelect(localRange);
+      void Promise.resolve(onSelect(localRange)).catch((err) => {
+        console.error("DatePicker: onSelect failed", err);
+      });
     }
     onClose();
   };
