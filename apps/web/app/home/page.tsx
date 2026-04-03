@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
-import LandingPage from "@/components/landing/LandingPage"
-import HeroTopServer from "@/components/landing/HeroTopServer"
+import BentoFeatures from "@/components/landing/BentoFeatures"
+import CtaFooter from "@/components/landing/CtaFooter"
+import HomeHeroSection from "@/components/landing/HomeHeroSection"
+import LandingNav from "@/components/landing/LandingNav"
 import { appConfig } from "@/config/appConfig"
 import { createServerSupabaseClient } from "@/lib/supabase-server"
 
@@ -29,5 +31,14 @@ export default async function HomeRoutePage() {
   }
   const signedIn = !error && !!data.user
 
-  return <LandingPage heroTop={<HeroTopServer signedIn={signedIn} />} />
+  return (
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/25 scroll-smooth">
+      <LandingNav />
+      <main>
+        <HomeHeroSection signedIn={signedIn} />
+        <BentoFeatures />
+      </main>
+      <CtaFooter />
+    </div>
+  )
 }
