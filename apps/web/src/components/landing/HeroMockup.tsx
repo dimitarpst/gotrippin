@@ -4,12 +4,15 @@ import { motion } from "framer-motion"
 import { Calendar } from "lucide-react"
 import Image from "next/image"
 
-/** ~2× displayed width on mobile (~360px) to save bytes vs 640w source */
+/**
+ * Unsplash: use `auto=format&w=` only. `fit=crop` + tiny w/h + `q=` in the URL often makes the
+ * upstream or `next/image` return 400 (Best Practices + broken mockup in production).
+ */
 const HERO_MAP_UNSPLASH =
-  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=400&h=268&q=62"
+  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&w=480"
 
 const HERO_CARD_UNSPLASH =
-  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=260&h=174&q=42"
+  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&w=320"
 
 export default function HeroMockup() {
   return (
@@ -74,7 +77,7 @@ export default function HeroMockup() {
               fill
               className="object-cover opacity-30 mix-blend-luminosity grayscale"
               sizes="(max-width: 768px) 75vw, 42vw"
-              quality={60}
+              quality={65}
               loading="lazy"
               fetchPriority="low"
             />
@@ -106,7 +109,7 @@ export default function HeroMockup() {
                 fill
                 className="object-cover"
                 sizes="(max-width: 640px) 70vw, 240px"
-                quality={35}
+                quality={50}
                 loading="lazy"
                 fetchPriority="low"
               />
