@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import LandingPage from "@/components/landing/LandingPage"
+import HeroTopServer from "@/components/landing/HeroTopServer"
 import { appConfig } from "@/config/appConfig"
+import { createServerSupabaseClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
 
@@ -19,6 +21,13 @@ export const metadata: Metadata = {
   alternates: { canonical: `${siteUrl}/home` },
 }
 
-export default function HomeRoutePage() {
-  return <LandingPage />
+export default async function HomeRoutePage() {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase.auth.getUser()
+  if (error) {
+    console.error("HomeRoutePage getUser:", error.message)
+  }
+  const signedIn = !error && !!data.user
+
+  return <LandingPage heroTop={<HeroTopServer signedIn={signedIn} />} />
 }

@@ -1,17 +1,12 @@
-"use client"
-
 import { ArrowRight, Sparkles } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { useAuth } from "@/contexts/AuthContext"
+
+import { Button } from "@/components/ui/button"
 
 /**
- * Above-the-fold hero copy without framer-motion so LCP/hydration stay light.
- * (Mockup + motion live in `HeroMockup`, loaded via `next/dynamic`.)
+ * Server-rendered hero copy (LCP-friendly). CTA targets come from `signedIn` via cookies on `/home`.
  */
-export default function HeroTop() {
-  const { user } = useAuth()
-
+export default function HeroTopServer({ signedIn }: { signedIn: boolean }) {
   return (
     <>
       <div className="absolute inset-0 z-0 pointer-events-none isolate">
@@ -37,13 +32,13 @@ export default function HeroTop() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <Link href={user ? "/trips" : "/auth"}>
+          <Link href={signedIn ? "/trips" : "/auth"}>
             <Button
               size="lg"
               className="relative group overflow-hidden rounded-full px-8 h-14 text-base font-semibold bg-primary text-zinc-950 hover:scale-105 transition-all duration-300 shadow-lg shadow-primary/25 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-white dark:text-black dark:shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] dark:focus-visible:ring-white"
             >
               <span className="relative z-10 flex items-center">
-                {user ? "Go to Dashboard" : "Start Planning Free"}
+                {signedIn ? "Go to Dashboard" : "Start Planning Free"}
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden />
               </span>
               <span className="absolute inset-0 bg-gradient-to-r from-white via-indigo-200 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
