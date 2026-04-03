@@ -22,7 +22,8 @@ export default function HeroTopServer({ signedIn }: { signedIn: boolean }) {
           <span>An intelligent, route-first trip planner</span>
         </div>
 
-        <h1 className="font-display text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-foreground via-foreground/90 to-foreground/65 dark:from-white dark:via-white/95 dark:to-white/70 mb-8">
+        {/* font-sans (Figtree) for LCP: avoids Martian VF on Slow 4G — display font still used below fold (Bento, mockup) */}
+        <h1 className="font-sans text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-foreground via-foreground/90 to-foreground/65 dark:from-white dark:via-white/95 dark:to-white/70 mb-8">
           Plan trips together
           <br className="hidden sm:block" /> without the chaos.
         </h1>

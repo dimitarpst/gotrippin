@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
-import BentoFeatures from "@/components/landing/BentoFeatures"
-import CtaFooter from "@/components/landing/CtaFooter"
+import HomeBelowFold from "@/components/landing/HomeBelowFold"
 import HomeHeroSection from "@/components/landing/HomeHeroSection"
 import LandingNav from "@/components/landing/LandingNav"
 import { appConfig } from "@/config/appConfig"
@@ -36,9 +35,8 @@ export default async function HomeRoutePage() {
       <LandingNav />
       <main>
         <HomeHeroSection signedIn={signedIn} />
-        <BentoFeatures />
+        <HomeBelowFold />
       </main>
-      <CtaFooter />
     </div>
   )
 }

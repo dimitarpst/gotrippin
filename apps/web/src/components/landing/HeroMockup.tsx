@@ -9,7 +9,7 @@ const HERO_MAP_UNSPLASH =
   "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=400&h=268&q=62"
 
 const HERO_CARD_UNSPLASH =
-  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=280&h=188&q=48"
+  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=260&h=174&q=42"
 
 export default function HeroMockup() {
   return (
@@ -105,8 +105,8 @@ export default function HeroMockup() {
                 alt="Trip cover preview in mockup"
                 fill
                 className="object-cover"
-                sizes="(max-width: 640px) 72vw, 260px"
-                quality={40}
+                sizes="(max-width: 640px) 70vw, 240px"
+                quality={35}
                 loading="lazy"
                 fetchPriority="low"
               />

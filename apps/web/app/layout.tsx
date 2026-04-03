@@ -23,11 +23,10 @@ const figtree = Figtree({
   adjustFontFallback: true,
 });
 
-/** Optional: hero H1 can paint with metric-matched fallback first — better mobile LCP than swap + 100KB VF wait */
 const martianGrotesk = localFont({
   src: "../public/fonts/MartianGrotesk-VFVF.woff2",
   variable: "--font-martian",
-  display: "optional",
+  display: "swap",
 });
 
 const siteUrl = appConfig.siteUrl || "https://gotrippin.app";
