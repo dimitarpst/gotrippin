@@ -61,21 +61,21 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
 
   return (
     <motion.div
-      className="relative rounded-3xl overflow-hidden border border-white/8"
-      style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      className="relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ type: "spring", stiffness: 800, damping: 25, delay: 0.1 }}
     >
+      <div className="glass-panel relative overflow-hidden rounded-3xl">
       <div className="px-4 sm:px-6 py-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0">
-              <Mail className="w-5 h-5 text-[var(--accent)]" />
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <Mail className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-lg font-semibold text-white">{t("profile.change_email")}</h3>
-              <p className="text-sm text-white/60 truncate">{currentEmail}</p>
+              <h3 className="text-lg font-semibold text-foreground">{t("profile.change_email")}</h3>
+              <p className="truncate text-sm text-muted-foreground">{currentEmail}</p>
             </div>
           </div>
           {!isEditing && (
@@ -83,7 +83,7 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
               onClick={() => setIsEditing(true)}
               variant="outline"
               size="sm"
-              className="bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer self-start sm:self-auto"
+              className="cursor-pointer self-start border-border bg-muted/50 hover:bg-muted sm:self-auto"
             >
               {t("profile.edit")}
             </Button>
@@ -102,7 +102,7 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
               className="space-y-4 overflow-hidden"
             >
             <div className="space-y-2">
-              <label className="text-sm text-white/70">{t("profile.new_email")}</label>
+              <label className="text-sm text-muted-foreground">{t("profile.new_email")}</label>
               <Input
                 type="email"
                 value={newEmail}
@@ -110,7 +110,7 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
                 placeholder={t("profile.new_email_placeholder")}
                 required
                 disabled={loading}
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                className="bg-background/80"
               />
             </div>
 
@@ -142,7 +142,7 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
               <Button
                 type="submit"
                 disabled={loading || !newEmail}
-                className="flex-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white cursor-pointer"
+                className="flex-1 cursor-pointer bg-primary text-primary-foreground hover:bg-[var(--brand-coral-hover)]"
               >
                 {loading ? t("profile.saving") : t("profile.update_email")}
               </Button>
@@ -151,7 +151,7 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
                 onClick={handleCancel}
                 disabled={loading}
                 variant="outline"
-                className="bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer"
+                className="cursor-pointer border-border bg-muted/50 hover:bg-muted"
               >
                 {t("profile.cancel")}
               </Button>
@@ -159,6 +159,7 @@ export default function ChangeEmailCard({ currentEmail }: ChangeEmailCardProps) 
           </motion.form>
           )}
         </AnimatePresence>
+      </div>
       </div>
     </motion.div>
   );

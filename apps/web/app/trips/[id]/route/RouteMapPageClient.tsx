@@ -476,7 +476,7 @@ export default function RouteMapPageClient({
               router.push(`/trips/${shareCode}`);
             }}
             disabled={!canExitWizard}
-            className="px-4 py-2 rounded-full text-[#ff6b6b] text-lg font-medium border border-white/20 disabled:opacity-50 hover:bg-white/5 transition-colors disabled:border-white/10"
+            className="px-4 py-2 rounded-full text-[#ff7670] text-lg font-medium border border-white/20 disabled:opacity-50 hover:bg-white/5 transition-colors disabled:border-white/10"
           >
             {t("common.back", { defaultValue: "Back" })}
           </button>
@@ -954,7 +954,7 @@ export default function RouteMapPageClient({
                     }
                     className={`flex h-9 max-w-[9.5rem] shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-white/90 transition-colors sm:max-w-none ${
                       routeReorderMode
-                        ? "border-[#ff6b6b] bg-[#ff6b6b]/20 text-white"
+                        ? "border-[#ff7670] bg-[#ff7670]/20 text-white"
                         : "border-white/15 bg-white/5 hover:bg-white/10 hover:text-white"
                     }`}
                   >
@@ -1242,7 +1242,7 @@ export default function RouteMapPageClient({
         >
           <TourPortal>
             <TourSpotlight />
-            <TourSpotlightRing className="rounded-2xl border-2 border-primary shadow-[0_0_30px_rgba(255,107,107,0.45)]" />
+            <TourSpotlightRing className="rounded-2xl border-2 border-primary shadow-[0_0_30px_rgba(255, 118, 112,0.45)]" />
 
             <TourStep target="#route-search-button" side="bottom">
               <TourArrow />

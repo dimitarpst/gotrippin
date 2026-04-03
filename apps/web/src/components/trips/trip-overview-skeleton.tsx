@@ -12,7 +12,7 @@ export default function TripOverviewSkeleton({ onBack }: TripOverviewSkeletonPro
   return (
     <div className="min-h-screen relative bg-[var(--color-background)]">
       {/* Hero Section Skeleton */}
-      <Skeleton className="relative w-full h-[50vh] bg-gradient-to-br from-[#ff6b6b]/20 to-[#4ecdc4]/20 rounded-none">
+      <Skeleton className="relative w-full h-[50vh] bg-gradient-to-br from-[#ff7670]/20 to-[#4ecdc4]/20 rounded-none">
         <div className="absolute inset-x-0 bottom-0 h-32 pointer-events-none bg-gradient-to-b from-transparent to-[var(--color-background)]" />
       </Skeleton>
 
@@ -58,7 +58,7 @@ export default function TripOverviewSkeleton({ onBack }: TripOverviewSkeletonPro
 
         {/* Plus Button Skeleton */}
         <div className="relative z-10 flex justify-center pt-8 pb-12">
-          <Skeleton className="w-16 h-16 rounded-full bg-[#ff6b6b]/30" />
+          <Skeleton className="w-16 h-16 rounded-full bg-[#ff7670]/30" />
         </div>
 
         {/* Cards Skeleton */}

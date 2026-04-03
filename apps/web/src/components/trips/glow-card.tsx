@@ -37,7 +37,7 @@ export default function GlowCard({ children, className = "", onClick }: GlowCard
         style={{
           background: useTransform(
             [mouseX, mouseY],
-            ([x, y]) => `radial-gradient(600px circle at ${x}px ${y}px, rgba(255,107,107,0.15), transparent 40%)`,
+            ([x, y]) => `radial-gradient(600px circle at ${x}px ${y}px, rgba(255, 118, 112,0.15), transparent 40%)`,
           ),
         }}
       />

@@ -19,12 +19,12 @@ export class UpdateProfileDto {
 
   @ApiProperty({ 
     required: false,
-    example: '#ff6b6b',
+    example: '#ff7670',
     description: 'Avatar color in hex format'
   })
   @IsOptional()
   @IsString()
-  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'Avatar color must be a valid hex color (e.g., #ff6b6b)' })
+  @Matches(/^#[0-9A-Fa-f]{6}$/, { message: 'Avatar color must be a valid hex color (e.g., #ff7670)' })
   avatar_color?: string;
 
   @ApiProperty({ 

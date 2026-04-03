@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Link as LinkIcon, Unlink, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useTranslation } from "react-i18next";
 import { appConfig } from "@/config/appConfig";
 import { useAuth } from "@/contexts/AuthContext";
@@ -327,31 +328,31 @@ export default function LinkedAccountsCard({
 
   return (
     <motion.div
-      className="relative rounded-3xl overflow-hidden border border-white/8"
-      style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      className="relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ type: "spring", stiffness: 800, damping: 25, delay: 0.2 }}
     >
+      <div className="glass-panel relative overflow-hidden rounded-3xl">
       <div className="px-4 sm:px-6 py-6">
         <div className="mb-4">
-          <h3 className="text-lg font-semibold text-white mb-1">{t("profile.linked_accounts")}</h3>
-          <p className="text-sm text-white/60">{t("profile.linked_accounts_description")}</p>
+          <h3 className="mb-1 text-lg font-semibold text-foreground">{t("profile.linked_accounts")}</h3>
+          <p className="text-sm text-muted-foreground">{t("profile.linked_accounts_description")}</p>
         </div>
 
         <div className="space-y-3">
           {/* Email/Password Provider */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 bg-white/5 rounded-xl border border-white/8">
+          <div className="glass-inset flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
                 <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                   <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-white">{t("profile.email_password_account")}</p>
-                <p className="text-xs text-white/60">
+                <p className="text-sm font-medium text-foreground">{t("profile.email_password_account")}</p>
+                <p className="text-xs text-muted-foreground">
                   {isEmailPasswordConnected ? t("profile.connected") : t("profile.not_connected")}
                 </p>
               </div>
@@ -371,7 +372,7 @@ export default function LinkedAccountsCard({
                 disabled={loading}
                 variant="outline"
                 size="sm"
-                className="bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer"
+                className="cursor-pointer border-border bg-muted/50 hover:bg-muted"
               >
                 {t("profile.add_password")}
               </Button>
@@ -382,23 +383,23 @@ export default function LinkedAccountsCard({
           {!isEmailPasswordConnected && showAddPassword && (
             <form
               onSubmit={handleAddPassword}
-              className="space-y-3 p-3 bg-black/40 rounded-xl border border-white/10"
+              className="glass-inset space-y-3 p-3"
             >
-              <p className="text-xs text-white/70">
+              <p className="text-xs text-muted-foreground">
                 {t("profile.password_description")}
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                <input
+                <Input
                   type="password"
-                  className="px-3 py-2 rounded-lg bg-black/40 border border-white/15 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-(--accent)"
+                  className="bg-background/80"
                   placeholder={t("auth.new_password")}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   disabled={loading}
                 />
-                <input
+                <Input
                   type="password"
-                  className="px-3 py-2 rounded-lg bg-black/40 border border-white/15 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-(--accent)"
+                  className="bg-background/80"
                   placeholder={t("auth.confirm_new_password")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -410,7 +411,7 @@ export default function LinkedAccountsCard({
                   type="submit"
                   disabled={loading || !newPassword || !confirmPassword}
                   size="sm"
-                  className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white cursor-pointer"
+                  className="cursor-pointer bg-primary text-primary-foreground hover:bg-[var(--brand-coral-hover)]"
                 >
                   {t("profile.set_password")}
                 </Button>
@@ -423,7 +424,7 @@ export default function LinkedAccountsCard({
                     setError(null);
                     setPasswordSuccess(null);
                   }}
-                  className="text-xs text-white/60 hover:text-white cursor-pointer"
+                  className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
                 >
                   {t("profile.cancel")}
                 </button>
@@ -432,9 +433,9 @@ export default function LinkedAccountsCard({
           )}
 
           {/* Google Provider */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 p-3 bg-white/5 rounded-xl border border-white/8">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shrink-0">
+          <div className="glass-inset flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background/90 backdrop-blur-sm">
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -443,8 +444,8 @@ export default function LinkedAccountsCard({
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white">Google</p>
-                <p className="text-xs text-white/60 truncate">
+                <p className="text-sm font-medium text-foreground">Google</p>
+                <p className="truncate text-xs text-muted-foreground">
                   {hasGoogle ? (googleEmail || t("profile.connected")) : t("profile.not_connected")}
                 </p>
               </div>
@@ -474,7 +475,7 @@ export default function LinkedAccountsCard({
                   disabled={loading || !isEmailPasswordConnected}
                   variant="outline"
                   size="sm"
-                  className="bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer"
+                  className="cursor-pointer border-border bg-muted/50 hover:bg-muted"
                   title={!isEmailPasswordConnected ? t("profile.link_account_password_required") : ""}
                 >
                   <LinkIcon className="w-3 h-3 mr-1" />
@@ -517,6 +518,7 @@ export default function LinkedAccountsCard({
             <p className="text-sm text-red-400">{error}</p>
           </motion.div>
         )}
+      </div>
       </div>
     </motion.div>
   );

@@ -100,23 +100,23 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
 
   return (
     <motion.div
-      className="relative rounded-3xl overflow-hidden border border-white/8"
-      style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      className="relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ type: "spring", stiffness: 800, damping: 25, delay: 0.15 }}
     >
+      <div className="glass-panel relative overflow-hidden rounded-3xl">
       <div className="px-4 sm:px-6 py-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center flex-shrink-0">
-              <Lock className="w-5 h-5 text-[var(--accent)]" />
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <Lock className="h-5 w-5 text-primary" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-lg font-semibold text-foreground">
                 {hasPassword ? t("profile.change_password") : t("profile.add_password")}
               </h3>
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-muted-foreground">
                 {hasPassword ? "Update your account password" : t("profile.password_description")}
               </p>
             </div>
@@ -126,7 +126,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
               onClick={() => setIsEditing(true)}
               variant="outline"
               size="sm"
-              className="bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer self-start sm:self-auto"
+              className="cursor-pointer self-start border-border bg-muted/50 hover:bg-muted sm:self-auto"
             >
               {t("profile.edit")}
             </Button>
@@ -146,7 +146,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
             >
             {hasPassword && (
               <div className="space-y-2">
-                <label className="text-sm text-white/70">{t("profile.current_password")}</label>
+                <label className="text-sm text-muted-foreground">{t("profile.current_password")}</label>
                 <Input
                   type="password"
                   value={oldPassword}
@@ -154,12 +154,12 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
                   placeholder="••••••••"
                   required={hasPassword}
                   disabled={loading}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                  className="bg-background/80"
                 />
               </div>
             )}
             <div className="space-y-2">
-              <label className="text-sm text-white/70">{t("auth.new_password")}</label>
+              <label className="text-sm text-muted-foreground">{t("auth.new_password")}</label>
               <Input
                 type="password"
                 value={newPassword}
@@ -167,12 +167,12 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
                 placeholder="••••••••"
                 required
                 disabled={loading}
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                className="bg-background/80"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-white/70">{t("auth.confirm_new_password")}</label>
+              <label className="text-sm text-muted-foreground">{t("auth.confirm_new_password")}</label>
               <Input
                 type="password"
                 value={confirmPassword}
@@ -180,12 +180,12 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
                 placeholder="••••••••"
                 required
                 disabled={loading}
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                className="bg-background/80"
               />
             </div>
 
             {hasPassword && (
-              <p className="text-xs text-white/50">
+              <p className="text-xs text-muted-foreground">
                 {t("profile.password_change_note")}
               </p>
             )}
@@ -216,7 +216,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
               <Button
                 type="submit"
                 disabled={loading || !newPassword || !confirmPassword || (hasPassword && !oldPassword)}
-                className="flex-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white cursor-pointer"
+                className="flex-1 cursor-pointer bg-primary text-primary-foreground hover:bg-[var(--brand-coral-hover)]"
               >
                 {loading
                   ? t("profile.saving")
@@ -229,7 +229,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
                 onClick={handleCancel}
                 disabled={loading}
                 variant="outline"
-                className="bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer"
+                className="cursor-pointer border-border bg-muted/50 hover:bg-muted"
               >
                 {t("profile.cancel")}
               </Button>
@@ -237,6 +237,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
           </motion.form>
           )}
         </AnimatePresence>
+      </div>
       </div>
     </motion.div>
   );

@@ -43,10 +43,13 @@ function Calendar({
       classNames={{
         root: cn("w-full", defaultClassNames.root),
         months: cn(
-          "relative flex flex-col gap-4 md:flex-row sm:gap-4 w-full",
+          "relative flex w-full flex-col gap-6 sm:gap-6 md:flex-row md:gap-4",
           defaultClassNames.months
         ),
-        month: cn("flex w-full flex-col gap-4", defaultClassNames.month),
+        month: cn(
+          "isolate flex w-full min-w-0 shrink-0 flex-col gap-4",
+          defaultClassNames.month
+        ),
         nav: cn(
           "absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1",
           defaultClassNames.nav
@@ -82,12 +85,15 @@ function Calendar({
           defaultClassNames.caption_label
         ),
         table: "w-full border-collapse space-y-1",
-        weekdays: cn("flex w-full", defaultClassNames.weekdays),
+        weekdays: cn(
+          "grid w-full grid-cols-7",
+          defaultClassNames.weekdays
+        ),
         weekday: cn(
-          "text-muted-foreground flex-1 flex items-center justify-center select-none rounded-md text-[0.8rem] font-normal",
+          "text-muted-foreground flex items-center justify-center select-none rounded-md text-[0.8rem] font-normal",
           defaultClassNames.weekday
         ),
-        week: cn("mt-2 flex w-full", defaultClassNames.week),
+        week: cn("mt-2 grid w-full grid-cols-7", defaultClassNames.week),
         week_number_header: cn(
           "w-9 select-none",
           defaultClassNames.week_number_header
@@ -97,7 +103,7 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          "group/day flex-1 relative aspect-square select-none p-0 flex items-center justify-center text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md",
+          "group/day relative flex aspect-square min-h-0 w-full min-w-0 select-none items-center justify-center p-0 text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md",
           defaultClassNames.day
         ),
         range_start: cn(
@@ -226,7 +232,7 @@ function CalendarDayButton({
       className={cn(
         "flex aspect-square h-full w-full items-center justify-center font-normal leading-none",
         "text-white transition-all duration-150 rounded-md",
-        "hover:bg-[#ff6b6b]/10",
+        "hover:bg-[#ff7670]/10",
         // Trip window (route picker): selectable days stand out vs disabled outside range
         isTripWindow &&
           "bg-white/[0.11] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]",
@@ -235,14 +241,14 @@ function CalendarDayButton({
         // Trip window boundary markers
         isTripBoundary && "outline outline-1 outline-white/25 outline-offset-[-2px]",
         // Today's date - subtle fill + ring (when not selected / not in range)
-        isToday && "bg-[#ff6b6b]/20 ring-2 ring-[#ff6b6b]/45 ring-inset",
+        isToday && "bg-[#ff7670]/20 ring-2 ring-[#ff7670]/45 ring-inset",
         // Selected single
-        "data-[selected-single=true]:bg-[#ff6b6b] data-[selected-single=true]:text-white data-[selected-single=true]:font-semibold data-[selected-single=true]:hover:bg-[#ff5252]",
+        "data-[selected-single=true]:bg-[#ff7670] data-[selected-single=true]:text-white data-[selected-single=true]:font-semibold data-[selected-single=true]:hover:bg-[var(--brand-coral-hover)]",
         // Range start/end
-        "data-[range-start=true]:bg-[#ff6b6b] data-[range-start=true]:text-white data-[range-start=true]:font-semibold data-[range-start=true]:rounded-l-md data-[range-start=true]:hover:bg-[#ff5252]",
-        "data-[range-end=true]:bg-[#ff6b6b] data-[range-end=true]:text-white data-[range-end=true]:font-semibold data-[range-end=true]:rounded-r-md data-[range-end=true]:hover:bg-[#ff5252]",
+        "data-[range-start=true]:bg-[#ff7670] data-[range-start=true]:text-white data-[range-start=true]:font-semibold data-[range-start=true]:rounded-l-md data-[range-start=true]:hover:bg-[var(--brand-coral-hover)]",
+        "data-[range-end=true]:bg-[#ff7670] data-[range-end=true]:text-white data-[range-end=true]:font-semibold data-[range-end=true]:rounded-r-md data-[range-end=true]:hover:bg-[var(--brand-coral-hover)]",
         // Range middle
-        "data-[range-middle=true]:bg-[#ff6b6b]/15 data-[range-middle=true]:text-white data-[range-middle=true]:rounded-none",
+        "data-[range-middle=true]:bg-[#ff7670]/15 data-[range-middle=true]:text-white data-[range-middle=true]:rounded-none",
         defaultClassNames.day,
         className
       )}

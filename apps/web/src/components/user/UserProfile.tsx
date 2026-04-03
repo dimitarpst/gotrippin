@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { ExtendedUser } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
+import AuroraBackground from "@/components/effects/aurora-background";
 
 export type UserProfileData = {
   uid: string;
@@ -63,7 +64,6 @@ export default function UserProfile({
   const { t } = useTranslation();
   const { signOut, refreshProfile, user: authUser } = useAuth();
   const [editSessionId, setEditSessionId] = useState(0);
-  const [editRefreshing, setEditRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const userSelectedAvatarRef = useRef(false);
 
@@ -117,7 +117,6 @@ export default function UserProfile({
     });
 
     const syncProfile = async () => {
-      setEditRefreshing(true);
       try {
         const { data: profile, error: profileError } = await Promise.race([
           supabase
@@ -145,8 +144,6 @@ export default function UserProfile({
         }
       } catch (error) {
         console.warn("Failed to refresh profile before editing:", error);
-      } finally {
-        setEditRefreshing(false);
       }
     };
 
@@ -167,7 +164,6 @@ export default function UserProfile({
       avatarUrl: data.avatarUrl || undefined,
     });
     setIsEditing(false);
-    setEditRefreshing(false);
   };
 
   const handleChange = (field: "displayName" | "avatarColor", value: string) => {
@@ -214,7 +210,8 @@ export default function UserProfile({
   };
 
   return (
-    <div className="min-h-screen relative pb-32 overflow-y-auto scrollbar-hide">
+    <main className="relative flex min-h-screen flex-col overflow-hidden bg-background pb-24 text-foreground">
+      <AuroraBackground />
       <ProfileHeader
         title={t("profile.title")}
         onBack={onBack}
@@ -225,12 +222,13 @@ export default function UserProfile({
         saving={saving}
       />
 
-      <motion.div
-        className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.05 }}
-      >
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-hide">
+        <motion.div
+          className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.05 }}
+        >
         <EmailConfirmationBanner />
         <ProfileHero
           data={data}
@@ -247,29 +245,29 @@ export default function UserProfile({
 
         {/* AI Usage Card */}
         <motion.div
-          className="relative rounded-3xl overflow-hidden border border-white/8 mt-6"
-          style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          className="relative mt-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ type: "spring", stiffness: 800, damping: 25, delay: 0.1 }}
         >
+          <div className="glass-panel relative overflow-hidden rounded-3xl">
           <div className="px-4 sm:px-6 py-5">
             <div className="flex items-start gap-4">
-              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/6 text-white/80">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground">
                 <Logo variant="sm" className="h-5 w-auto" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-base font-medium text-white">
+                  <p className="text-base font-medium text-foreground">
                     {t("profile.ai_usage")}
                   </p>
-                  <p className="text-sm font-medium text-white/70">
+                  <p className="text-sm font-medium text-muted-foreground">
                     {aiUsage.percent != null
                       ? t("profile.ai_usage_value", { percent: aiUsage.percent })
                       : t("profile.ai_usage_unlimited")}
                   </p>
                 </div>
-                <p className="mt-1 text-sm text-white/55">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {aiUsage.limit != null
                     ? t("profile.ai_usage_tokens", {
                         used: new Intl.NumberFormat().format(aiUsage.used),
@@ -280,15 +278,16 @@ export default function UserProfile({
                       })}
                 </p>
                 {aiUsage.percent != null ? (
-                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-[var(--accent)] transition-all"
+                      className="h-full rounded-full bg-primary transition-all"
                       style={{ width: `${aiUsage.percent}%` }}
                     />
                   </div>
                 ) : null}
               </div>
             </div>
+          </div>
           </div>
         </motion.div>
 
@@ -305,22 +304,22 @@ export default function UserProfile({
             googleEmail={googleEmail}
           />
           <motion.div
-            className="relative rounded-3xl overflow-hidden border border-white/8"
-            style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            className="relative"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ type: "spring", stiffness: 800, damping: 25, delay: 0.25 }}
           >
-            <div className="px-4 sm:px-6 py-5 flex items-center justify-between gap-3">
+            <div className="glass-panel relative overflow-hidden rounded-3xl">
+            <div className="flex items-center justify-between gap-3 px-4 py-5 sm:px-6">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-[var(--accent)]" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Sparkles className="h-4 w-4 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">
+                  <p className="text-sm font-medium text-foreground">
                     {t("profile.tips_title", { defaultValue: "Tips & onboarding" })}
                   </p>
-                  <p className="text-xs text-white/60">
+                  <p className="text-xs text-muted-foreground">
                     {t("profile.tips_description", {
                       defaultValue: "Replay the create trip walkthrough from the start.",
                     })}
@@ -333,10 +332,11 @@ export default function UserProfile({
                 variant="outline"
                 disabled={resettingTips}
                 onClick={handleResetCreateTripTour}
-                className="shrink-0 bg-white/5 border-white/10 hover:bg-white/10 text-white cursor-pointer"
+                className="shrink-0 cursor-pointer border-border bg-muted/50 hover:bg-muted"
               >
                 {t("profile.show_tips_again", { defaultValue: "Show tips again" })}
               </Button>
+            </div>
             </div>
           </motion.div>
         </div>
@@ -354,13 +354,14 @@ export default function UserProfile({
                 window.location.replace("/auth");
               }
             }}
-            className="px-6 py-3 rounded-xl text-sm font-medium flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white cursor-pointer border border-white/10 transition-all"
+            className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-muted/60 px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-muted"
           >
             <LogOut className="w-4 h-4" />
             {t("profile.logout")}
           </button>
         </div>
-      </motion.div>
-    </div>
+        </motion.div>
+      </div>
+    </main>
   );
 }

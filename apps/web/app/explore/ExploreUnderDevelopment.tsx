@@ -22,9 +22,9 @@ export default function ExploreUnderDevelopment() {
         <div className="flex flex-col items-center text-center max-w-md">
           <div
             className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
-            style={{ background: "rgba(255, 107, 107, 0.1)" }}
+            style={{ background: "rgba(255, 118, 112, 0.1)" }}
           >
-            <Construction className="w-10 h-10" style={{ color: "#ff6b6b" }} />
+            <Construction className="w-10 h-10" style={{ color: "#ff7670" }} />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
             {t("under_development.title")}

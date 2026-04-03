@@ -11,13 +11,8 @@ function getBaseUrl(): string {
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = getBaseUrl();
 
+  // `/` redirects to `/home`; list only the canonical marketing URL to avoid duplicate sitemap entries.
   return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "weekly" as const,
-      priority: 1,
-    },
     {
       url: `${baseUrl}/home`,
       lastModified: new Date(),

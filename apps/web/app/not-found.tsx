@@ -18,7 +18,7 @@ export default function NotFound() {
             <Link
               href="/"
               className="px-6 py-3 rounded-full font-semibold text-white transition-transform hover:scale-105"
-              style={{ background: "#ff6b6b" }}
+              style={{ background: "#ff7670" }}
             >
               Go home
             </Link>

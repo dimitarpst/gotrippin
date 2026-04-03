@@ -1,11 +1,16 @@
 "use client"
 
 import { motion, useScroll, useTransform } from "framer-motion"
-import { ArrowRight, MapPin, Sparkles, Calendar } from "lucide-react"
+import { ArrowRight, Sparkles, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
 import Link from "next/link"
 import { useRef } from "react"
 import { useAuth } from "@/contexts/AuthContext"
+
+/** Cropped + compressed for hero mockup; Unsplash serves modern formats via auto=format */
+const HERO_UNSPLASH_SRC =
+  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=800&q=75"
 
 export default function HeroSection() {
   const { user } = useAuth()
@@ -22,9 +27,10 @@ export default function HeroSection() {
     <section ref={containerRef} className="relative min-h-[100svh] flex flex-col items-center justify-center pt-32 pb-48 overflow-hidden">
       {/* Aurora Background */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/25 dark:bg-[#ff6b6b]/20 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse" style={{ animationDuration: "8s" }} />
-        <div className="absolute bottom-1/4 right-1/4 w-[30rem] h-[30rem] bg-indigo-500/15 dark:bg-indigo-500/20 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse" style={{ animationDelay: "2s", animationDuration: "12s" }} />
-        <div className="absolute top-1/2 left-1/2 w-[40rem] h-[40rem] bg-purple-500/8 dark:bg-purple-500/10 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen animate-pulse" style={{ animationDelay: "4s", animationDuration: "10s" }} />
+        {/* Static blurs: Tailwind animate-pulse caused measurable CLS on mobile PSI */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/25 dark:bg-[#ff7670]/20 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen" />
+        <div className="absolute bottom-1/4 right-1/4 w-[30rem] h-[30rem] bg-indigo-500/15 dark:bg-indigo-500/20 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen" />
+        <div className="absolute top-1/2 left-1/2 w-[40rem] h-[40rem] bg-purple-500/8 dark:bg-purple-500/10 rounded-full blur-[120px] mix-blend-multiply dark:mix-blend-screen" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl bg-gradient-to-b from-transparent via-[var(--color-background)] to-[var(--color-background)]" />
       </div>
 
@@ -33,10 +39,10 @@ export default function HeroSection() {
         style={{ y, opacity }}
       >
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-sm font-medium text-primary mb-8 dark:bg-white/5 dark:border-white/10 dark:text-[#ff6b6b]"
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-sm font-medium text-primary mb-8 dark:bg-white/5 dark:border-white/10 dark:text-[#ff7670]"
         >
           <Sparkles className="w-4 h-4" />
           <span>An intelligent, route-first trip planner</span>
@@ -44,7 +50,7 @@ export default function HeroSection() {
 
         <motion.h1
           className="font-display text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-foreground via-foreground/90 to-foreground/65 dark:from-white dark:via-white/95 dark:to-white/70 mb-8"
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
@@ -53,7 +59,7 @@ export default function HeroSection() {
 
         <motion.p
           className="max-w-2xl text-lg sm:text-xl text-muted-foreground mb-10"
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
         >
@@ -61,7 +67,7 @@ export default function HeroSection() {
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col sm:flex-row items-center gap-4"
@@ -91,7 +97,7 @@ export default function HeroSection() {
         transition={{ duration: 1.2, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* Glow behind the mockup */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-gradient-to-r from-primary/20 via-indigo-500/12 to-purple-500/12 dark:from-[#ff6b6b]/15 dark:via-indigo-500/15 dark:to-purple-500/15 blur-[100px] -z-10 rounded-[4rem]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-gradient-to-r from-primary/20 via-indigo-500/12 to-purple-500/12 dark:from-[#ff7670]/15 dark:via-indigo-500/15 dark:to-purple-500/15 blur-[100px] -z-10 rounded-[4rem]" />
 
         {/* Floating Badges */}
         <motion.div
@@ -117,7 +123,7 @@ export default function HeroSection() {
         >
           <div className="flex -space-x-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border-2 border-black/80 flex items-center justify-center text-xs font-bold text-white shadow-lg">S</div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff6b6b] to-orange-400 border-2 border-black/80 flex items-center justify-center text-xs font-bold text-white shadow-lg">M</div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff7670] to-orange-400 border-2 border-black/80 flex items-center justify-center text-xs font-bold text-white shadow-lg">M</div>
           </div>
           <div>
             <div className="text-sm font-bold text-foreground dark:text-white">Team synced</div>
@@ -145,14 +151,22 @@ export default function HeroSection() {
           <div className="absolute inset-0 pt-16 grid grid-cols-1 grid-rows-[1fr_1.2fr] md:grid-rows-1 md:grid-cols-[1fr_350px] lg:grid-cols-[1fr_400px]">
             {/* Map Area */}
             <div className="relative w-full h-full bg-muted/30 flex items-center justify-center overflow-hidden dark:bg-black/20">
-              <img src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=2070" alt="Kyoto Map Aesthetic" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity grayscale" />
+              <Image
+                src={HERO_UNSPLASH_SRC}
+                alt="Kyoto map aesthetic background in product mockup"
+                fill
+                className="object-cover opacity-30 mix-blend-luminosity grayscale"
+                sizes="(max-width: 768px) 100vw, 55vw"
+                loading="lazy"
+                fetchPriority="low"
+              />
 
               {/* Route line simulation */}
               <svg className="absolute inset-0 w-full h-full opacity-40 mix-blend-screen" preserveAspectRatio="none" viewBox="0 0 100 100">
                 <path d="M 20,80 Q 40,60 60,70 T 80,30" fill="none" stroke="url(#hero-route-grad)" strokeWidth="0.5" strokeDasharray="2 2" />
                 <defs>
                   <linearGradient id="hero-route-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#ff6b6b" />
+                    <stop offset="0%" stopColor="#ff7670" />
                     <stop offset="100%" stopColor="#6366f1" />
                   </linearGradient>
                 </defs>
@@ -163,16 +177,24 @@ export default function HeroSection() {
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               >
-                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#ff6b6b] to-orange-400 shadow-[0_0_20px_#ff6b6b]" />
+                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#ff7670] to-orange-400 shadow-[0_0_20px_#ff7670]" />
               </motion.div>
             </div>
 
             {/* Sidebar Area */}
             <div className="relative w-full h-full border-t md:border-t-0 md:border-l border-border bg-card/50 backdrop-blur-xl p-4 sm:p-6 flex flex-col gap-3 sm:gap-4 overflow-hidden shadow-sm dark:border-white/[0.05] dark:bg-white/[0.01] dark:shadow-[-20px_0_40px_rgba(0,0,0,0.3)]">
               <div className="h-24 sm:h-40 shrink-0 rounded-2xl overflow-hidden relative mb-2 sm:mb-4 ring-1 ring-border dark:ring-white/10">
-                <img src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=2070" className="w-full h-full object-cover" alt="Cover" />
+                <Image
+                  src={HERO_UNSPLASH_SRC}
+                  alt="Trip cover preview in mockup"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 100vw, 400px"
+                  loading="lazy"
+                  fetchPriority="low"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent flex items-end p-5 dark:from-black/90 dark:via-black/40">
-                  <h3 className="font-display text-2xl font-bold text-white tracking-tight">Kyoto Summer</h3>
+                  <h2 className="font-display text-2xl font-bold text-white tracking-tight">Kyoto Summer</h2>
                 </div>
               </div>
 
@@ -183,7 +205,7 @@ export default function HeroSection() {
               ].map((item, i) => (
                 <div key={i} className="bg-muted/40 rounded-xl p-4 border border-border flex gap-4 items-center hover:bg-muted/60 transition-colors cursor-default group dark:bg-white/[0.02] dark:border-white/[0.05] dark:hover:bg-white/[0.04]">
                   <div className="w-10 h-10 rounded-lg bg-background/80 border border-border flex items-center justify-center shrink-0 group-hover:border-primary/30 transition-colors dark:bg-black/40 dark:border-white/5 dark:group-hover:border-white/10">
-                    <Calendar className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors dark:text-white/40 dark:group-hover:text-[#ff6b6b]" />
+                    <Calendar className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors dark:text-white/40 dark:group-hover:text-[#ff7670]" />
                   </div>
                   <div className="flex-1">
                     <div className="text-sm font-medium text-foreground mb-0.5 dark:text-white/90">{item.title}</div>

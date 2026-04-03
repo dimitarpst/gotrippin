@@ -30,7 +30,7 @@ export class ProfilesController {
       if (error instanceof NotFoundException) {
         return this.profilesService.createProfile(userId, {
           display_name: userEmail?.split('@')[0] || 'User',
-          avatar_color: '#ff6b6b',
+          avatar_color: '#ff7670',
           preferred_lng: 'en',
         });
       }

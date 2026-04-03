@@ -18,18 +18,16 @@ export default function ProfileStats() {
       {items.map(({ icon: Icon, label, value }, i) => (
         <motion.div
           key={label}
-          className="rounded-2xl p-6 border border-white/[0.08] flex flex-col items-center justify-center text-center"
-          style={{
-            background: "rgba(23, 19, 26, 0.6)",
-            backdropFilter: "blur(20px)",
-          }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          className="md:min-w-0 md:flex-1"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: i * 0.1 }}
         >
-          <Icon className="w-8 h-8 mb-3" style={{ color: "#ff6b6b" }} />
-          <div className="text-4xl font-bold mb-1 text-white">{value}</div>
-          <div className="text-sm text-white/60">{label}</div>
+          <div className="glass-panel flex flex-col items-center justify-center rounded-2xl p-6 text-center">
+            <Icon className="mb-3 h-8 w-8 text-primary" />
+            <div className="mb-1 text-4xl font-bold text-foreground">{value}</div>
+            <div className="text-sm text-muted-foreground">{label}</div>
+          </div>
         </motion.div>
       ))}
     </div>

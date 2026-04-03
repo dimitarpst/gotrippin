@@ -74,9 +74,10 @@ export function Dock({
         style={{ height: panelHeight }}
         className={cn(
           "absolute bottom-2 left-1/2 -translate-x-1/2 flex items-end gap-4 px-3 pb-2",
-          "rounded-2xl border backdrop-blur-2xl",
-          "border-border bg-card/90 shadow-lg",
-          "dark:border-white/10 dark:bg-[color-mix(in_oklab,var(--surface)_70%,black_30%)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
+          "rounded-2xl border border-border/40 bg-gradient-to-br from-card/50 via-card/22 to-card/10 shadow-lg backdrop-blur-2xl",
+          /* Dark: frosted glass (opaque bg-card/color-mix hid the hero behind the dock) */
+          "dark:border-white/15 dark:from-white/[0.14] dark:via-white/[0.07] dark:to-transparent",
+          "dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
           className,
         )}
       >

@@ -36,7 +36,7 @@ export class CreateTripLocationDto {
   @IsDateString()
   departure_date?: string;
 
-  @ApiPropertyOptional({ description: 'Map marker color (#RRGGBB)', example: '#ff6b6b' })
+  @ApiPropertyOptional({ description: 'Map marker color (#RRGGBB)', example: '#ff7670' })
   @IsOptional()
   @Matches(/^#[0-9A-Fa-f]{6}$/)
   marker_color?: string;

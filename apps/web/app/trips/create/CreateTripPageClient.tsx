@@ -78,7 +78,7 @@ export default function CreateTripPageClient() {
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="px-4 py-2 rounded-full text-[#ff6b6b] text-lg font-medium backdrop-blur-md border border-white/20 hover:bg-white/5 transition-colors"
+                className="px-4 py-2 rounded-full text-[#ff7670] text-lg font-medium backdrop-blur-md border border-white/20 hover:bg-white/5 transition-colors"
               >
                 {t("common.back", { defaultValue: "Back" })}
               </button>

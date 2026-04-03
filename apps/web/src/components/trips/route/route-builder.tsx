@@ -104,9 +104,9 @@ export function RouteBuilder({ locations, onChange, tripDateRange, className }: 
       <motion.button
         layout
         onClick={addLocation}
-        className="w-full mt-4 py-4 rounded-2xl border-2 border-dashed border-white/10 hover:border-[#ff6b6b]/50 hover:bg-[#ff6b6b]/5 text-white/40 hover:text-[#ff6b6b] transition-all flex items-center justify-center gap-2 group"
+        className="w-full mt-4 py-4 rounded-2xl border-2 border-dashed border-white/10 hover:border-[#ff7670]/50 hover:bg-[#ff7670]/5 text-white/40 hover:text-[#ff7670] transition-all flex items-center justify-center gap-2 group"
       >
-        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-[#ff6b6b] flex items-center justify-center transition-colors">
+        <div className="w-8 h-8 rounded-full bg-white/5 group-hover:bg-[#ff7670] flex items-center justify-center transition-colors">
           <Plus className="w-4 h-4 text-current group-hover:text-white" />
         </div>
         <span className="font-medium">{primaryCtaLabel}</span>

@@ -44,12 +44,12 @@ export default function TripFilters({
               onClick={() => onFilterChange(filter)}
               className="px-5 py-2.5 rounded-xl font-medium text-sm transition-all relative overflow-hidden"
               style={{
-                background: activeFilter === filter ? "#ff6b6b" : "rgba(255, 255, 255, 0.08)",
+                background: activeFilter === filter ? "#ff7670" : "rgba(255, 255, 255, 0.08)",
                 color: activeFilter === filter ? "white" : "var(--muted-foreground)",
               }}
               whileHover={{
                 scale: 1.05,
-                background: activeFilter === filter ? "#ff6b6b" : "rgba(255, 255, 255, 0.12)",
+                background: activeFilter === filter ? "#ff7670" : "rgba(255, 255, 255, 0.12)",
               }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -58,7 +58,7 @@ export default function TripFilters({
                 <motion.div
                   layoutId="activeFilter"
                   className="absolute inset-0 rounded-xl"
-                  style={{ background: "#ff6b6b" }}
+                  style={{ background: "#ff7670" }}
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 />
               )}
@@ -73,7 +73,7 @@ export default function TripFilters({
                     <Badge
                       className="text-xs border-0 px-2 py-0.5"
                       style={{
-                        background: activeFilter === filter ? "rgba(255, 255, 255, 0.2)" : "#ff6b6b",
+                        background: activeFilter === filter ? "rgba(255, 255, 255, 0.2)" : "#ff7670",
                         color: "white",
                       }}
                     >
@@ -93,7 +93,7 @@ export default function TripFilters({
             placeholder={t('trips.search_placeholder', 'Search trips...')}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground focus-visible:ring-[#ff6b6b]"
+            className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground focus-visible:ring-[#ff7670]"
           />
         </div>
       </div>

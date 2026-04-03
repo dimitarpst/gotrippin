@@ -1,6 +1,6 @@
 import "@fontsource/figtree/latin.css";
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import I18nProvider from "../src/i18n/I18nProvider";
 import { AuthProvider } from "../src/contexts/AuthContext";
@@ -48,6 +48,11 @@ const jsonLd = {
       url: siteUrl,
     },
   ],
+};
+
+/** Lets `env(safe-area-inset-*)` work on notched devices; pairs with `dvh` + drawer padding. */
+export const viewport: Viewport = {
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {

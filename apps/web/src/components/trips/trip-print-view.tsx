@@ -25,7 +25,7 @@ function tripAccentForPrint(trip: Trip): string {
   const dom = (trip.cover_photo as { dominant_color?: string | null } | null | undefined)?.dominant_color ?? null;
   const isGradient = Boolean(trip.color?.startsWith("linear-gradient"));
   if (coverUrl) {
-    return dom ?? "#ff6b6b";
+    return dom ?? "#ff7670";
   }
   if (trip.color && !isGradient) {
     return trip.color;
@@ -235,7 +235,7 @@ export default function TripPrintView({
 
           {trip.description?.trim() && (
             <Card className="border-white/[0.08] bg-[var(--color-card)] p-5 rounded-2xl">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#ff6b6b]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#ff7670]">
                 {t("trips.pdf_description", { defaultValue: "Description" })}
               </p>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-white/90">{trip.description.trim()}</p>
@@ -244,7 +244,7 @@ export default function TripPrintView({
 
           <Card className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)]">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ff6b6b]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#ff7670]">
                 <Calendar className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -267,7 +267,7 @@ export default function TripPrintView({
                   return (
                     <div key={location.id} className="flex gap-3 break-inside-avoid">
                       <div className="flex flex-col items-center">
-                        <div className="mt-1 h-2 w-2 rounded-full bg-[#ff6b6b]" />
+                        <div className="mt-1 h-2 w-2 rounded-full bg-[#ff7670]" />
                         {index < sortedStops.length - 1 ? (
                           <span className="mt-1 flex-1 w-px grow bg-white/15" />
                         ) : null}
@@ -330,7 +330,7 @@ export default function TripPrintView({
 
           {unassignedActivities.length > 0 ? (
             <Card className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)] break-inside-avoid">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#ff6b6b]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#ff7670]">
                 {t("trips.pdf_unassigned", { defaultValue: "Other activities" })}
               </p>
               <ul className="mt-3 space-y-2">

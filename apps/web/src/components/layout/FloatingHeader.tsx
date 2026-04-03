@@ -115,11 +115,11 @@ export default function FloatingHeader() {
                       setOpenMenu(null);
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors dark:text-white/80 dark:hover:text-white dark:hover:bg-white/10 ${
-                      selected === key ? "text-primary dark:text-[#ff6b6b]" : ""
+                      selected === key ? "text-primary dark:text-[#ff7670]" : ""
                     }`}
                     whileHover={{ x: 4 }}
                   >
-                    <Icon className="w-4 h-4 text-primary dark:text-[#ff6b6b]" />
+                    <Icon className="w-4 h-4 text-primary dark:text-[#ff7670]" />
                     {label}
                   </motion.button>
                 ))}

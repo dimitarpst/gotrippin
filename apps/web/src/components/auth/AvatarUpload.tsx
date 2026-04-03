@@ -12,6 +12,7 @@ import {
   deleteAvatarAction,
 } from "@/actions/upload";
 import { resolveAvatarUrl } from "@/lib/avatar";
+import { cn } from "@/lib/utils";
 
 const MAX_UPLOADED_AVATARS = 3;
 const MAX_LOADING_MS = 6000;
@@ -223,14 +224,14 @@ export function AvatarUpload({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-3"
     >
-      <p className="text-xs text-white/60 font-medium">{t("profile.avatar_section_title")}</p>
+      <p className="text-xs font-medium text-muted-foreground">{t("profile.avatar_section_title")}</p>
 
       {isLoadingAvatars && allOptions.length === 0 ? (
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: 6 }).map((_, index) => (
             <Skeleton
               key={`skeleton-${index}`}
-              className="w-12 h-12 rounded-lg bg-white/5 shrink-0"
+              className="h-12 w-12 shrink-0 rounded-lg bg-muted"
             />
           ))}
         </div>
@@ -241,13 +242,10 @@ export function AvatarUpload({
               key={opt.r2Key ?? opt.storageValue ?? opt.displayUrl}
               type="button"
               onClick={() => handleSelectAvatar(opt)}
-              className="relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-all hover:scale-105"
-              style={{
-                borderColor:
-                  selectedDisplayUrl === opt.displayUrl
-                    ? "#ff6b6b"
-                    : "rgba(255,255,255,0.1)",
-              }}
+              className={cn(
+                "relative h-12 w-12 overflow-hidden rounded-lg border-2 transition-all hover:scale-105",
+                selectedDisplayUrl === opt.displayUrl ? "border-primary" : "border-border",
+              )}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               initial={{ opacity: 0, scale: 0.8 }}
@@ -265,15 +263,15 @@ export function AvatarUpload({
                 }}
               />
               {selectedDisplayUrl === opt.displayUrl && (
-                <div className="absolute inset-0 bg-[#ff6b6b]/20 flex items-center justify-center">
-                  <Check className="w-4 h-4 text-white drop-shadow-lg" />
+                <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                  <Check className="h-4 w-4 text-primary-foreground drop-shadow-lg" />
                 </div>
               )}
             </motion.button>
           ))}
 
           <motion.label
-            className="relative w-12 h-12 rounded-lg bg-white/5 border border-white/8 hover:bg-white/10 cursor-pointer transition-all flex items-center justify-center hover:scale-105"
+            className="relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-lg border border-border bg-muted/50 transition-all hover:scale-105 hover:bg-muted"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -286,15 +284,15 @@ export function AvatarUpload({
               className="hidden"
             />
             {isUploading ? (
-              <Spinner className="size-4 text-white" />
+              <Spinner className="size-4 text-muted-foreground" />
             ) : (
-              <Upload className="w-4 h-4 text-white/60" />
+              <Upload className="h-4 w-4 text-muted-foreground" />
             )}
           </motion.label>
         </div>
       )}
 
-      <p className="text-xs text-white/40">
+      <p className="text-xs text-muted-foreground/80">
         {t("profile.avatar_section_description")}
       </p>
     </motion.div>

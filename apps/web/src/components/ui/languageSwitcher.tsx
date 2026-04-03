@@ -71,7 +71,7 @@ export function LanguageSwitcher({
           "border border-white/10",
           "bg-gradient-to-br from-white/10 via-white/5 to-transparent",
           "backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.3)]",
-          "hover:border-[var(--color-accent)]/60 hover:shadow-[0_0_20px_rgba(255,107,107,0.3)]",
+          "hover:border-[var(--color-accent)]/60 hover:shadow-[0_0_20px_rgba(255, 118, 112,0.3)]",
           "transition-all duration-300 cursor-pointer"
         )}
         whileHover={{ scale: 1.05 }}
@@ -103,7 +103,7 @@ export function LanguageSwitcher({
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors cursor-pointer",
                   currentLanguage === code
-                    ? "bg-white/10 text-[#ff6b6b]"
+                    ? "bg-white/10 text-[#ff7670]"
                     : "text-white/80 hover:text-white hover:bg-white/10"
                 )}
                 whileHover={{ x: 4 }}

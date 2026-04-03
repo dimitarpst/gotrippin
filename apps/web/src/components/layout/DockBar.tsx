@@ -11,8 +11,9 @@ import { resolveAvatarUrl } from "@/lib/avatar";
 
 const baseClass =
   "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:text-white/80 dark:hover:text-white dark:hover:bg-white/10 transition-all duration-300";
+/** Dock FAB: logo coral (#ff7670) + shared hover token */
 const accentClass =
-  "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/30 dark:shadow-[0_0_20px_rgba(255,107,107,0.45)] transition-all duration-300";
+  "bg-[#ff7670] text-white hover:bg-[var(--brand-coral-hover)] shadow-md shadow-[0_4px_20px_rgba(255,118,112,0.34)] transition-all duration-300 dark:bg-[#ff7670] dark:hover:bg-[var(--brand-coral-hover)] dark:shadow-[0_0_24px_rgba(255,118,112,0.45)]";
 
 interface DockBarProps {
   onCreateTrip?: () => void;
@@ -34,11 +35,7 @@ export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
   // Map standard icons
   const items = icons.map(({ key, icon: Icon }) => ({
     icon: (
-      <Icon
-        className={`w-6 h-6 ${
-          key === "add_trip" ? "text-[var(--color-accent-foreground)]" : ""
-        }`}
-      />
+      <Icon className={`h-6 w-6 ${key === "add_trip" ? "text-white" : ""}`} />
     ),
     label: t(`dock.${key}`),
     onClick: () => {
@@ -117,19 +114,7 @@ export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
     >
       <Dock
         items={items}
-        className="
-          flex gap-2
-          rounded-2xl px-5 py-3
-          border-border
-          bg-gradient-to-br from-card/95 via-card/90 to-muted/30
-          shadow-md
-          transition-all duration-500
-          dark:border-white/10
-          dark:from-white/10 dark:via-white/5 dark:to-transparent
-          dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]
-          dark:hover:shadow-[0_8px_48px_rgba(255,107,107,0.25)]
-          hover:shadow-lg
-        "
+        className="gap-2 px-5 py-3 transition-all duration-500 hover:shadow-lg dark:hover:shadow-[0_8px_48px_rgba(255,118,112,0.25)]"
       />
     </motion.div>
   );

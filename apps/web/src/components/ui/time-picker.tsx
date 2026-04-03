@@ -1838,7 +1838,7 @@ function TimePickerColumnItem(props: TimePickerColumnItemProps) {
       data-selected={selected ? "true" : "false"}
       className={cn(
         "w-full rounded-md px-3 py-1.5 text-center tabular-nums text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white/20",
-        "data-[selected=true]:bg-[#ff6b6b] data-[selected=true]:text-white data-[selected=true]:font-semibold data-[selected=true]:hover:bg-[#ff5252]",
+        "data-[selected=true]:bg-[#ff7670] data-[selected=true]:text-white data-[selected=true]:font-semibold data-[selected=true]:hover:bg-[var(--brand-coral-hover)]",
         className,
       )}
       onClick={onClick}

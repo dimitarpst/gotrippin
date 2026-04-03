@@ -89,8 +89,8 @@ export default function MapPageClient({
               className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex items-center gap-4 shadow-2xl pointer-events-auto w-full text-left hover:bg-black/70 active:scale-[0.98] transition-transform transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
               aria-label={t("trip_overview.route_title")}
             >
-              <div className="w-10 h-10 rounded-full bg-[#ff6b6b]/20 flex items-center justify-center flex-shrink-0 border border-[#ff6b6b]/30">
-                <Navigation className="w-5 h-5 text-[#ff6b6b]" />
+              <div className="w-10 h-10 rounded-full bg-[#ff7670]/20 flex items-center justify-center flex-shrink-0 border border-[#ff7670]/30">
+                <Navigation className="w-5 h-5 text-[#ff7670]" />
               </div>
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="text-sm font-medium text-white truncate">

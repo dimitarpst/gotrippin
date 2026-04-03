@@ -21,9 +21,9 @@ export default function EmptyState({ onCreateTrip }: EmptyStateProps) {
     >
       <div
         className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
-        style={{ background: "rgba(255, 107, 107, 0.1)" }}
+        style={{ background: "rgba(255, 118, 112, 0.1)" }}
       >
-        <MapPin className="w-10 h-10" style={{ color: "#ff6b6b" }} />
+        <MapPin className="w-10 h-10" style={{ color: "#ff7670" }} />
       </div>
       <h2 className="text-2xl font-bold text-white mb-2">{t('trips.no_trips')}</h2>
       <p className="text-muted-foreground mb-6 text-center max-w-md">
@@ -32,7 +32,7 @@ export default function EmptyState({ onCreateTrip }: EmptyStateProps) {
       <Button
         onClick={onCreateTrip}
         className="rounded-xl font-semibold shadow-lg"
-        style={{ background: "#ff6b6b" }}
+        style={{ background: "#ff7670" }}
       >
         <Plus className="w-5 h-5 mr-2" />
         {t('trips.create_first_trip')}

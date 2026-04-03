@@ -150,7 +150,7 @@ export default function CreateRouteDraftPageClient() {
         <button
           type="button"
           onClick={() => router.replace("/trips/create")}
-          className="px-4 py-2 rounded-full text-[#ff6b6b] text-lg font-medium backdrop-blur-md border border-white/20 hover:bg-white/5 transition-colors"
+          className="px-4 py-2 rounded-full text-[#ff7670] text-lg font-medium backdrop-blur-md border border-white/20 hover:bg-white/5 transition-colors"
         >
           {t("common.back", { defaultValue: "Back" })}
         </button>
@@ -308,7 +308,7 @@ export default function CreateRouteDraftPageClient() {
                   onClick={() => setShowPreviewDatePicker(true)}
                   className="w-full inline-flex items-center gap-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 py-2.5 px-3 text-left text-xs font-medium text-white transition-colors"
                 >
-                  <Calendar className="w-3.5 h-3.5 shrink-0 text-[#ff6b6b]" />
+                  <Calendar className="w-3.5 h-3.5 shrink-0 text-[#ff7670]" />
                   <span>
                     {previewDateRange?.from
                       ? previewDateRange.to

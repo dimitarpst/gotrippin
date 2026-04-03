@@ -65,7 +65,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
 
   const heroStyle = coverImageUrl
     ? { backgroundImage: `url(${coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-    : { background: "linear-gradient(135deg, rgba(255,107,107,0.55), rgba(109,118,255,0.45))" }
+    : { background: "linear-gradient(135deg, rgba(255, 118, 112,0.55), rgba(109,118,255,0.45))" }
 
   return (
     <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
@@ -139,7 +139,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <Button className="bg-[#ff6b6b] hover:bg-[#ff6b6b]/90 text-white font-semibold px-4" onClick={() => router.push(`/trips/${shareCode}/activity`)}>
+                <Button className="bg-[#ff7670] hover:bg-[#ff7670]/90 text-white font-semibold px-4" onClick={() => router.push(`/trips/${shareCode}/activity`)}>
                   {t("trip_overview.add_first_activity", { defaultValue: "Add activity" })}
                 </Button>
                 <Button
@@ -217,7 +217,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0e0b10]/90 via-[#0e0b10]/35 to-transparent" />
                   </div>
                   <div className="relative z-10 flex h-full min-h-[260px] flex-col items-center justify-end gap-2 px-4 pb-5 text-center pointer-events-none">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff6b6b] drop-shadow-md">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff7670] drop-shadow-md">
                       {t("trip_overview.route_map_title")}
                     </span>
                     <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-white/90 shadow-lg backdrop-blur-md group-hover:text-white">

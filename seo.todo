@@ -1,0 +1,43 @@
+SEO (gotrippin — discovery & registration):
+  Ref: Google Search Central — canonicals, sitemaps, hreflang (developers.google.com/search/docs)
+  Sitemap is not a file in the repo: Next serves https://gotrippin.app/sitemap.xml from apps/web/app/sitemap.ts; robots.txt points crawlers there.
+
+Phase 1:
+  ✔ Google Search Console: create/verify property for production host (https://gotrippin.app); DNS or HTML verification @done(26-04-03)
+  ☐ GSC → Sitemaps: add https://gotrippin.app/sitemap.xml and request indexing if needed (dynamic route above)
+  ☐ GSC URL inspection: live /home and /; confirm Google-selected canonical matches intent after crawl
+  ☐ Bing Webmaster Tools: optional same property + sitemap
+
+Phase 2:
+  ✔ Preferred landing URL: / → /home redirect vs canonical; list only canonical URLs in sitemap (avoid / and /home duplicate listing) @done(26-04-03)
+  ✔ Canonical consistency: root layout alternates vs per-route overrides; no mixed signals with redirects @done(26-04-03)
+  ☐ NEXT_PUBLIC_SITE_URL: production value matches live hostname (www vs non-www)
+
+Phase 3:
+  ☐ Keyword map: intent → page (EN e.g. trip planner, plan a trip, itinerary; BG e.g. планиране на почивка, планирай пътуване); validate in Keyword Planner / GSC when data exists
+  ☐ Landing copy: H1, subheads, lead paragraph include primary phrases naturally; stay truthful to product
+  ☐ Locale strategy: if single URL + cookie i18n, document crawler tradeoff; plan locale URLs or mirrors for BG when ready
+
+Phase 4:
+  ☐ Title + meta description: /home vs app/layout.tsx defaults; unique; ~60 / ~155 chars targets
+  ☐ JSON-LD: refine SoftwareApplication/WebApplication; FAQPage only if visible FAQ on page (rich result rules)
+  ☐ Open Graph: og:image 1200×630 (not logo-only); twitter:card summary_large_image if wide image
+  ✔ LandingPage: one H1; logical heading hierarchy (mockup card title h3→h2) @done(26-04-03)
+
+Phase 5:
+  ☐ Core Web Vitals: PageSpeed Insights mobile — re-run after deploy (26-04-03: next/font, next/image Unsplash, hero motion LCP, static aurora, browserslist, primary contrast)
+  ☐ Crawlable content: key marketing text in initial HTML; spot-check rendered HTML
+  ☐ robots.ts: revisit disallow list when new app routes ship (/trips, /user, /ai etc.)
+
+Phase 6:
+  ☐ Hreflang: when localized URLs exist — HTML or sitemap + reciprocal + x-default; align with canonical per language
+  ☐ Single-URL i18n: until locale URLs exist, skip hreflang; one clear language for crawlers
+
+Phase 7:
+  ☐ Backlinks: ethical listings, roundups, founder content; avoid spam networks
+  ☐ Monthly GSC: queries, CTR, position, coverage errors, manual actions
+  ☐ URL/canonical changes: redirects + sitemap updates; watch 4xx and soft-404
+
+Notes:
+  Competitive head terms take months; prioritize brand, long-tail, locale queries
+  Risky mistakes: contradictory canonicals, thin pages at scale, cloaking, blocking important URLs — stay consistent; re-test in GSC after structural changes

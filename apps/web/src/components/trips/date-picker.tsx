@@ -18,7 +18,7 @@ import type { Activity, TripLocation } from "@gotrippin/core";
 import { toast } from "sonner";
 
 const ROUTE_DOT_COLORS = [
-  "#ff6b6b",
+  "#ff7670",
   "#4ecdc4",
   "#ffe66d",
   "#a8dadc",
@@ -397,8 +397,8 @@ export function DatePicker({
 
   return (
     <Drawer open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DrawerContent>
-        <DrawerHeader>
+      <DrawerContent className="min-h-0">
+        <DrawerHeader className="shrink-0">
           <div className="flex items-center justify-between">
             <DrawerClose asChild>
               <Button variant="ghost">{t("date_picker.cancel")}</Button>
@@ -413,7 +413,7 @@ export function DatePicker({
             </Button>
           </div>
         </DrawerHeader>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 [-webkit-overflow-scrolling:touch]">
           <Calendar
             mode="range"
             defaultMonth={defaultMonth}

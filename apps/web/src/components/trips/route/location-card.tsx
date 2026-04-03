@@ -126,7 +126,7 @@ export const LocationCard = forwardRef<HTMLDivElement, LocationCardProps>(
             <button
               type="button"
               onClick={() => setShowDatePicker(true)}
-              className="flex items-center gap-2 mt-1 text-xs font-medium text-[#ff6b6b] hover:text-[#ff8585] transition-colors"
+              className="flex items-center gap-2 mt-1 text-xs font-medium text-[#ff7670] hover:text-[#ff8585] transition-colors"
             >
               <Calendar className="w-3 h-3" />
               {dateText}

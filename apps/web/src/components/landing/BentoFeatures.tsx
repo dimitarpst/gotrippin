@@ -28,13 +28,13 @@ const features = [
             whileInView={{ pathLength: 1 }}
             transition={{ duration: 2, ease: "easeOut" }}
           />
-          <circle cx="30" cy="90" r="4" fill="#ff6b6b" className="drop-shadow-[0_0_8px_#ff6b6b]" />
+          <circle cx="30" cy="90" r="4" fill="#ff7670" className="drop-shadow-[0_0_8px_#ff7670]" />
           <circle cx="70" cy="60" r="3" fill="white" fillOpacity="0.8" />
           <circle cx="110" cy="75" r="3" fill="white" fillOpacity="0.8" />
           <circle cx="170" cy="30" r="4" fill="#6366f1" className="drop-shadow-[0_0_8px_#6366f1]" />
           <defs>
             <linearGradient id="route" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#ff6b6b" />
+              <stop offset="0%" stopColor="#ff7670" />
               <stop offset="100%" stopColor="#6366f1" />
             </linearGradient>
           </defs>
@@ -58,7 +58,7 @@ const features = [
     description: "Share a link or code. Friends can view and edit the same trip without the chaos.",
     icon: Users,
     className:
-      "md:col-span-1 md:row-span-1 bg-gradient-to-br from-primary/12 to-transparent ring-1 ring-border dark:from-[#ff6b6b]/10 dark:ring-white/5",
+      "md:col-span-1 md:row-span-1 bg-gradient-to-br from-primary/12 to-transparent ring-1 ring-border dark:from-[#ff7670]/10 dark:ring-white/5",
     illustration: (
       <div className="absolute right-6 bottom-6 px-3 py-1.5 rounded-lg bg-muted/80 border border-border font-mono text-xs text-muted-foreground tracking-wider dark:bg-white/5 dark:border-white/10 dark:text-white/40">
         /trips/AbC12Xy

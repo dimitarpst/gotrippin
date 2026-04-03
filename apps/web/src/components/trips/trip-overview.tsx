@@ -586,7 +586,7 @@ export default function TripOverview({
               {onShare && (
                 <DropdownMenuItem
                   onClick={onShare}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
                 >
                   <Share2 className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_share_trip')}</span>
@@ -595,7 +595,7 @@ export default function TripOverview({
               {onManageGuests && (
                 <DropdownMenuItem
                   onClick={onManageGuests}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
                 >
                   <Users className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_manage_guests')}</span>
@@ -604,7 +604,7 @@ export default function TripOverview({
               {onEditName && (
                 <DropdownMenuItem
                   onClick={onEditName}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
                 >
                   <Pencil className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_edit_name')}</span>
@@ -613,7 +613,7 @@ export default function TripOverview({
               {onChangeDates && (
                 <DropdownMenuItem
                   onClick={() => setShowDatePicker(true)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
                 >
                   <Calendar className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_change_dates')}</span>
@@ -622,7 +622,7 @@ export default function TripOverview({
               {onChangeBackground && (
                 <DropdownMenuItem
                   onClick={() => setShowBackgroundPicker(true)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
                 >
                   <ImageIcon className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_change_background')}</span>
@@ -631,7 +631,7 @@ export default function TripOverview({
               {onExportTripPdf && (
                 <DropdownMenuItem
                   onClick={() => void onExportTripPdf()}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
                 >
                   <FileDown className="w-4 h-4" />
                   <span className="text-sm font-medium">{t("trip_overview.menu_export_pdf")}</span>
@@ -641,7 +641,7 @@ export default function TripOverview({
               {onEdit && (
                 <DropdownMenuItem
                   onClick={onEdit}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff6b6b]/20 dark:focus:bg-[#ff6b6b]/20"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
                 >
                   <Edit3 className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trips.edit')}</span>
@@ -809,7 +809,7 @@ export default function TripOverview({
                 <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: "#ff6b6b" }}
+                  style={{ background: "#ff7670" }}
                 >
                   <Calendar className="w-5 h-5 text-primary-foreground" />
                 </div>
@@ -913,7 +913,7 @@ export default function TripOverview({
                       <p className="text-xs text-muted-foreground">{t('trip_overview.route_empty')}</p>
                     </div>
                   </div>
-                  <button className="text-xs font-semibold uppercase tracking-wide text-[#ff6b6b]">
+                  <button className="text-xs font-semibold uppercase tracking-wide text-[#ff7670]">
                     {t('trip_overview.route_add_stop')}
                   </button>
               </div>
@@ -922,7 +922,7 @@ export default function TripOverview({
               <button
                 type="button"
                 className="font-semibold text-sm"
-                style={{ color: "#ff6b6b" }}
+                style={{ color: "#ff7670" }}
                 onClick={() => onNavigate("timeline")}
               >
                 {duration > 0
@@ -957,7 +957,7 @@ export default function TripOverview({
                   {/* Content on top of map */}
                   <div className="relative z-10 h-full flex flex-col justify-center items-center p-5 text-center">
                     <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff6b6b] drop-shadow-md mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff7670] drop-shadow-md mb-1">
                         {t("trip_overview.route_map_title")}
                       </span>
                       <span className="text-3xl font-bold text-white drop-shadow-xl mb-4">
@@ -1077,7 +1077,7 @@ export default function TripOverview({
                 <div className="flex items-center gap-2">
                   <Badge
                     className="text-xs font-bold px-2 py-1 rounded border-0"
-                    style={{ background: "#ff6b6b", color: "white" }}
+                    style={{ background: "#ff7670", color: "white" }}
                   >
                     {t('trip_overview.pro_badge')}
                   </Badge>
@@ -1096,7 +1096,7 @@ export default function TripOverview({
                 {t('trip_overview.add_documents_description')}
               </p>
 
-              <button className="w-full font-semibold text-sm" style={{ color: "#ff6b6b" }}>
+              <button className="w-full font-semibold text-sm" style={{ color: "#ff7670" }}>
                 {t('trip_overview.add_document')}
               </button>
             </Card>

@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import LandingNav from "./LandingNav"
 import HeroSection from "./HeroSection"
 import BentoFeatures from "./BentoFeatures"

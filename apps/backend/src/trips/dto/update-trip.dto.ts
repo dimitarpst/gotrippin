@@ -67,7 +67,7 @@ export class UpdateTripDto {
 
   @ApiProperty({ 
     required: false,
-    example: '#ff6b6b',
+    example: '#ff7670',
     description: 'Trip color (hex code)'
   })
   @IsOptional()

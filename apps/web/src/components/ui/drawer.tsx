@@ -101,7 +101,7 @@ function DrawerContent({
       <VaulDrawer.Content
         onAnimationEnd={handleAnimationEnd}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[96vh] flex-col rounded-t-[10px] border border-border bg-background",
+          "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto min-h-0 max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-bottom,0px)-0.5rem))] flex-col rounded-t-[10px] border border-border bg-background pb-[env(safe-area-inset-bottom,0px)]",
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
           "data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:bottom-auto data-[vaul-drawer-direction=top]:rounded-b-[10px] data-[vaul-drawer-direction=top]:rounded-t-none",
           "data-[vaul-drawer-direction=top]:data-[state=closed]:slide-out-to-top data-[vaul-drawer-direction=top]:data-[state=open]:slide-in-from-top",

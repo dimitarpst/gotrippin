@@ -19,8 +19,8 @@ export default function AiSessionLoader() {
             className="w-16 h-16 rounded-2xl bg-[var(--color-accent)]/20 flex items-center justify-center"
             animate={{
               boxShadow: [
-                "0 0 0 0 rgba(255, 107, 107, 0.2)",
-                "0 0 0 12px rgba(255, 107, 107, 0)",
+                "0 0 0 0 rgba(255, 118, 112, 0.2)",
+                "0 0 0 12px rgba(255, 118, 112, 0)",
               ],
             }}
             transition={{ duration: 1.5, repeat: Infinity }}

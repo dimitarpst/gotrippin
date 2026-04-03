@@ -35,12 +35,12 @@ export default function ProfileHero({
 
   return (
     <motion.div
-      className="relative rounded-3xl overflow-hidden mb-6 border border-white/8"
-      style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      className="relative mb-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ type: "spring", stiffness: 800, damping: 25 }}
     >
+      <div className="glass-panel relative overflow-hidden rounded-3xl">
       <div className="relative h-48 overflow-hidden">
         <div
           className="absolute inset-0"
@@ -53,7 +53,7 @@ export default function ProfileHero({
       <div className="relative px-6 pb-6">
         <div className="relative -mt-16 mb-4 flex items-end gap-4">
           <motion.div
-            className="w-32 h-32 rounded-2xl flex items-center justify-center overflow-hidden border-4 border-[#17131a] shadow-xl relative"
+            className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-2xl border-4 border-background shadow-xl"
             style={{ background: displayData.avatarColor }}
             whileHover={{ scale: isEditing ? 1.05 : 1.02 }}
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
@@ -114,14 +114,14 @@ export default function ProfileHero({
                 <Input
                   value={displayData.displayName}
                   onChange={(e) => onChange("displayName", e.target.value)}
-                  className="text-2xl font-bold bg-white/5 border-white/8 text-white"
+                  className="border-border bg-background/90 text-2xl font-bold text-foreground"
                   placeholder={t("profile.display_name")}
                 />
               </motion.div>
             ) : (
               <motion.h2
                 key="static-name"
-                className="text-2xl font-bold text-white"
+                className="text-2xl font-bold text-foreground"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
@@ -154,7 +154,7 @@ export default function ProfileHero({
             )}
           </AnimatePresence>
 
-          <div className="flex flex-wrap items-center gap-4 text-sm text-white/60">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4" />
               <span className="break-all">{data.email}</span>
@@ -169,6 +169,7 @@ export default function ProfileHero({
             </div>
           </div>
         </div>
+      </div>
       </div>
     </motion.div>
   );

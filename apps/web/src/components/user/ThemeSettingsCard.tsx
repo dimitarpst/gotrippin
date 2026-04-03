@@ -26,20 +26,20 @@ export default function ThemeSettingsCard() {
 
   return (
     <motion.div
-      className="relative overflow-hidden rounded-2xl border border-white/8"
-      style={{ background: "rgba(23, 19, 26, 0.6)", backdropFilter: "blur(20px)" }}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      className="relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ type: "spring", stiffness: 800, damping: 25, delay: 0.18 }}
     >
+      <div className="glass-panel relative overflow-hidden rounded-2xl">
       <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-3 sm:pl-4 sm:pr-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)]/10 text-[var(--accent)]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Sun className="h-4 w-4" aria-hidden />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold leading-tight text-white">{t("profile.theme_title")}</h3>
-            <p className="text-xs leading-snug text-white/55">{t("profile.theme_description")}</p>
+            <h3 className="text-sm font-semibold leading-tight text-foreground">{t("profile.theme_title")}</h3>
+            <p className="text-xs leading-snug text-muted-foreground">{t("profile.theme_description")}</p>
           </div>
         </div>
 
@@ -62,8 +62,8 @@ export default function ThemeSettingsCard() {
                   "flex flex-1 items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors sm:flex-initial sm:min-w-[4.25rem]",
                   "cursor-pointer disabled:cursor-wait disabled:opacity-70",
                   isSelected
-                    ? "border-[var(--accent)] bg-white/10 text-white"
-                    : "border-white/10 bg-white/5 text-white/75 hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground",
                 )}
               >
                 <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
@@ -72,6 +72,7 @@ export default function ThemeSettingsCard() {
             );
           })}
         </div>
+      </div>
       </div>
     </motion.div>
   );

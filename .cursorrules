@@ -65,7 +65,7 @@ Copy code
 ## 🎨 DESIGN & THEME
 - Global theme file: `/apps/web/app/globals.css`
 - Base style: **Aurora × Coral Dark Theme**
-- Primary accent: `#ff6b6b` (coral red)
+- Primary accent: `#ff7670` (coral red)
 - Secondary accent: indigo/violet tint
 - Typography: sans-serif, bold headings, light body
 - Use OKLCH color model with CSS variables `--color-*`

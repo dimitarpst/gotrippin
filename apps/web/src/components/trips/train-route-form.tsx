@@ -190,7 +190,7 @@ export default function TrainRouteForm({ tripId, onBack }: TrainRouteFormProps) 
                 <button
                   key={loc.id}
                   onClick={() => setSelectedLocationId(loc.id)}
-                  className={`px-3 py-2 rounded-xl text-sm border transition-colors ${selectedLocationId === loc.id ? "border-[#ff6b6b] bg-[#ff6b6b]/15 text-white" : "border-white/10 text-white/80 hover:border-white/30"}`}
+                  className={`px-3 py-2 rounded-xl text-sm border transition-colors ${selectedLocationId === loc.id ? "border-[#ff7670] bg-[#ff7670]/15 text-white" : "border-white/10 text-white/80 hover:border-white/30"}`}
                 >
                   {loc.location_name || t("train_route.stop_label")}
                 </button>

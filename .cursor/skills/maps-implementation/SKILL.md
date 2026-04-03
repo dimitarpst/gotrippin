@@ -45,7 +45,7 @@ npm install react-native-maps
 
 ## Styling
 
-Mapbox: dark theme matching app (`#0a0a0a` background, `#ff6b6b` coral accent). Custom style via Mapbox Studio or style spec.
+Mapbox: dark theme matching app (`#0a0a0a` background, `#ff7670` coral accent). Custom style via Mapbox Studio or style spec.
 
 ---
 

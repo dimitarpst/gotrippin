@@ -330,7 +330,7 @@ const mapStyle = {
   },
   layers: [
     // Custom dark theme layers
-    // Primary accent: #ff6b6b (coral red)
+    // Primary accent: #ff7670 (coral red)
     // Background: dark (#0a0a0a)
   ]
 };
@@ -338,7 +338,7 @@ const mapStyle = {
 
 **Key Styling Points:**
 - Dark base map (matches `#0a0a0a` background)
-- Coral red (`#ff6b6b`) for route lines and selected markers
+- Coral red (`#ff7670`) for route lines and selected markers
 - Subtle glow effects on markers (glassmorphism style)
 - Smooth animations (Framer Motion compatible)
 

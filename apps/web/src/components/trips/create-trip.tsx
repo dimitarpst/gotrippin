@@ -247,7 +247,7 @@ export default function CreateTrip({
             style={{
               backgroundColor: "#0a0a0a",
               backgroundImage:
-                "radial-gradient(circle at 20% 50%, rgba(255, 107, 107, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255, 107, 107, 0.1) 0%, transparent 50%)",
+                "radial-gradient(circle at 20% 50%, rgba(255, 118, 112, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255, 118, 112, 0.1) 0%, transparent 50%)",
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -268,7 +268,7 @@ export default function CreateTrip({
         <div className="relative z-10 px-6 pt-12 flex items-center justify-between">
           <button 
             onClick={onBack} 
-            className="px-4 py-2 rounded-full text-[#ff6b6b] text-lg font-medium backdrop-blur-md border border-white/20 disabled:opacity-50 hover:bg-white/5 transition-colors"
+            className="px-4 py-2 rounded-full text-[#ff7670] text-lg font-medium backdrop-blur-md border border-white/20 disabled:opacity-50 hover:bg-white/5 transition-colors"
             disabled={saving}
           >
             {t("trips.cancel")}
@@ -311,7 +311,7 @@ export default function CreateTrip({
               onChange={(e) => setTripName(e.target.value)}
               placeholder={t("trips.trip_name")}
               className="w-full bg-transparent border-none text-white text-5xl font-bold placeholder:text-white/40 focus:outline-none text-center mb-4"
-              style={{ caretColor: "#ff6b6b" }}
+              style={{ caretColor: "#ff7670" }}
               autoFocus
             />
             <p className="text-white/60 text-lg">{formatDateRange()}</p>
@@ -387,7 +387,7 @@ export default function CreateTrip({
         >
           <TourPortal>
             <TourSpotlight />
-            <TourSpotlightRing className="rounded-2xl border-2 border-primary shadow-[0_0_30px_rgba(255,107,107,0.45)]" />
+            <TourSpotlightRing className="rounded-2xl border-2 border-primary shadow-[0_0_30px_rgba(255, 118, 112,0.45)]" />
 
             <TourStep target="#create-trip-name-input" side="bottom">
               <TourClose />

@@ -12,7 +12,7 @@ export const ROUTE_COLOR_PALETTE: string[] = [
   "#6366f1", // indigo
   "#14b8a6", // teal
   "#f97316", // orange
-  "#ff6b6b", // coral
+  "#ff7670", // coral
 ];
 
 /** Returns the palette color for a given leg index (cycles). */

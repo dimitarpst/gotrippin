@@ -54,13 +54,13 @@ export default function TripGrid({ trips, activeFilter, onSelectTrip }: TripGrid
               whileHover={{ y: -8 }}
             >
               <Card
-                className="border-white/[0.08] rounded-2xl overflow-hidden shadow-lg cursor-pointer transition-all duration-300 bg-[var(--surface)] backdrop-blur-xl group hover:border-white/[0.15] hover:shadow-2xl hover:shadow-[#ff6b6b]/10"
+                className="border-white/[0.08] rounded-2xl overflow-hidden shadow-lg cursor-pointer transition-all duration-300 bg-[var(--surface)] backdrop-blur-xl group hover:border-white/[0.15] hover:shadow-2xl hover:shadow-[#ff7670]/10"
                 onClick={() => onSelectTrip(trip.share_code)}
               >
                       {(() => {
                         const coverUrl = resolveTripCoverUrl(trip as any)
                         return (
-                          <div className="relative h-48 overflow-hidden" style={{ background: coverUrl ? 'transparent' : trip.color || '#ff6b6b' }}>
+                          <div className="relative h-48 overflow-hidden" style={{ background: coverUrl ? 'transparent' : trip.color || '#ff7670' }}>
                             {coverUrl && (
                               <CoverImageWithBlur
                                 src={coverUrl}
@@ -79,7 +79,7 @@ export default function TripGrid({ trips, activeFilter, onSelectTrip }: TripGrid
                               >
                                 <Badge
                                   className="text-white border-0 text-xs font-semibold shadow-lg"
-                                  style={{ background: "#ff6b6b" }}
+                                  style={{ background: "#ff7670" }}
                                 >
                                   {trip.daysUntil} days
                                 </Badge>
@@ -91,7 +91,7 @@ export default function TripGrid({ trips, activeFilter, onSelectTrip }: TripGrid
                               whileHover={{ y: -4 }}
                               transition={{ type: "spring", stiffness: 300, damping: 20 }}
                             >
-                              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-[#ff6b6b] transition-colors duration-200">
+                              <h3 className="text-xl font-bold text-white mb-2 group-hover:text-[#ff7670] transition-colors duration-200">
                                 {trip.destination || trip.title || "Untitled Trip"}
                               </h3>
                               <div className="flex items-center gap-3 text-white/80 text-xs">

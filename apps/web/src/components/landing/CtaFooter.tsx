@@ -12,7 +12,7 @@ export default function CtaFooter() {
   return (
     <footer className="relative pt-32 pb-10 overflow-hidden border-t border-border dark:border-white/5">
       {/* Background glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[500px] bg-primary/15 blur-[150px] pointer-events-none rounded-full dark:bg-[#ff6b6b]/10" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[500px] bg-primary/15 blur-[150px] pointer-events-none rounded-full dark:bg-[#ff7670]/10" />
 
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
         <motion.div

@@ -111,13 +111,13 @@ export default function ResetPasswordPageClient() {
         <div
           className="absolute top-[20%] left-[20%] w-[500px] h-[500px] rounded-full opacity-30 blur-[120px]"
           style={{
-            background: "radial-gradient(circle, #ff6b6b 0%, transparent 70%)",
+            background: "radial-gradient(circle, #ff7670 0%, transparent 70%)",
           }}
         />
         <div
           className="absolute bottom-[20%] right-[20%] w-[500px] h-[500px] rounded-full opacity-20 blur-[120px]"
           style={{
-            background: "radial-gradient(circle, #ff6b6b 0%, transparent 70%)",
+            background: "radial-gradient(circle, #ff7670 0%, transparent 70%)",
           }}
         />
       </div>

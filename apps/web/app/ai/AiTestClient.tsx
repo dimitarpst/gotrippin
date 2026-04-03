@@ -383,7 +383,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                   <div
                     className={`relative group max-w-[85%] sm:max-w-[75%] rounded-[1.5rem] px-5 py-4 ${
                       m.role === "user"
-                        ? "bg-gradient-to-br from-[var(--color-accent)] to-[#ff8f8f] text-white shadow-[0_8px_24px_-6px_rgba(255,107,107,0.4)] order-first rounded-tr-sm"
+                        ? "bg-gradient-to-br from-[var(--color-accent)] to-[#ff8f8f] text-white shadow-[0_8px_24px_-6px_rgba(255, 118, 112,0.4)] order-first rounded-tr-sm"
                         : "bg-card/40 backdrop-blur-2xl border border-white/10 text-card-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_8px_24px_-6px_rgba(0,0,0,0.2)] rounded-tl-sm"
                     }`}
                     {...(m.role === "user"
@@ -685,7 +685,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                     onClick={handleSend}
                     disabled={!input.trim() && !selectedTool}
                     size="icon"
-                    className="w-12 h-12 shrink-0 rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 hover:scale-105 transition-all shadow-[0_0_15px_rgba(255,107,107,0.4)] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center"
+                    className="w-12 h-12 shrink-0 rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 hover:scale-105 transition-all shadow-[0_0_15px_rgba(255, 118, 112,0.4)] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center"
                   >
                     <Send className="w-5 h-5 -ml-0.5 mt-0.5" />
                   </Button>

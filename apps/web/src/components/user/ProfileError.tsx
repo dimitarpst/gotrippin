@@ -11,10 +11,10 @@ export default function ProfileError({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="mt-6 text-center text-sm text-red-400">
+    <div className="mt-6 text-center text-sm text-destructive">
       {message}{" "}
       {clearError && (
-        <button onClick={clearError} className="underline">
+        <button type="button" onClick={clearError} className="underline text-muted-foreground hover:text-foreground">
           {t("profile.dismiss")}
         </button>
       )}
