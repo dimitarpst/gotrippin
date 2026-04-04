@@ -24,7 +24,8 @@ import { findTripScheduleViolations } from "@/lib/trip-schedule-bounds";
 type ScheduleRepairState = {
   tripStart: Date;
   tripEnd: Date;
-  rollback: { start_date: string | null; end_date: string | null };
+  /** When set, closing the drawer without saving reverts the trip date change. `null` when opened from the overview banner (already saved dates). */
+  rollback: { start_date: string | null; end_date: string | null } | null;
   calendarDayDeltaApplied: number;
   locations: TripLocation[];
   activities: Activity[];
@@ -61,6 +62,7 @@ export default function TripDetailPageClient({
   const router = useRouter();
 
   const [scheduleRepair, setScheduleRepair] = useState<ScheduleRepairState | null>(null);
+  const [repairDrawerOpen, setRepairDrawerOpen] = useState(false);
   const [repairSaving, setRepairSaving] = useState(false);
   const repairResolvedRef = useRef(false);
   const scheduleRepairRef = useRef<ScheduleRepairState | null>(null);
@@ -69,9 +71,69 @@ export default function TripDetailPageClient({
     scheduleRepairRef.current = scheduleRepair;
   }, [scheduleRepair]);
 
+  const beginScheduleRepair = useCallback((state: ScheduleRepairState) => {
+    setScheduleRepair(state);
+    setRepairDrawerOpen(true);
+  }, []);
+
+  const scheduleNeedsAttention = useMemo(() => {
+    if (!trip.start_date || !trip.end_date) {
+      return null;
+    }
+    const from = new Date(trip.start_date);
+    const to = new Date(trip.end_date);
+    const locs = timelineLocations.length > 0 ? timelineLocations : routeLocations;
+    const v = findTripScheduleViolations(from, to, locs, activitiesByLocation, unassignedActivities);
+    if (v.locations.length === 0 && v.activities.length === 0) {
+      return null;
+    }
+    return {
+      itemCount: v.locations.length + v.activities.length,
+      stopCount: v.locations.length,
+      activityCount: v.activities.length,
+    };
+  }, [
+    trip.start_date,
+    trip.end_date,
+    timelineLocations,
+    routeLocations,
+    activitiesByLocation,
+    unassignedActivities,
+  ]);
+
+  const openScheduleRepairFromBanner = useCallback(() => {
+    if (!trip.start_date || !trip.end_date || !trip.id) {
+      return;
+    }
+    const from = new Date(trip.start_date);
+    const to = new Date(trip.end_date);
+    const locs = timelineLocations.length > 0 ? timelineLocations : routeLocations;
+    const v = findTripScheduleViolations(from, to, locs, activitiesByLocation, unassignedActivities);
+    if (v.locations.length === 0 && v.activities.length === 0) {
+      return;
+    }
+    beginScheduleRepair({
+      tripStart: from,
+      tripEnd: to,
+      rollback: null,
+      calendarDayDeltaApplied: 0,
+      locations: v.locations,
+      activities: v.activities,
+    });
+  }, [
+    beginScheduleRepair,
+    trip.id,
+    trip.start_date,
+    trip.end_date,
+    timelineLocations,
+    routeLocations,
+    activitiesByLocation,
+    unassignedActivities,
+  ]);
+
   const rollbackFromSnapshot = useCallback(
     async (snapshot: ScheduleRepairState) => {
-      if (!trip?.id) {
+      if (!trip?.id || snapshot.rollback === null) {
         return;
       }
       try {
@@ -125,7 +187,6 @@ export default function TripDetailPageClient({
         previousStartIso && dateRange.from
           ? computeTripStartCalendarDayDelta(previousStartIso, dateRange.from)
           : null;
-
       const result = await updateTripAction(trip.id, {
         start_date: dateRange.from.toISOString(),
         end_date: dateRange.to.toISOString(),
@@ -171,7 +232,7 @@ export default function TripDetailPageClient({
         );
 
         if (violations.locations.length > 0 || violations.activities.length > 0) {
-          setScheduleRepair({
+          beginScheduleRepair({
             tripStart: dateRange.from,
             tripEnd: dateRange.to,
             rollback,
@@ -202,32 +263,39 @@ export default function TripDetailPageClient({
       unassignedActivities,
       router,
       t,
+      beginScheduleRepair,
     ]
   );
 
-  const handleScheduleRepairOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        if (repairResolvedRef.current) {
-          repairResolvedRef.current = false;
-          setScheduleRepair(null);
-          return;
-        }
-        const snapshot = scheduleRepairRef.current;
-        setScheduleRepair(null);
-        if (snapshot) {
-          void rollbackFromSnapshot(snapshot);
-        }
-      }
-    },
-    [rollbackFromSnapshot]
-  );
+  const handleScheduleRepairOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      setRepairDrawerOpen(true);
+      return;
+    }
+    setRepairDrawerOpen(false);
+  }, []);
+
+  const handleScheduleRepairCloseComplete = useCallback(() => {
+    const snapshot = scheduleRepairRef.current;
+    const resolved = repairResolvedRef.current;
+
+    if (resolved) {
+      repairResolvedRef.current = false;
+      setScheduleRepair(null);
+      router.refresh();
+      return;
+    }
+
+    setScheduleRepair(null);
+    if (snapshot !== null && snapshot.rollback !== null) {
+      void rollbackFromSnapshot(snapshot);
+    }
+  }, [rollbackFromSnapshot, router]);
 
   const handleScheduleRepaired = useCallback(() => {
     repairResolvedRef.current = true;
-    setScheduleRepair(null);
-    router.refresh();
-  }, [router]);
+    setRepairDrawerOpen(false);
+  }, []);
 
   const actions: TripOverviewActions = useMemo(
     () => ({
@@ -360,13 +428,24 @@ export default function TripDetailPageClient({
           actions={actions}
           timeline={timeline}
           weather={weather}
+          scheduleAttention={
+            scheduleRepair !== null || scheduleNeedsAttention === null
+              ? undefined
+              : {
+                  itemCount: scheduleNeedsAttention.itemCount,
+                  stopCount: scheduleNeedsAttention.stopCount,
+                  activityCount: scheduleNeedsAttention.activityCount,
+                  onReview: openScheduleRepairFromBanner,
+                }
+          }
         />
       </div>
 
       {scheduleRepair && trip.id ? (
         <TripScheduleRepairDrawer
-          open
+          open={repairDrawerOpen}
           onOpenChange={handleScheduleRepairOpenChange}
+          onDrawerCloseComplete={handleScheduleRepairCloseComplete}
           tripId={trip.id}
           tripStart={scheduleRepair.tripStart}
           tripEnd={scheduleRepair.tripEnd}

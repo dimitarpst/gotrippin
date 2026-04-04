@@ -1,6 +1,6 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react"
 import {
   Plus,
@@ -28,6 +28,7 @@ import {
   ArrowRight,
   Map as MapIcon,
   FileDown,
+  AlertTriangle,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -138,6 +139,13 @@ interface TripOverviewProps {
   actions: TripOverviewActions
   timeline?: TripOverviewTimeline
   weather?: TripOverviewWeather
+  /** When the trip window and some stops/activities disagree, show a card above the itinerary to reopen the repair flow. */
+  scheduleAttention?: {
+    itemCount: number
+    stopCount: number
+    activityCount: number
+    onReview: () => void
+  }
 }
 
 export default function TripOverview({
@@ -145,6 +153,7 @@ export default function TripOverview({
   actions,
   timeline: timelineProp = {},
   weather: weatherProp = {},
+  scheduleAttention,
 }: TripOverviewProps) {
   const {
     onNavigate,
@@ -777,6 +786,60 @@ export default function TripOverview({
         </motion.div>
 
         <div className="relative z-10 px-6 pb-8 space-y-4">
+          <AnimatePresence>
+            {scheduleAttention && scheduleAttention.itemCount > 0 ? (
+              <motion.div
+                key="trip-overview-schedule-attention"
+                className="overflow-hidden"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{
+                  height: { duration: 0.32, ease: [0.4, 0, 0.2, 1] },
+                  opacity: { duration: 0.22, ease: "easeOut" },
+                }}
+              >
+                <Card className="rounded-2xl p-5 bg-card text-card-foreground border-2 border-[#ff7670]/35">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#ff7670]/15 flex items-center justify-center shrink-0 dark:bg-white/10">
+                        <AlertTriangle className="w-5 h-5 text-[#ff7670]" aria-hidden />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="text-base font-semibold text-foreground">
+                          {t("trip_overview.schedule_attention_title")}
+                        </h2>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {t("trip_overview.schedule_attention_breakdown", {
+                            stops: scheduleAttention.stopCount,
+                            activities: scheduleAttention.activityCount,
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      className="text-xs font-bold px-2 py-1 rounded border-0 shrink-0"
+                      style={{ background: "#ff7670", color: "white" }}
+                    >
+                      {scheduleAttention.itemCount}
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    {t("trip_overview.schedule_attention_body")}
+                  </p>
+                  <button
+                    type="button"
+                    className="w-full font-semibold text-sm"
+                    style={{ color: "#ff7670" }}
+                    onClick={() => scheduleAttention.onReview()}
+                  >
+                    {t("trip_overview.schedule_attention_cta")}
+                  </button>
+                </Card>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
           {/* Itinerary Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
             <Card

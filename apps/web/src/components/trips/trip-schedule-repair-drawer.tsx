@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
+import { format, startOfMonth } from "date-fns";
 import type { Activity, TripLocation } from "@gotrippin/core";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -29,6 +29,8 @@ function mergeCalendarDayWithTimeFromIso(dayPicked: Date, originalIso: string): 
 export interface TripScheduleRepairDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Runs after the drawer’s close animation finishes (see shared `Drawer` + Vaul). Use to clear parent state / rollback — do not unmount the drawer in `onOpenChange(false)` or the exit animation is skipped. */
+  onDrawerCloseComplete?: () => void;
   tripId: string;
   tripStart: Date;
   tripEnd: Date;
@@ -44,6 +46,7 @@ export interface TripScheduleRepairDrawerProps {
 export function TripScheduleRepairDrawer({
   open,
   onOpenChange,
+  onDrawerCloseComplete,
   tripId,
   tripStart,
   tripEnd,
@@ -90,6 +93,9 @@ export function TripScheduleRepairDrawer({
     }
     return true;
   }, [locations, activities, locationRanges, activityDays]);
+
+  /** Show the trip window’s month first (not “today”), and keep month nav enabled so users can browse freely. */
+  const defaultVisibleMonth = useMemo(() => startOfMonth(tripStart), [tripStart]);
 
   const handleSave = useCallback(async () => {
     if (!canSave) {
@@ -164,7 +170,7 @@ export function TripScheduleRepairDrawer({
   const hasItems = locations.length > 0 || activities.length > 0;
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
+    <Drawer open={open} onOpenChange={onOpenChange} onCloseComplete={onDrawerCloseComplete}>
       <DrawerContent className="max-h-[90vh]">
         <DrawerHeader>
           <div className="flex items-center justify-between gap-2">
@@ -203,8 +209,8 @@ export function TripScheduleRepairDrawer({
                   onSelect={(r) => {
                     setLocationRanges((prev) => ({ ...prev, [loc.id]: r }));
                   }}
-                  fromDate={tripStart}
-                  toDate={tripEnd}
+                  defaultMonth={defaultVisibleMonth}
+                  disableNavigation={false}
                   disabled={[{ before: tripStart }, { after: tripEnd }]}
                   numberOfMonths={1}
                   className="w-full rounded-md border p-2"
@@ -231,8 +237,8 @@ export function TripScheduleRepairDrawer({
                   onSelect={(d) => {
                     setActivityDays((prev) => ({ ...prev, [act.id]: d }));
                   }}
-                  fromDate={tripStart}
-                  toDate={tripEnd}
+                  defaultMonth={defaultVisibleMonth}
+                  disableNavigation={false}
                   disabled={[{ before: tripStart }, { after: tripEnd }]}
                   className="w-full rounded-md border p-2"
                 />
