@@ -7,7 +7,7 @@ import { Lock, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useTranslation } from "react-i18next";
 
@@ -171,28 +171,28 @@ export default function ResetPasswordPageClient() {
                   animate={{ opacity: 1 }}
                 >
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                    <Input
-                      type="password"
+                    <Lock className="absolute left-4 top-1/2 z-10 w-5 h-5 -translate-y-1/2 text-white/40 pointer-events-none" />
+                    <PasswordInput
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={t("auth.new_password")}
                       required
                       disabled={loading}
                       className="pl-12 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                      toggleClassName="text-white/50 hover:bg-white/10 hover:text-white"
                     />
                   </div>
 
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-                    <Input
-                      type="password"
+                    <Lock className="absolute left-4 top-1/2 z-10 w-5 h-5 -translate-y-1/2 text-white/40 pointer-events-none" />
+                    <PasswordInput
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder={t("auth.confirm_new_password")}
                       required
                       disabled={loading}
                       className="pl-12 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                      toggleClassName="text-white/50 hover:bg-white/10 hover:text-white"
                     />
                   </div>
 

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -147,8 +147,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
             {hasPassword && (
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">{t("profile.current_password")}</label>
-                <Input
-                  type="password"
+                <PasswordInput
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                   placeholder="••••••••"
@@ -160,8 +159,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
             )}
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">{t("auth.new_password")}</label>
-              <Input
-                type="password"
+              <PasswordInput
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="••••••••"
@@ -173,8 +171,7 @@ export default function ChangePasswordCard({ hasPassword }: ChangePasswordCardPr
 
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">{t("auth.confirm_new_password")}</label>
-              <Input
-                type="password"
+              <PasswordInput
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"

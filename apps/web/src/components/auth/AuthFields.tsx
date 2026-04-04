@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Mail, Lock, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { useTranslation } from "react-i18next";
 
@@ -89,9 +90,8 @@ export function AuthFields({
         </Label>
         <div className="relative">
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete={isLogin ? "current-password" : "new-password"}
             placeholder={t("auth.password")}
             value={password}
@@ -99,6 +99,7 @@ export function AuthFields({
               setPassword(e.target.value)
             }
             className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-muted-foreground focus:border-[var(--accent)] transition-colors"
+            toggleClassName="text-white/50 hover:bg-white/10 hover:text-white"
           />
         </div>
       </div>
@@ -115,9 +116,8 @@ export function AuthFields({
           </Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <Input
+            <PasswordInput
               id="confirmPassword"
-              type="password"
               autoComplete="new-password"
               placeholder={t("auth.confirm_password")}
               value={confirmPassword}
@@ -125,6 +125,7 @@ export function AuthFields({
                 setConfirmPassword(e.target.value)
               }
               className="pl-10 bg-black/30 border-white/10 text-white placeholder:text-muted-foreground focus:border-[var(--accent)] transition-colors"
+              toggleClassName="text-white/50 hover:bg-white/10 hover:text-white"
             />
           </div>
         </motion.div>

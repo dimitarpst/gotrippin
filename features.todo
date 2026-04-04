@@ -4,6 +4,15 @@ Todo:
   ☐ Teacher feedback — more activities and notes
   ☐ Explore another weather api cuz current one sucks - look at https://open-meteo.com/en/docs
 
+Supabase Security:
+  ☐ Password changed — gotrippin-branded HTML + enable (Auth → Emails → Security)
+  ☐ Email address changed — template + enable
+  ☐ Phone number changed — template + enable
+  ☐ Identity linked — template + enable
+  ☐ Identity unlinked — template + enable
+  ☐ Multi-factor authentication method added — template + enable
+  ☐ Multi-factor authentication method removed — template + enable
+
 To plan:
   ☐ How to display the activities on the map - together with the route? or seperate?
   ☐ How to display the weather on the map?

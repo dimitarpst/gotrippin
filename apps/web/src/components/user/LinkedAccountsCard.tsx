@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Link as LinkIcon, Unlink, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useTranslation } from "react-i18next";
 import { appConfig } from "@/config/appConfig";
 import { useAuth } from "@/contexts/AuthContext";
@@ -389,16 +389,14 @@ export default function LinkedAccountsCard({
                 {t("profile.password_description")}
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                <Input
-                  type="password"
+                <PasswordInput
                   className="bg-background/80"
                   placeholder={t("auth.new_password")}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   disabled={loading}
                 />
-                <Input
-                  type="password"
+                <PasswordInput
                   className="bg-background/80"
                   placeholder={t("auth.confirm_new_password")}
                   value={confirmPassword}
