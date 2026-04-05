@@ -300,14 +300,25 @@ export default function TripDetailPageClient({
   const actions: TripOverviewActions = useMemo(
     () => ({
       onNavigate: (screen) => {
+        if (screen === "flight") {
+          router.push(`/trips/${shareCode}/activity/new?type=flight`);
+          return;
+        }
+        if (screen === "lodging") {
+          router.push(`/trips/${shareCode}/activity/new?type=accommodation`);
+          return;
+        }
+        if (screen === "place") {
+          router.push(`/trips/${shareCode}/activity/new?type=custom`);
+          return;
+        }
         const routes: Record<string, string> = {
           activity: `/trips/${shareCode}/activity`,
-          flight: `/trips/${shareCode}/activity/flight`,
-          timeline: `/trips/${shareCode}/timeline`,
           weather: `/trips/${shareCode}/weather`,
           map: `/trips/${shareCode}/map`,
         };
-        if (routes[screen]) router.push(routes[screen]);
+        const path = routes[screen];
+        if (path) router.push(path);
       },
       onBack: () => router.push("/trips"),
       onEdit: () => router.push(`/trips/${shareCode}/edit`),

@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-  type KeyboardEvent,
-} from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -64,10 +57,7 @@ import {
   TourNext,
 } from "@/components/ui/tour";
 import AuroraBackground from "@/components/effects/aurora-background";
-
-/** Vaul snap points: fraction of viewport height (see vaul `snapPoints`). */
-const ROUTE_DRAWER_SNAP_COLLAPSED = 0.42;
-const ROUTE_DRAWER_SNAP_EXPANDED = 0.92;
+import { cn } from "@/lib/utils";
 
 interface RouteMapPageClientProps {
   trip: Trip;
@@ -96,7 +86,6 @@ export default function RouteMapPageClient({
   const { t } = useTranslation();
   const { user, refreshProfile } = useAuth();
   const [open, setOpen] = useState(true);
-  const [routeDrawerSnap, setRouteDrawerSnap] = useState<number>(ROUTE_DRAWER_SNAP_COLLAPSED);
   const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
   const [savingOrder, setSavingOrder] = useState(false);
   const [routeReorderMode, setRouteReorderMode] = useState(false);
@@ -133,12 +122,6 @@ export default function RouteMapPageClient({
   const tourPendingStep4Ref = useRef(false);
   const tourJustAdvancedToStep3Ref = useRef(false);
   const tourClosingForPrevRef = useRef(false);
-
-  useEffect(() => {
-    if (open) {
-      setRouteDrawerSnap(ROUTE_DRAWER_SNAP_COLLAPSED);
-    }
-  }, [open]);
 
   // When drawer opens for tour step 3, advance only after open animation completes (event-driven).
   const handleDrawerOpenComplete = useCallback(() => {
@@ -339,42 +322,6 @@ export default function RouteMapPageClient({
     }
     tourClosingForPrevRef.current = false;
   };
-
-  const setRouteDrawerSnapFromVaul = useCallback((snapPoint: number | string | null) => {
-    if (typeof snapPoint === "number") {
-      setRouteDrawerSnap(snapPoint);
-    }
-  }, []);
-
-  const routeDrawerHandleProps = useMemo(
-    () => ({
-      preventCycle: true,
-      role: "button",
-      tabIndex: 0,
-      "aria-expanded": routeDrawerSnap === ROUTE_DRAWER_SNAP_EXPANDED,
-      "aria-label":
-        routeDrawerSnap === ROUTE_DRAWER_SNAP_EXPANDED
-          ? t("trip_overview.route_drawer_handle_collapse")
-          : t("trip_overview.route_drawer_handle_expand"),
-      onClick: () => {
-        setRouteDrawerSnap((p) =>
-          p === ROUTE_DRAWER_SNAP_EXPANDED ? ROUTE_DRAWER_SNAP_COLLAPSED : ROUTE_DRAWER_SNAP_EXPANDED,
-        );
-      },
-      onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          setRouteDrawerSnap((p) =>
-            p === ROUTE_DRAWER_SNAP_EXPANDED ? ROUTE_DRAWER_SNAP_COLLAPSED : ROUTE_DRAWER_SNAP_EXPANDED,
-          );
-        }
-      },
-      className:
-        "mx-auto mt-2 flex min-h-3 w-full max-w-[100px] shrink-0 justify-center pb-1 touch-none",
-      children: null,
-    }),
-    [routeDrawerSnap, t],
-  );
 
   const handleConfirmAddPlace = useCallback(
     async () => {
@@ -895,16 +842,16 @@ export default function RouteMapPageClient({
             onOpenChange={handleDrawerOpenChange}
             onOpenComplete={handleDrawerOpenComplete}
             onCloseComplete={handleDrawerCloseComplete}
+            modal={false}
             handleOnly
-            snapPoints={[ROUTE_DRAWER_SNAP_COLLAPSED, ROUTE_DRAWER_SNAP_EXPANDED]}
-            activeSnapPoint={routeDrawerSnap}
-            setActiveSnapPoint={setRouteDrawerSnapFromVaul}
+            dismissible
           >
         <DrawerTrigger asChild>
           <button
             type="button"
             id="route-itinerary-trigger"
-            className={`fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full px-4 py-2 bg-black/70 backdrop-blur-md border border-white/15 text-xs font-semibold text-white flex items-center gap-2 shadow-lg transition-all pointer-events-auto ${
+            onClick={() => setOpen(true)}
+            className={`fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 rounded-full px-4 py-2 bg-black/70 backdrop-blur-md border border-white/15 text-xs font-semibold text-white flex items-center gap-2 shadow-lg transition-all pointer-events-auto ${
               open || previewPlace || showAlongPanel || (routeTourOpen && routeTourStep === 0)
                 ? "opacity-0 pointer-events-none translate-y-2"
                 : "opacity-100 translate-y-0"
@@ -918,8 +865,15 @@ export default function RouteMapPageClient({
 
         <DrawerContent
           id="route-drawer-root"
-          handleProps={routeDrawerHandleProps}
-          className="border-none bg-black/80 backdrop-blur-2xl max-h-[100dvh] max-w-5xl mx-auto mb-4 px-0"
+          className={cn(
+            "border-none bg-black/90 backdrop-blur-2xl max-w-5xl mx-auto px-0",
+            "!mt-0 mb-0 !z-[200]",
+            /* Snap points + map WebGL broke transforms and left an invisible full-screen blocker; use a normal sheet. */
+            routeReorderMode
+              ? "max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-bottom,0px)-0.5rem))]"
+              : "max-h-[min(72dvh,calc(100dvh-env(safe-area-inset-bottom,0px)-1rem))]",
+            "flex min-h-0 flex-col overflow-hidden shadow-2xl ring-1 ring-white/10",
+          )}
         >
           <div id="route-drawer-content" className="flex flex-1 flex-col min-h-0">
           {/* Header: route title + N stops */}
@@ -938,13 +892,7 @@ export default function RouteMapPageClient({
                   <button
                     type="button"
                     onClick={() => {
-                      setRouteReorderMode((v) => {
-                        const next = !v;
-                        if (next) {
-                          setRouteDrawerSnap(ROUTE_DRAWER_SNAP_EXPANDED);
-                        }
-                        return next;
-                      });
+                      setRouteReorderMode((v) => !v);
                     }}
                     aria-pressed={routeReorderMode}
                     aria-label={
@@ -984,8 +932,11 @@ export default function RouteMapPageClient({
             ) : null}
           </div>
 
-          {/* Route list: browse vs drag-handle reorder mode */}
-          <div className="flex-1 overflow-y-auto px-4 pb-4 min-h-0">
+          {/* Route list: Vaul sets touch-action:none on the drawer root; pan-y helps touch scroll inside. */}
+          <div
+            className="flex-1 overflow-y-auto overscroll-y-contain px-4 pb-4 min-h-0 [touch-action:pan-y]"
+            data-vaul-no-drag=""
+          >
             {locations.length === 0 ? (
               <p className="text-sm text-white/60">{t("trip_overview.route_empty")}</p>
             ) : routeReorderMode ? (

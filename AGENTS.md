@@ -1,6 +1,6 @@
 # Agent rules
 
-**Code style:** Read `docs/CODE_STYLE.md` for naming, punctuation, imports, types, and React/Next conventions so changes align with project rules and future PRs.
+**Code style:** Read `docs/CODE_STYLE.md` for naming, punctuation, imports, types, and React/Next conventions so changes align with project rules and future PRs. **UI:** Prefer minimal borders on web surfaces — use contrast, blur, and soft elevation; see CODE_STYLE “Part 3 — UI: minimize borders.”
 **Todo workflow:** Read `docs/TODO_WORKFLOW.md` for the preferred todo workflow with Todo+ - formatting, symbols and shortcuts.
 
 ## Available MCPs & UI primitives

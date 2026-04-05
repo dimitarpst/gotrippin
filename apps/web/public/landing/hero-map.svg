@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" fill="none">
+  <rect width="960" height="640" fill="url(#bg)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f4f4f5"/>
+      <stop offset="100%" stop-color="#e4e4e7"/>
+    </linearGradient>
+    <linearGradient id="route" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff7670"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <g opacity="0.35">
+    <path d="M0 120h960M0 240h960M0 360h960M0 480h960" stroke="#a1a1aa" stroke-width="1"/>
+    <path d="M120 0v640M280 0v640M440 0v640M600 0v640M760 0v640" stroke="#a1a1aa" stroke-width="1"/>
+  </g>
+  <path d="M140 480 C260 380 340 420 420 320 S580 160 820 140" stroke="url(#route)" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <circle cx="140" cy="480" r="14" fill="#ff7670" stroke="#fff" stroke-width="3"/>
+  <circle cx="420" cy="320" r="12" fill="#fff" stroke="#18181b" stroke-width="2"/>
+  <circle cx="820" cy="140" r="14" fill="#6366f1" stroke="#fff" stroke-width="3"/>
+  <text x="480" y="610" text-anchor="middle" fill="#71717a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="22">Placeholder � replace with real map screenshot</text>
+</svg>

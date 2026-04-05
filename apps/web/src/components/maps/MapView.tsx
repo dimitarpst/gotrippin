@@ -199,6 +199,11 @@ export default function MapView({
         mapStyle={MAPBOX_BASE_STYLE}
         style={{ width: "100%", height: "100%" }}
         interactive={interactive}
+        onLoad={(e) => {
+          // Re-sync canvas to container after layout (embeds in cards / drawers often start at wrong DPR).
+          e.target.resize();
+          requestAnimationFrame(() => e.target.resize());
+        }}
         onClick={(e: MapMouseEvent) => {
           if (!onMapClick) return;
           onMapClick({ lng: e.lngLat.lng, lat: e.lngLat.lat });

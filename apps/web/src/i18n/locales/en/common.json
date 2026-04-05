@@ -297,6 +297,15 @@
     "pdf_generated": "Generated"
   },
   "trip_overview": {
+    "quick_add": "New activity",
+    "quick_flight": "Flights",
+    "quick_lodging": "Lodgings",
+    "quick_place": "Places",
+    "quick_actions_group_a11y": "Quick add to trip",
+    "quick_add_a11y": "Add activity",
+    "quick_flight_a11y": "Add flight",
+    "quick_lodging_a11y": "Add lodging",
+    "quick_place_a11y": "Add place",
     "add_first_activity": "Add First Activity",
     "itinerary": "Itinerary",
     "start_organizing": "Start organizing your itinerary",
@@ -520,5 +529,90 @@
     "cloud_cover": "Cloud cover",
     "seven_day": "7-Day Forecast",
     "failed_fetch": "Failed to fetch weather"
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "support": "Support",
+      "dashboard": "Dashboard",
+      "get_started": "Get started",
+      "dashboard_short": "Trips",
+      "get_started_short": "Start",
+      "menu_aria": "Open menu"
+    },
+    "hero": {
+      "h1_line1": "Plan trips together",
+      "h1_line2": "without the chaos.",
+      "lead": "Too many apps, threads, and half-baked plans? gotrippin is a trip planner built around a clear route, a calm timeline, and an AI assistant—so your crew stays aligned.",
+      "cta_dashboard": "Go to Dashboard",
+      "cta_start": "Start planning free",
+      "cta_see_how": "See how it works"
+    },
+    "mockup": {
+      "floater_map_title": "Route on the map",
+      "floater_map_sub": "Reorder stops · one path",
+      "floater_ai_title": "Trip assistant",
+      "floater_ai_sub": "Ideas and answers in context",
+      "chrome_url": "gotrippin.app/trips · your trip",
+      "timeline_badge": "Timeline",
+      "alt_map": "gotrippin trip route map with stops along the path",
+      "alt_timeline": "gotrippin trip timeline showing days and activities"
+    },
+    "story": {
+      "eyebrow": "The problem",
+      "title": "One trip. Five apps. Zero clarity.",
+      "body": "When plans live in screenshots, map pins, and endless chats, someone always misses the latest version. gotrippin is built so the route and the story of the trip live together—fewer tabs, fewer misunderstandings."
+    },
+    "map_section": {
+      "eyebrow": "Your route",
+      "title": "See the whole journey on the map",
+      "body": "Lay out stops in order, preview the path, and adjust when plans change. The map and timeline stay connected so everyone is looking at the same shape of the trip—not a stale PDF or a half-finished note.",
+      "placeholder": "Product screenshots in the hero above are placeholders—swap in real captures from your own trips when you're ready."
+    },
+    "ai_section": {
+      "eyebrow": "Assistant",
+      "title": "Ask for ideas while you plan",
+      "body": "Use the AI trip assistant to brainstorm stops, tighten an itinerary, or get unstuck—without leaving the context of your trip. You stay in control; the assistant speeds up the messy middle.",
+      "card": "Grounded in your trip—not generic travel spam."
+    },
+    "together_section": {
+      "eyebrow": "Your group",
+      "title": "Share the plan—not the headache",
+      "body": "Each trip has a link your people can open. Everyone sees the same map and timeline as you iterate. Rich collaboration (guest roles and invites) is improving over time—today, focus on one source of truth for the itinerary.",
+      "view_title": "View",
+      "view_body": "Share the trip link so friends and family can follow along with stops, dates, and details you've published.",
+      "edit_title": "Edit",
+      "edit_body": "Editing together is on the roadmap. For now, plan as the trip owner and keep everyone aligned with a single shared view.",
+      "footnote": "You'll use the same account flow to open trips; detailed guest permissions will show up here as we ship them."
+    },
+    "bento": {
+      "section_title": "Map, assistant, and one link for your crew",
+      "section_lead": "A calmer way to plan together—fewer scattered tabs, more clarity before you go.",
+      "map_title": "Interactive route map",
+      "map_desc": "Lay out stops, see the path, and reorder when plans change—without losing the big picture.",
+      "ai_title": "AI trip assistant",
+      "ai_desc": "Ask for ideas, refinements, or a second opinion—inside the context of your trip.",
+      "share_title": "Shareable trip link",
+      "share_desc": "Send one link so your group opens the same map and itinerary. Deeper guest permissions and co-editing are on the way."
+    },
+    "final_cta": {
+      "title": "Ready to plan your next adventure?",
+      "sub": "Start free, invite your group when you're ready, and keep every stop in one calm place.",
+      "cta_open": "Open your trips",
+      "cta_start": "Start planning free"
+    },
+    "footer": {
+      "tagline": "Plan trips together without the chaos.",
+      "product": "Product",
+      "legal": "Legal",
+      "support": "Support",
+      "features": "Features",
+      "github": "GitHub",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "github_issues": "GitHub issues",
+      "language": "Language",
+      "appearance": "Appearance"
+    }
   }
 }

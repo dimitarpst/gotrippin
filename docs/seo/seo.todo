@@ -12,20 +12,20 @@ Done (technical baseline):
   ✔ Landing: one H1; logical heading hierarchy @done(26-04-03)
 
 Phase 1 — Homepage IA & narrative (primary SEO work):
-  ☐ Map sections using arturia + tripsy refs (hero → use cases → deep blocks → steps → trust); add screenshot notes under marketing/tripsy when ready
-  ☐ Replace misleading mockup / hero visuals with honest product (or simplified real UI)
-  ☐ CTA microcopy: plain language (“plan” not “sequence”); align footer and bento
+  ✔ Map sections (story → map → AI → together + bento + final CTA); arturia + tripsy refs @done(26-04-03)
+  ✔ Hero visuals: wireframe placeholders in /public/landing (swap WebP when ready — README) @done(26-04-03)
+  ✔ CTA microcopy: “plan”; footer + bento aligned @done(26-04-03)
   ☐ Keyword map: intent → on-page placement (EN: trip planner, plan a trip, group trip, itinerary; BG later)
-  ☐ Landing body copy: subheads + lead sections support keywords without stuffing; stay truthful (incl. shareable trips roadmap)
+  ✔ Landing body copy: truthful sharing roadmap @done(26-04-03)
   ☐ Locale strategy: single URL + i18n cookie — document crawler tradeoff; BG URLs when ready
 
 Phase 2 — Meta, rich results, social:
-  ☐ Title + meta description: /home unique vs app/layout defaults (~60 / ~155 chars)
+  ✔ Title + meta description: /home updated; no “route-first” @done(26-04-03)
   ☐ JSON-LD: SoftwareApplication / WebApplication; FAQ only if visible on page
   ☐ Open Graph: og:image 1200×630; twitter:card summary_large_image where applicable
 
 Phase 3 — Trust & crawl hygiene:
-  ☐ Real /privacy and /terms routes (footer currently # in CtaFooter.tsx); link when live
+  ✔ /privacy and /terms stub routes linked from footer (robots: noindex until real copy) @done(26-04-03)
   ☐ robots.ts: revisit disallow when new public routes ship
   ☐ Crawlable content: key marketing text in initial HTML; spot-check rendered source
 

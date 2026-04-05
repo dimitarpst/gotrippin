@@ -82,20 +82,37 @@ Group type-only imports together or put them after value imports from the same m
 
 ---
 
-## Part 3 — Errors, testing, tooling
+## Part 3 — UI: minimize borders (web)
 
-### 3.1 Error handling (from AGENTS.md)
+**Project default:** Try **not** to use visible **borders** (`border`, hairlines, heavy `ring`) as the main way to separate UI from the background. Outlines on every chip and card read noisy and fight references we care about (e.g. Tripsy-style trip hub: large glass actions on photos, white cards separated by **soft shadow** instead of strokes).
+
+**Prefer instead (combine as needed):**
+
+- **Fill contrast** — translucent panels (`bg-white/…`, `bg-black/…`) on imagery or muted surfaces.
+- **Backdrop blur** — glass-style controls without an outline.
+- **Soft elevation** — **subtle** shadow (wide blur, low opacity), not harsh or stacked drop shadows.
+- **Spacing and radius** — grouping by padding and rounded corners.
+
+**When borders are still appropriate:** dense tables, inputs where the field edge must be obvious, explicit dividers in settings lists, or design-system components where `border-border` is the established pattern — but **do not default** to adding `border` on new hero, card, or pill controls “for definition.”
+
+**Accessibility:** Keep **visible focus** for keyboard users (`focus-visible:ring` or equivalent). That is not the same as decorating every surface with a static border.
+
+---
+
+## Part 4 — Errors, testing, tooling
+
+### 4.1 Error handling (from AGENTS.md)
 
 - **No silent errors:** Do not swallow errors (no empty `catch`, no `.catch(() => {})` without logging or surfacing). Log and/or show or rethrow.
 - **No fallbacks that hide failures:** Do not replace a failed result with a default and pretend success. Let the error be visible (error state, toast, boundary).
 - **Supabase / API:** Always check `error` from `{ data, error }`; handle it (user message or `console.error`); do not overwrite with generic success UI.
 - **Mutations:** Do not update UI optimistically; update only after the request succeeds and you validated the response.
 
-### 3.2 Testing
+### 4.2 Testing
 
 - Prefer **focused tests** for critical paths (auth, trip CRUD, key flows). Use the project’s test runner and conventions; avoid changing behavior only to make tests pass.
 
-### 3.3 Tooling
+### 4.3 Tooling
 
 - **ESLint:** `apps/web` uses `eslint.config.mjs` (flat config) with `eslint-config-next`. Root has ESLint 9 + TypeScript parser; consider adding shared rules (e.g. `quotes`, `semicolon`) at root or per app.
 - **Prettier:** Root has Prettier; ensure it’s wired (e.g. `format` script or ESLint integration) so formatting is consistent. Align Prettier with this doc (e.g. double quotes, semicolons).

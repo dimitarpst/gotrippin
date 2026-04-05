@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 640" fill="none">
+  <rect width="800" height="640" rx="24" fill="#fafafa"/>
+  <rect x="32" y="32" width="736" height="120" rx="16" fill="url(#cover)"/>
+  <defs>
+    <linearGradient id="cover" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fecaca"/>
+      <stop offset="100%" stop-color="#c7d2fe"/>
+    </linearGradient>
+  </defs>
+  <text x="48" y="92" font-family="ui-sans-serif,system-ui,sans-serif" font-size="28" font-weight="700" fill="#18181b">Your trip</text>
+  <text x="48" y="124" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" fill="#52525b">Timeline preview (placeholder)</text>
+  <g transform="translate(32 188)">
+    <rect width="736" height="88" rx="14" fill="#fff" stroke="#e4e4e7" stroke-width="2"/>
+    <rect x="16" y="24" width="40" height="40" rx="8" fill="#f4f4f5"/>
+    <text x="72" y="40" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="600" fill="#18181b">Day 1</text>
+    <text x="72" y="64" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" fill="#71717a">Stops and activities</text>
+  </g>
+  <g transform="translate(32 292)">
+    <rect width="736" height="88" rx="14" fill="#fff" stroke="#e4e4e7" stroke-width="2"/>
+    <rect x="16" y="24" width="40" height="40" rx="8" fill="#f4f4f5"/>
+    <text x="72" y="40" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="600" fill="#18181b">Day 2</text>
+    <text x="72" y="64" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" fill="#71717a">Route continues</text>
+  </g>
+  <g transform="translate(32 396)">
+    <rect width="736" height="88" rx="14" fill="#fff" stroke="#e4e4e7" stroke-width="2"/>
+    <rect x="16" y="24" width="40" height="40" rx="8" fill="#f4f4f5"/>
+    <text x="72" y="40" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="600" fill="#18181b">Day 3</text>
+    <text x="72" y="64" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" fill="#71717a">More to plan</text>
+  </g>
+  <text x="400" y="620" text-anchor="middle" fill="#71717a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="22">Placeholder � replace with real timeline screenshot</text>
+</svg>

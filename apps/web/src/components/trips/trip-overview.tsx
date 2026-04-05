@@ -16,6 +16,8 @@ import {
   Lock,
   CreditCard,
   Bed,
+  Plane,
+  MapPin,
   Utensils,
   DollarSign,
   Zap,
@@ -68,7 +70,9 @@ import { useRouteDirections } from "@/hooks"
 import { getLegColor, isSolidRouteColor } from "@/lib/route-colors"
 
 export interface TripOverviewActions {
-  onNavigate: (screen: "activity" | "flight" | "timeline" | "weather" | "map") => void
+  onNavigate: (
+    screen: "activity" | "flight" | "lodging" | "place" | "weather" | "map",
+  ) => void
   onOpenLocation?: (locationId: string) => void
   onBack: () => void
   onEdit?: () => void
@@ -107,6 +111,14 @@ export interface TripOverviewWeather {
 
 /** Max stops shown in the overview itinerary card before "show all". */
 const ITINERARY_OVERVIEW_VISIBLE_MAX = 3
+
+/** Same glassy black treatment as the floating header (search / close). */
+const TRIP_OVERVIEW_QUICK_ACTION_GLASS_CLASS =
+  "mx-auto flex size-[4.5rem] shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white shadow-none backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent sm:size-[5rem]"
+
+/** Primary add — brand coral, aligned with header border weight. */
+const TRIP_OVERVIEW_QUICK_ACTION_CORAL_CLASS =
+  "mx-auto flex size-[4.5rem] shrink-0 items-center justify-center rounded-full border border-white/25 bg-[#ff7670] text-white shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent sm:size-[5rem]"
 
 /** Pixels above the measured hero bottom where the accent reaches full opacity (then stays solid to viewport bottom). */
 const ACCENT_SCROLL_SOLID_START_OFFSET_PX = 28
@@ -707,7 +719,7 @@ export default function TripOverview({
         onScroll={handleScroll}
       >
         <motion.div
-          className="relative z-10 px-6 pt-60 pb-6 text-center"
+          className="relative z-10 px-6 pt-60 pb-2 text-center"
           initial="hidden"
           animate={showCollapsedHeaderChrome ? "hidden" : "visible"}
           variants={{
@@ -731,7 +743,7 @@ export default function TripOverview({
           }}
         >
           <motion.h1
-            className="text-5xl font-bold text-white mb-3 drop-shadow-lg"
+            className="text-5xl font-bold text-white mb-2 drop-shadow-lg"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0 },
@@ -740,7 +752,7 @@ export default function TripOverview({
             {trip.destination || trip.title || t('trips.untitled_trip')}
           </motion.h1>
           <motion.p
-            className="text-white/90 text-base mb-1 drop-shadow-md"
+            className="text-white/90 text-base mb-0.5 drop-shadow-md"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0 },
@@ -762,27 +774,81 @@ export default function TripOverview({
 
 
         <motion.div
-          className="relative z-10 flex flex-col items-center gap-2 pt-8 pb-12"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3 }}
+          className="relative z-10 w-full pt-2 pb-4 px-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, type: "spring", stiffness: 320, damping: 28 }}
         >
-          <motion.button
-            onClick={() => onNavigate("activity")}
-            className="w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl"
-            style={{
-              background: "rgba(0, 0, 0, 0.3)",
-            }}
-            whileHover={{
-              scale: 1.1,
-              rotate: 90,
-            }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          <div
+            className="grid w-full grid-cols-4 gap-x-3 sm:gap-x-5"
+            role="group"
+            aria-label={t("trip_overview.quick_actions_group_a11y")}
           >
-            <Plus className="w-8 h-8 text-white" strokeWidth={2.5} />
-          </motion.button>
-          <span className="text-white/80 text-sm">{t('trip_overview.add_first_activity')}</span>
+            <div className="flex min-w-0 flex-col items-center gap-2 text-center">
+              <motion.button
+                type="button"
+                onClick={() => onNavigate("activity")}
+                className={TRIP_OVERVIEW_QUICK_ACTION_CORAL_CLASS}
+                aria-label={t("trip_overview.quick_add_a11y")}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              >
+                <Plus className="size-7 sm:size-8" strokeWidth={1.65} aria-hidden />
+              </motion.button>
+              <span className="w-full px-0.5 text-[11px] font-medium leading-tight text-white sm:text-xs">
+                {t("trip_overview.quick_add")}
+              </span>
+            </div>
+            <div className="flex min-w-0 flex-col items-center gap-2 text-center">
+              <motion.button
+                type="button"
+                onClick={() => onNavigate("flight")}
+                className={TRIP_OVERVIEW_QUICK_ACTION_GLASS_CLASS}
+                aria-label={t("trip_overview.quick_flight_a11y")}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              >
+                <Plane className="size-7 sm:size-8" strokeWidth={1.65} aria-hidden />
+              </motion.button>
+              <span className="w-full px-0.5 text-[11px] font-medium leading-tight text-white sm:text-xs">
+                {t("trip_overview.quick_flight")}
+              </span>
+            </div>
+            <div className="flex min-w-0 flex-col items-center gap-2 text-center">
+              <motion.button
+                type="button"
+                onClick={() => onNavigate("lodging")}
+                className={TRIP_OVERVIEW_QUICK_ACTION_GLASS_CLASS}
+                aria-label={t("trip_overview.quick_lodging_a11y")}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              >
+                <Bed className="size-7 sm:size-8" strokeWidth={1.65} aria-hidden />
+              </motion.button>
+              <span className="w-full px-0.5 text-[11px] font-medium leading-tight text-white sm:text-xs">
+                {t("trip_overview.quick_lodging")}
+              </span>
+            </div>
+            <div className="flex min-w-0 flex-col items-center gap-2 text-center">
+              <motion.button
+                type="button"
+                onClick={() => onNavigate("place")}
+                className={TRIP_OVERVIEW_QUICK_ACTION_GLASS_CLASS}
+                aria-label={t("trip_overview.quick_place_a11y")}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              >
+                <MapPin className="size-7 sm:size-8" strokeWidth={1.65} aria-hidden />
+              </motion.button>
+              <span className="w-full px-0.5 text-[11px] font-medium leading-tight text-white sm:text-xs">
+                {t("trip_overview.quick_place")}
+              </span>
+            </div>
+          </div>
         </motion.div>
 
         <div className="relative z-10 px-6 pb-8 space-y-4">
@@ -842,9 +908,7 @@ export default function TripOverview({
 
           {/* Itinerary Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-            <Card
-              className="border-border dark:border-white/[0.08] rounded-2xl p-5 bg-card text-card-foreground"
-            >
+            <Card className="border-border dark:border-white/[0.08] rounded-2xl p-5 bg-card text-card-foreground shadow-none">
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-3">
                 <div
@@ -908,7 +972,7 @@ export default function TripOverview({
                             <span className="flex-1 w-px bg-border mt-1 dark:bg-white/15" />
                           )}
                         </div>
-                        <div className="flex-1 rounded-2xl border border-border bg-muted/35 px-4 py-3 shadow-sm transition-colors group-hover:border-primary/20 dark:bg-white/[0.04] dark:border-white/[0.08] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] dark:group-hover:border-white/[0.15]">
+                        <div className="flex-1 rounded-2xl border border-border bg-muted/35 px-4 py-3 transition-colors group-hover:border-primary/20 dark:bg-white/[0.04] dark:border-white/[0.08] dark:group-hover:border-white/[0.15]">
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="flex items-center gap-3 mt-0.5">
                               <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
@@ -959,28 +1023,16 @@ export default function TripOverview({
               </div>
               )}
 
-              <button
-                type="button"
-                className="font-semibold text-sm"
-                style={{ color: "#ff7670" }}
-                onClick={() => onNavigate("timeline")}
-              >
-                {duration > 0
-                  ? t("trip_overview.view_all_days_count", {
-                      count: duration,
-                    })
-                  : t("trip_overview.view_all_days")}
-              </button>
             </Card>
           </motion.div>
 
           {/* Route Map */}
           {!loadingRoute && hasRoute && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.52 }}>
-              <div onClick={() => onNavigate("map" as any)}>
-                <Card className="relative overflow-hidden border-white/[0.08] rounded-2xl h-48 cursor-pointer group shadow-[0_8px_30px_rgba(0,0,0,0.25)] bg-[#0e0b10]">
-                  {/* Map Background */}
-                  <div className="absolute inset-0 z-0 pointer-events-none group-hover:scale-105 transition-transform duration-700 ease-out">
+              <div onClick={() => onNavigate("map")}>
+                <Card className="relative overflow-hidden border-white/[0.08] rounded-2xl min-h-[220px] h-[min(42vw,320px)] sm:h-64 cursor-pointer group shadow-none bg-[#0e0b10]">
+                  {/* Map: avoid CSS scale on hover — it blurs the WebGL canvas; use overlays only. */}
+                  <div className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-500 group-hover:opacity-95">
                     <MapView
                       waypoints={tripLocationsToWaypoints(routeLocations)}
                       routeLineGeo={routeGeo}
@@ -1018,7 +1070,7 @@ export default function TripOverview({
 
           {/* Weather Widget */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
-            <div onClick={() => onNavigate("weather" as any)}>
+            <div onClick={() => onNavigate("weather")}>
               {(() => {
                 const weatherLocationLabel =
                   derivedLocations[0]?.location_name || trip.destination || trip.title || "—"

@@ -16,7 +16,15 @@ Supabase Security:
 To plan:
   ☐ How to display the activities on the map - together with the route? or seperate?
   ☐ How to display the weather on the map?
-  
+
+Trip UX (Tripsy-inspired — tight density, map + sheets):
+  ✔ Phase 1 — Trip hub horizontal action cluster (+ Activity, Flight, Lodging/Place where routes exist); replace isolated large FAB and trim vertical padding around it (`trip-overview.tsx`)
+  ☐ Phase 2 — Overview density tokens: tighter card padding, section gaps, list spacing (same file; optional small shared pattern for cards on this page)
+  ☐ Phase 3 — Itinerary preview rows: shallower rows, typography hierarchy, right-aligned meta where it fits, optional hairline dividers between stops (`trip-overview.tsx`)
+  ☐ Phase 4 — Route map bottom sheet: compact bottom bar (menu / more / primary +) and sheet content using same density rules (`RouteMapPageClient.tsx` + shared `Drawer` patterns)
+  ☐ Phase 5 — Timeline and per-day location views: reuse the same spacing scale (`app/trips/[id]/timeline/**`)
+  ☐ Later — Expenses & documents cards (when features exist); match tight card + list pattern for consistency
+
 Archive:
   ✔ (from Todo, 2026-04-02) Teacher feedback — when changing the main date, update the date under it as well — shift route + activity datetimes by start delta; trip overview date picker dots + long-press detail toast
   ✔ (from Todo, 2026-04-02) Teacher feedback — trip photos should be uploadable by the person — cover: device upload to R2 (`trip-images/uploads/{userId}/…`), `photos.source=upload`, create/edit trip + background picker @done(26-03-31)
