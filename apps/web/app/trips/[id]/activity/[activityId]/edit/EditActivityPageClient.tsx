@@ -20,7 +20,7 @@ export default function EditActivityPageClient({ trip, shareCode, activity }: Ed
   };
 
   const handleSave = () => {
-    router.push(`/trips/${shareCode}/timeline`);
+    router.push(`/trips/${shareCode}?itinerary=1`);
   };
 
   return (

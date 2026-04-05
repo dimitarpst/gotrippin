@@ -3,7 +3,7 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import Map, { Marker, Source, Layer, useMap } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
-import type { MapMouseEvent } from "mapbox-gl";
+import type { Map as MapboxMap, MapMouseEvent } from "mapbox-gl";
 import {
   recolorRouteGeoByWaypointMarkers,
   straightLineLegs,
@@ -30,6 +30,22 @@ const DEFAULT_ZOOM = 3;
 const MAPBOX_BASE_STYLE = "mapbox://styles/mapbox/streets-v12";
 const FOCUS_ZOOM = 14;
 const FLY_DURATION_MS = 1200;
+
+/**
+ * `resize()` after `requestAnimationFrame` can run after React has unmounted the map
+ * (navigation, Strict Mode, preview cards). Mapbox then touches a disposed `_canvas`.
+ */
+function safeMapResize(map: MapboxMap) {
+  try {
+    const canvas = map.getCanvas();
+    if (!canvas.isConnected) return;
+    map.resize();
+  } catch (cause) {
+    if (process.env.NODE_ENV === "development") {
+      console.debug("[MapView] resize skipped (map not ready or disposed)", cause);
+    }
+  }
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const LINE_PAINT: Record<string, any> = {
@@ -201,8 +217,10 @@ export default function MapView({
         interactive={interactive}
         onLoad={(e) => {
           // Re-sync canvas to container after layout (embeds in cards / drawers often start at wrong DPR).
-          e.target.resize();
-          requestAnimationFrame(() => e.target.resize());
+          const map = e.target;
+          safeMapResize(map);
+          const rafId = requestAnimationFrame(() => safeMapResize(map));
+          map.once("remove", () => cancelAnimationFrame(rafId));
         }}
         onClick={(e: MapMouseEvent) => {
           if (!onMapClick) return;

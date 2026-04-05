@@ -67,7 +67,7 @@ import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 import { toast } from "sonner"
 import { MapView, tripLocationsToWaypoints } from "@/components/maps"
 import { useRouteDirections } from "@/hooks"
-import { getLegColor, isSolidRouteColor } from "@/lib/route-colors"
+import { getStablePaletteColorForLocationId, isSolidRouteColor } from "@/lib/route-colors"
 
 export interface TripOverviewActions {
   onNavigate: (
@@ -969,7 +969,7 @@ export default function TripOverview({
                       const stopDotColor =
                         location.marker_color != null && isSolidRouteColor(location.marker_color)
                           ? location.marker_color
-                          : getLegColor(index)
+                          : getStablePaletteColorForLocationId(location.id)
                       return (
                         <div
                           key={location.id}

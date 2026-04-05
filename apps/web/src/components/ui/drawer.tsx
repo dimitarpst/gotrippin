@@ -70,10 +70,13 @@ function DrawerContent({
   children,
   onAnimationEnd,
   handleProps,
+  overlayClassName,
   ...props
 }: React.ComponentProps<typeof VaulDrawer.Content> & {
   /** Optional props for Vaul’s drag handle (use with `handleOnly` + `snapPoints` on `Drawer`). Pass `children` only if you need extra markup; default is Vaul’s built-in pill only. */
   handleProps?: React.ComponentProps<typeof VaulDrawer.Handle>;
+  /** Merged into `DrawerOverlay` (e.g. `z-[100]` when chrome above the default overlay z-50 must be dimmed). */
+  overlayClassName?: string;
 }) {
   const { t } = useTranslation();
   const ctx = React.useContext(DrawerContext);
@@ -97,7 +100,7 @@ function DrawerContent({
 
   return (
     <DrawerPortal>
-      <DrawerOverlay />
+      <DrawerOverlay className={overlayClassName} />
       <VaulDrawer.Content
         onAnimationEnd={handleAnimationEnd}
         className={cn(

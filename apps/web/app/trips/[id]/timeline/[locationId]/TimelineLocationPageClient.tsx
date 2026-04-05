@@ -62,7 +62,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
     typeof process !== "undefined" ? process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN : undefined
   const canShowRouteMap = mapWaypoints.length > 0 && Boolean(mapboxToken)
 
-  const handleBack = () => router.push(`/trips/${shareCode}/timeline`)
+  const handleBack = () => router.push(`/trips/${shareCode}?itinerary=1`)
 
   const heroStyle = coverImageUrl
     ? { backgroundImage: `url(${coverImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
@@ -71,7 +71,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
   return (
     <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
       <AuroraBackground />
-      <div className="relative z-10 space-y-4 px-4 py-4 sm:px-6">
+      <div className="relative z-10 w-full space-y-4 px-6 pt-4 pb-8">
         <div className="flex items-center justify-between">
           <button
             onClick={handleBack}
@@ -153,7 +153,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                 <Button
                   variant="outline"
                   className="border-white/35 bg-black/30 text-white shadow-sm backdrop-blur-md hover:bg-black/45 hover:text-white focus-visible:ring-white/40 dark:border-white/30 dark:bg-white/10 dark:hover:bg-white/18 dark:hover:text-white"
-                  onClick={() => router.push(`/trips/${shareCode}/timeline`)}
+                  onClick={() => router.push(`/trips/${shareCode}?itinerary=1`)}
                 >
                   {t("trip_overview.view_all_days", { defaultValue: "Back to timeline" })}
                 </Button>

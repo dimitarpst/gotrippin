@@ -21,10 +21,15 @@ async function fetchTripDetailWithRetry(shareCode: string, token: string) {
 
 export default async function TripDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ itinerary?: string }>;
 }) {
   const { id: shareCode } = await params;
+  const query = await searchParams;
+  const initialItineraryOpen =
+    query.itinerary === "1" || query.itinerary === "true" || query.itinerary === "open";
 
   const supabase = await createServerSupabaseClient();
   const {
@@ -90,6 +95,7 @@ export default async function TripDetailPage({
       activitiesError={activitiesError}
       weatherError={weatherError}
       shareCode={shareCode}
+      initialItineraryOpen={initialItineraryOpen}
     />
   );
 }

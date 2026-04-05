@@ -20,7 +20,12 @@ import {
   Bed,
   X,
 } from "lucide-react";
-import { KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
+import {
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { ColorPicker } from "@/components/color-picker";
 import { getLegColor, getStablePaletteColorForLocationId, isSolidRouteColor } from "@/lib/route-colors";
@@ -110,11 +115,10 @@ export default function RouteMapPageClient({
   const [showAlongPanel, setShowAlongPanel] = useState(false);
   const [alongCategory, setAlongCategory] = useState<"food" | "sights" | "stays" | "other" | "all">("food");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // PointerSensor (not TouchSensor delay): Vaul sets touch-action:none on [data-vaul-drawer], which
+  // breaks delayed touch activation; distance-based pointer drag works for mouse + touch.
   const routeReorderSensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 200, tolerance: 5 },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
@@ -303,10 +307,7 @@ export default function RouteMapPageClient({
   const canExitWizard = locations.length >= 2;
 
   const hideFloatingRouteBar =
-    open ||
-    Boolean(previewPlace) ||
-    showAlongPanel ||
-    (routeTourOpen && routeTourStep === 0);
+    open || Boolean(previewPlace) || showAlongPanel;
 
   const handleShowRouteTourAgain = () => {
     setRouteTourStep(0);
@@ -504,7 +505,7 @@ export default function RouteMapPageClient({
       {/* Wizard: step bar is transparent so aurora shows through (like create-trip step 2). Gradient bar overlays map only. */}
       {isWizard && (
         <div
-          className="shrink-0 relative z-10 px-6 py-3 flex items-center justify-between"
+          className="shrink-0 relative z-[110] px-6 py-3 flex items-center justify-between"
           role="region"
           aria-label={t("trips.walkthrough", { defaultValue: "Walkthrough" })}
         >
@@ -535,7 +536,7 @@ export default function RouteMapPageClient({
       <div className="flex-1 relative min-h-0">
         {isWizard && (
           <div
-            className="absolute top-0 left-0 right-0 z-10 px-6 py-3 flex items-center justify-between gap-4 w-full"
+            className="absolute top-0 left-0 right-0 z-[110] px-6 py-3 flex items-center justify-between gap-4 w-full"
             style={{
               background: "linear-gradient(to bottom, var(--color-background) 0%, transparent 100%)",
             }}
@@ -570,16 +571,6 @@ export default function RouteMapPageClient({
                 aria-label={t("trip_overview.show_route_tips_again", { defaultValue: "Show guide again" })}
               >
                 <HelpCircle className="w-5 h-5" />
-              </button>
-              <button
-                type="button"
-                id="route-search-button"
-                onClick={() => setSearchOpen(true)}
-                disabled={routeTourOpen}
-                className="w-10 h-10 rounded-full bg-black/40 border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors disabled:opacity-40 disabled:hover:bg-black/40"
-                aria-label={t("trip_overview.route_search_dialog_title")}
-              >
-                <Search className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -622,7 +613,7 @@ export default function RouteMapPageClient({
 
         {/* Non-wizard: overlay with back + title + search */}
         {!isWizard && (
-          <div className="absolute top-0 left-0 right-0 z-20 p-4 pt-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+          <div className="absolute top-0 left-0 right-0 z-[110] p-4 pt-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
             <div className="flex items-center gap-4 max-w-5xl mx-auto">
               <button
                 onClick={() => router.push(`/trips/${shareCode}`)}
@@ -660,16 +651,6 @@ export default function RouteMapPageClient({
                   aria-label={t("trip_overview.show_route_tips_again", { defaultValue: "Show guide again" })}
                 >
                   <HelpCircle className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  id="route-search-button"
-                  onClick={() => setSearchOpen(true)}
-                  disabled={routeTourOpen}
-                  className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors shadow-lg disabled:opacity-40 disabled:hover:bg-black/40"
-                  aria-label={t("trip_overview.route_search_dialog_title")}
-                >
-                  <Search className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -950,12 +931,13 @@ export default function RouteMapPageClient({
         onOpenChange={handleDrawerOpenChange}
         onOpenComplete={handleDrawerOpenComplete}
         onCloseComplete={handleDrawerCloseComplete}
-        modal={false}
+        modal
         handleOnly
         dismissible
       >
         <DrawerContent
           id="route-drawer-root"
+          overlayClassName="z-[100]"
           className={cn(
             "border-none bg-black/90 backdrop-blur-2xl max-w-5xl mx-auto px-0",
             "!mt-0 mb-0 !z-[200]",
@@ -1225,7 +1207,7 @@ export default function RouteMapPageClient({
 
       <div
         className={cn(
-          "pointer-events-none fixed left-0 right-0 z-[60] mx-auto flex w-full justify-center px-4",
+          "pointer-events-none fixed left-0 right-0 z-[110] mx-auto flex w-full justify-center px-4",
           "bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))]",
           hideFloatingRouteBar && "translate-y-2 opacity-0",
         )}
@@ -1298,6 +1280,7 @@ export default function RouteMapPageClient({
 
         <button
           type="button"
+          id="route-search-button"
           onClick={() => setSearchOpen(true)}
           disabled={routeTourOpen}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/70 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80 disabled:pointer-events-none disabled:opacity-40"
@@ -1375,7 +1358,7 @@ export default function RouteMapPageClient({
             <TourSpotlight />
             <TourSpotlightRing className="rounded-2xl border-2 border-primary shadow-[0_0_30px_rgba(255, 118, 112,0.45)]" />
 
-            <TourStep target="#route-search-button" side="bottom">
+            <TourStep target="#route-search-button" side="top">
               <TourArrow />
               <TourClose />
               <TourHeader className="items-start text-left sm:text-left">

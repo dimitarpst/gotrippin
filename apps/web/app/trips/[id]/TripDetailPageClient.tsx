@@ -10,6 +10,7 @@ import type {
   TripOverviewTimeline,
   TripOverviewWeather,
 } from "@/components/trips/trip-overview";
+import { TripItineraryDrawer } from "@/components/trips/trip-itinerary-drawer";
 import { TripScheduleRepairDrawer } from "@/components/trips/trip-schedule-repair-drawer";
 import { updateTripAction, deleteTripAction } from "@/actions/trips";
 import { toast } from "sonner";
@@ -43,6 +44,8 @@ interface TripDetailPageClientProps {
   weatherError: string | null;
   shareCode: string;
   unassignedActivities: Activity[];
+  /** Open itinerary drawer on load (e.g. `/trips/x?itinerary=1`). */
+  initialItineraryOpen?: boolean;
 }
 
 export default function TripDetailPageClient({
@@ -57,9 +60,12 @@ export default function TripDetailPageClient({
   weatherError,
   shareCode,
   unassignedActivities,
+  initialItineraryOpen = false,
 }: TripDetailPageClientProps) {
   const { t } = useTranslation();
   const router = useRouter();
+
+  const [itineraryDrawerOpen, setItineraryDrawerOpen] = useState(initialItineraryOpen);
 
   const [scheduleRepair, setScheduleRepair] = useState<ScheduleRepairState | null>(null);
   const [repairDrawerOpen, setRepairDrawerOpen] = useState(false);
@@ -75,6 +81,21 @@ export default function TripDetailPageClient({
     setScheduleRepair(state);
     setRepairDrawerOpen(true);
   }, []);
+
+  const itineraryLocations = useMemo(() => {
+    const raw = timelineLocations.length > 0 ? timelineLocations : routeLocations;
+    return [...raw].sort((a, b) => a.order_index - b.order_index);
+  }, [timelineLocations, routeLocations]);
+
+  const handleItineraryDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      setItineraryDrawerOpen(open);
+      if (!open) {
+        router.replace(`/trips/${shareCode}`, { scroll: false });
+      }
+    },
+    [router, shareCode],
+  );
 
   const scheduleNeedsAttention = useMemo(() => {
     if (!trip.start_date || !trip.end_date) {
@@ -312,11 +333,14 @@ export default function TripDetailPageClient({
           router.push(`/trips/${shareCode}/activity/new?type=custom`);
           return;
         }
+        if (screen === "timeline") {
+          setItineraryDrawerOpen(true);
+          return;
+        }
         const routes: Record<string, string> = {
           activity: `/trips/${shareCode}/activity`,
           weather: `/trips/${shareCode}/weather`,
           map: `/trips/${shareCode}/map`,
-          timeline: `/trips/${shareCode}/timeline`,
         };
         const path = routes[screen];
         if (path) router.push(path);
@@ -452,6 +476,16 @@ export default function TripDetailPageClient({
           }
         />
       </div>
+
+      <TripItineraryDrawer
+        open={itineraryDrawerOpen}
+        onOpenChange={handleItineraryDrawerOpenChange}
+        trip={trip}
+        shareCode={shareCode}
+        locations={itineraryLocations}
+        activitiesByLocation={activitiesByLocation}
+        onAfterReorder={() => router.refresh()}
+      />
 
       {scheduleRepair && trip.id ? (
         <TripScheduleRepairDrawer

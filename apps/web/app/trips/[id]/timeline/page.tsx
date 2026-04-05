@@ -1,54 +1,32 @@
-import { redirect, notFound } from "next/navigation"
-import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server"
-import { fetchTripByShareCode } from "@/lib/api/trips"
-import { getGroupedActivities, normalizeTimelineData } from "@/lib/api/activities"
-import TimelinePageClient from "./TimelinePageClient"
+import { redirect } from "next/navigation";
+import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
 
-export const dynamic = "force-dynamic"
+export const dynamic = "force-dynamic";
 
+/**
+ * Full-trip itinerary now opens as a Vaul drawer on the trip overview.
+ * Keep this route as a redirect for bookmarks and shared links.
+ */
 export default async function TimelinePage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }) {
-  const { id: shareCode } = await params
+  const { id: shareCode } = await params;
 
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/home")
+    redirect("/home");
   }
 
-  const token = await getServerAuthToken()
+  const token = await getServerAuthToken();
   if (!token) {
-    redirect("/home")
+    redirect("/home");
   }
 
-  let trip
-  try {
-    trip = await fetchTripByShareCode(shareCode, token)
-  } catch {
-    notFound()
-  }
-
-  let grouped
-  try {
-    grouped = await getGroupedActivities(trip.id, token)
-  } catch {
-    notFound()
-  }
-
-  const { locations, activitiesByLocation } = normalizeTimelineData(grouped)
-
-  return (
-    <TimelinePageClient
-      trip={trip}
-      shareCode={shareCode}
-      locations={locations}
-      activitiesByLocation={activitiesByLocation}
-    />
-  )
+  redirect(`/trips/${shareCode}?itinerary=1`);
 }

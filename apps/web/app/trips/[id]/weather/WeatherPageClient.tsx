@@ -105,7 +105,7 @@ export default function WeatherPageClient({ trip, shareCode, initialWeather, cov
   const locationWeather = selectedLocation?.weather || null
 
   return (
-    <div className="min-h-screen bg-[#0e0b10] text-white relative overflow-hidden">
+    <main className="min-h-screen bg-[#0e0b10] text-white relative overflow-hidden">
       {themeColor && (
         <>
           <div
@@ -119,7 +119,7 @@ export default function WeatherPageClient({ trip, shareCode, initialWeather, cov
         </>
       )}
 
-      <div className="relative z-10 p-4 pb-20 max-w-lg mx-auto">
+      <div className="relative z-10 w-full px-6 pt-4 pb-24">
         <WeatherPageChrome
           trip={trip}
           shareCode={shareCode}
@@ -152,6 +152,6 @@ export default function WeatherPageClient({ trip, shareCode, initialWeather, cov
           themeHex={themeHex}
         />
       </div>
-    </div>
+    </main>
   )
 }

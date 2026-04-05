@@ -54,7 +54,7 @@ export default function WeatherPageChrome({
 
   return (
     <>
-      <div className="flex items-center gap-4 mb-6 pt-2">
+      <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => router.back()}
           className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md active:scale-95 transition-transform hover:bg-white/20"
