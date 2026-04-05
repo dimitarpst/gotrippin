@@ -24,6 +24,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateTripDto } from "./dto/create-trip.dto";
 import { UpdateTripDto } from "./dto/update-trip.dto";
 import { AddMemberDto } from "./dto/add-member.dto";
+import { AddTripGalleryImageBodySchema, CoverPhotoInputSchema } from "@gotrippin/core";
 
 @ApiTags("trips")
 @Controller("trips")
@@ -108,6 +109,92 @@ export class TripsController {
       throw new BadRequestException("dominant_color is required");
     }
     return this.tripsService.updateCoverDominantColor(id, userId, body.dominant_color);
+  }
+
+  @Get(":id/gallery")
+  @ApiOperation({ summary: "List gallery images for a trip" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiResponse({ status: 200, description: "Gallery images" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  async listTripGallery(@Param("id") id: string, @Req() request: any) {
+    const userId = request.user.id;
+    return this.tripsService.listTripGalleryImages(id, userId);
+  }
+
+  @Post(":id/gallery/unsplash")
+  @ApiOperation({ summary: "Add a gallery image by downloading from Unsplash (same as trip cover flow)" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiResponse({ status: 201, description: "Gallery row created" })
+  @ApiResponse({ status: 400, description: "Invalid body or limit reached" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  async addTripGalleryFromUnsplash(
+    @Param("id") id: string,
+    @Req() request: any,
+    @Body() body: unknown,
+  ) {
+    const parsed = CoverPhotoInputSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        message: "Invalid Unsplash cover payload",
+        errors: parsed.error.flatten(),
+      });
+    }
+    const userId = request.user.id;
+    return this.tripsService.addTripGalleryImageFromUnsplash(id, userId, parsed.data);
+  }
+
+  @Post(":id/gallery/:galleryImageId/set-cover")
+  @ApiOperation({ summary: "Set trip cover to an existing gallery image" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiParam({ name: "galleryImageId", description: "trip_gallery_images.id" })
+  @ApiResponse({ status: 200, description: "Trip updated" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  @ApiResponse({ status: 404, description: "Not found" })
+  async setTripCoverFromGallery(
+    @Param("id") id: string,
+    @Param("galleryImageId") galleryImageId: string,
+    @Req() request: any,
+  ) {
+    const userId = request.user.id;
+    return this.tripsService.setTripCoverFromGalleryImage(id, userId, galleryImageId);
+  }
+
+  @Post(":id/gallery")
+  @ApiOperation({ summary: "Register a gallery image after R2 upload" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiResponse({ status: 201, description: "Gallery row created" })
+  @ApiResponse({ status: 400, description: "Invalid body or limit reached" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  async addTripGalleryImage(
+    @Param("id") id: string,
+    @Req() request: any,
+    @Body() body: unknown,
+  ) {
+    const parsed = AddTripGalleryImageBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        message: "Invalid gallery image payload",
+        errors: parsed.error.flatten(),
+      });
+    }
+    const userId = request.user.id;
+    return this.tripsService.addTripGalleryImage(id, userId, parsed.data);
+  }
+
+  @Delete(":id/gallery/:imageId")
+  @ApiOperation({ summary: "Delete a gallery image (R2 + row)" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiParam({ name: "imageId", description: "Gallery image row id" })
+  @ApiResponse({ status: 200, description: "Deleted" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  @ApiResponse({ status: 404, description: "Not found" })
+  async deleteTripGalleryImage(
+    @Param("id") id: string,
+    @Param("imageId") imageId: string,
+    @Req() request: any,
+  ) {
+    const userId = request.user.id;
+    return this.tripsService.deleteTripGalleryImage(id, imageId, userId);
   }
 
   @Put(":id")

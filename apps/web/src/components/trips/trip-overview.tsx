@@ -32,6 +32,7 @@ import {
   FileDown,
   AlertTriangle,
   NotebookPen,
+  Images,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -79,6 +80,7 @@ export interface TripOverviewActions {
       | "weather"
       | "map"
       | "notes"
+      | "gallery"
       | "timeline",
   ) => void
   onOpenLocation?: (locationId: string) => void
@@ -1150,6 +1152,36 @@ export default function TripOverview({
                   />
                 )
               })()}
+            </div>
+          </motion.div>
+
+          {/* Trip gallery */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.56 }}>
+            <div onClick={() => onNavigate("gallery")}>
+              <Card
+                className={`relative cursor-pointer overflow-hidden border-border dark:border-white/[0.08] rounded-2xl ${TRIP_OVERVIEW_CARD_PADDING} bg-card text-card-foreground transition-colors hover:bg-accent/5 dark:hover:bg-white/[0.04]`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 dark:bg-white/10">
+                      <Images className="h-5 w-5 text-primary dark:text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-base font-semibold text-foreground">
+                        {t("trip_overview.gallery_title", {
+                          defaultValue: "Trip gallery",
+                        })}
+                      </h2>
+                      <p className="text-muted-foreground mt-0.5 text-sm">
+                        {t("trip_gallery.overview_hint", {
+                          defaultValue: "Upload trip photos, zoom full screen — like notes, for pictures.",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+                </div>
+              </Card>
             </div>
           </motion.div>
 

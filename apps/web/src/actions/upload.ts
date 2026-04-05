@@ -8,7 +8,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { r2Client, AVATARS_BUCKET, getR2PublicUrl, TRIP_IMAGES_KEY_PREFIX } from "@/lib/r2";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { ApiError, fetchTripById } from "@/lib/api/trips";
+import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
 
 type PresignedResult =
   | { success: true; uploadUrl: string; key: string }
@@ -42,6 +43,84 @@ const MAX_UPLOADED_AVATARS = 3;
 /** User-scoped prefix; must match backend `ImagesService.registerUploadedTripCoverPhoto`. */
 function tripCoverUploadKey(userId: string, fileExtension: string): string {
   return `${TRIP_IMAGES_KEY_PREFIX}uploads/${userId}/${randomUUID()}.${fileExtension}`;
+}
+
+function isUuidTripId(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+function normalizeGalleryFileExtension(raw: string): string {
+  const e = raw.replace(/^\./, "").toLowerCase();
+  if (e === "jpeg") return "jpg";
+  if (e === "jpg" || e === "png" || e === "webp" || e === "gif") return e;
+  return "jpg";
+}
+
+/** Must match backend `TripsService` gallery key prefix. */
+function tripGalleryUploadKey(tripId: string, fileExtension: string): string {
+  const ext = normalizeGalleryFileExtension(fileExtension);
+  return `${TRIP_IMAGES_KEY_PREFIX}gallery/${tripId}/${randomUUID()}.${ext}`;
+}
+
+/**
+ * Nest + service role — used when direct `trip_members` read fails (RLS / policy edge cases).
+ */
+async function assertTripMembershipViaBackend(
+  tripId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const token = await getServerAuthToken();
+  if (!token) {
+    return { ok: false, error: "Authentication required" };
+  }
+
+  try {
+    await fetchTripById(tripId, token);
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof ApiError) {
+      if (e.statusCode === 401) {
+        return { ok: false, error: "Authentication required" };
+      }
+      if (e.statusCode === 403 || e.statusCode === 404) {
+        return { ok: false, error: "Not a member of this trip" };
+      }
+    }
+    console.error("Trip membership check (gallery presign, API):", e);
+    return { ok: false, error: "Could not verify trip access" };
+  }
+}
+
+async function assertUserIsTripMember(
+  tripId: string,
+  userId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isUuidTripId(tripId)) {
+    return { ok: false, error: "Invalid trip" };
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("trip_members")
+    .select("trip_id")
+    .eq("trip_id", tripId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn(
+      "Trip membership check (gallery presign): Supabase error, falling back to API:",
+      error
+    );
+    return assertTripMembershipViaBackend(tripId);
+  }
+
+  if (!data) {
+    return { ok: false, error: "Not a member of this trip" };
+  }
+
+  return { ok: true };
 }
 
 /**
@@ -179,6 +258,53 @@ export async function getPresignedTripCoverUploadUrlAction(
 /**
  * Upload trip cover: server presigns then PUTs bytes to R2 (same pattern as avatar).
  */
+/**
+ * Presigned PUT for a trip gallery image. Key is `trip-images/gallery/{tripId}/{uuid}.ext`.
+ * Caller must be a member of the trip (checked via `trip_members`).
+ */
+export async function getPresignedTripGalleryUploadUrlAction(
+  tripId: string,
+  contentType: string,
+  fileExtension: string
+): Promise<PresignedResult> {
+  const userId = await getAuthUserId();
+  if (!userId) {
+    return { success: false, error: "Authentication required" };
+  }
+
+  const member = await assertUserIsTripMember(tripId, userId);
+  if (!member.ok) {
+    return { success: false, error: member.error };
+  }
+
+  if (!ALLOWED_TYPES.includes(contentType)) {
+    return { success: false, error: "Invalid file type. Use JPEG, PNG, WebP, or GIF." };
+  }
+
+  const key = tripGalleryUploadKey(tripId, fileExtension);
+  const expectedPrefix = `${TRIP_IMAGES_KEY_PREFIX}gallery/${tripId}/`;
+  if (!key.startsWith(expectedPrefix)) {
+    return { success: false, error: "Invalid upload key" };
+  }
+
+  try {
+    const command = new PutObjectCommand({
+      Bucket: AVATARS_BUCKET,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 300 });
+    return { success: true, uploadUrl, key };
+  } catch (err) {
+    console.error("Presign trip gallery error:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to get upload URL",
+    };
+  }
+}
+
 export async function uploadTripCoverAction(formData: FormData): Promise<UploadResult> {
   const userId = await getAuthUserId();
   if (!userId) {

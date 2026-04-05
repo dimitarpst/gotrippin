@@ -3,7 +3,15 @@
  * Handles all trip-related API calls with validation
  */
 
-import type { Trip, TripCreateData, TripUpdateData, TripWeatherResponse } from "@gotrippin/core";
+import type {
+  AddTripGalleryImageBody,
+  CoverPhotoInput,
+  Trip,
+  TripCreateData,
+  TripGalleryImage,
+  TripUpdateData,
+  TripWeatherResponse,
+} from "@gotrippin/core";
 import { validateTripCreate, validateTripUpdate } from "@/lib/validation";
 import { appConfig } from "@/config/appConfig";
 import { getAuthToken } from "./auth";
@@ -100,7 +108,11 @@ export async function fetchTripById(id: string, token?: string | null): Promise<
  * Fetch a single trip by share code
  */
 export async function fetchTripByShareCode(shareCode: string, token?: string | null): Promise<Trip> {
-  return apiRequest<Trip>(`/trips/share/${shareCode}`, undefined, token);
+  return apiRequest<Trip>(
+    `/trips/share/${shareCode}`,
+    { cache: "no-store" },
+    token
+  );
 }
 
 /** Response from GET /trips/share/:shareCode/detail (one request for detail screen; web + mobile) */
@@ -197,6 +209,71 @@ export async function deleteTrip(
     `/trips/${id}`,
     {
       method: "DELETE",
+    },
+    token
+  );
+}
+
+export async function fetchTripGallery(
+  tripId: string,
+  token?: string | null
+): Promise<TripGalleryImage[]> {
+  return apiRequest<TripGalleryImage[]>(
+    `/trips/${tripId}/gallery`,
+    { cache: "no-store" },
+    token
+  );
+}
+
+export async function registerTripGalleryImage(
+  tripId: string,
+  body: AddTripGalleryImageBody,
+  token?: string | null
+): Promise<TripGalleryImage> {
+  return apiRequest<TripGalleryImage>(
+    `/trips/${tripId}/gallery`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+    token
+  );
+}
+
+export async function deleteTripGalleryImage(
+  tripId: string,
+  imageId: string,
+  token?: string | null
+): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>(`/trips/${tripId}/gallery/${imageId}`, {
+    method: "DELETE",
+  }, token);
+}
+
+export async function addTripGalleryFromUnsplash(
+  tripId: string,
+  body: CoverPhotoInput,
+  token?: string | null
+): Promise<TripGalleryImage> {
+  return apiRequest<TripGalleryImage>(
+    `/trips/${tripId}/gallery/unsplash`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+    token
+  );
+}
+
+export async function setTripCoverFromGalleryImage(
+  tripId: string,
+  galleryImageId: string,
+  token?: string | null
+): Promise<Trip> {
+  return apiRequest<Trip>(
+    `/trips/${tripId}/gallery/${galleryImageId}/set-cover`,
+    {
+      method: "POST",
     },
     token
   );

@@ -1,10 +1,46 @@
-import { Injectable, NotFoundException, ForbiddenException, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ImagesService } from '../images/images.service';
 import { TripLocationsService } from '../trip-locations/trip-locations.service';
 import { ActivitiesService } from '../activities/activities.service';
 import { WeatherService } from '../weather/weather.service';
-import type { CoverPhotoInput, TripWeatherResponse } from '@gotrippin/core';
+import type { AddTripGalleryImageBody, CoverPhotoInput, TripGalleryImage, TripWeatherResponse } from '@gotrippin/core';
+
+const MAX_TRIP_GALLERY_IMAGES = 100;
+const GALLERY_KEY_PREFIX = 'trip-images/gallery/';
+
+function assertGalleryStorageKeyForTrip(tripId: string, storageKey: string): void {
+  const expected = `${GALLERY_KEY_PREFIX}${tripId}/`;
+  if (!storageKey.startsWith(expected)) {
+    throw new BadRequestException('Invalid gallery storage key for this trip');
+  }
+  if (storageKey.includes('..')) {
+    throw new BadRequestException('Invalid gallery storage key');
+  }
+}
+
+function readTripCoverForSync(
+  trip: { cover_photo?: { id?: string; storage_key?: string } | null },
+): { id: string; storage_key: string } | null {
+  const c = trip.cover_photo;
+  if (c?.id === undefined || c.id === '' || !c.storage_key) {
+    return null;
+  }
+  return { id: c.id, storage_key: c.storage_key };
+}
+
+/** Former trip cover for promoting into trip_gallery_images when the user picks a new background. */
+function readFormerCoverForGalleryPromotion(
+  trip: { cover_photo?: { id?: string; storage_key?: string; blur_hash?: string | null } | null },
+): { id: string; storage_key: string; blur_hash: string | null } | null {
+  const c = trip.cover_photo;
+  if (c?.id === undefined || c.id === '' || !c.storage_key) {
+    return null;
+  }
+  const blur =
+    typeof c.blur_hash === 'string' && c.blur_hash.length > 0 ? c.blur_hash : null;
+  return { id: c.id, storage_key: c.storage_key, blur_hash: blur };
+}
 
 export interface TripDetailDto {
   trip: Awaited<ReturnType<TripsService['getTripByShareCode']>>;
@@ -18,6 +54,8 @@ export interface TripDetailDto {
 
 @Injectable()
 export class TripsService {
+  private readonly logger = new Logger(TripsService.name);
+
   constructor(
     private supabaseService: SupabaseService,
     private imagesService: ImagesService,
@@ -25,6 +63,46 @@ export class TripsService {
     private activitiesService: ActivitiesService,
     private weatherService: WeatherService,
   ) { }
+
+  /**
+   * If the outgoing cover is not already in `trip_gallery_images`, add it (copying to gallery R2 prefix when needed)
+   * so changing the hero does not lose that image from the trip grid.
+   */
+  private async promoteFormerCoverIntoGalleryIfNeeded(
+    tripId: string,
+    userId: string,
+    former: { id: string; storage_key: string; blur_hash: string | null },
+    newCoverPhotoId: string,
+  ): Promise<void> {
+    if (former.id === newCoverPhotoId) {
+      return;
+    }
+    const count = await this.supabaseService.countTripGalleryImages(tripId);
+    if (count >= MAX_TRIP_GALLERY_IMAGES) {
+      this.logger.warn(
+        `Trip ${tripId}: gallery at limit (${MAX_TRIP_GALLERY_IMAGES}); skipping former cover promotion`,
+      );
+      return;
+    }
+    const listed = await this.supabaseService.listTripGalleryImages(tripId);
+    if (listed.some((g) => g.storage_key === former.storage_key)) {
+      return;
+    }
+    const galleryPrefix = `${GALLERY_KEY_PREFIX}${tripId}/`;
+    const storageKeyForRow = former.storage_key.startsWith(galleryPrefix)
+      ? former.storage_key
+      : await this.imagesService.copyStorageKeyIntoTripGallery(tripId, former.storage_key);
+
+    await this.supabaseService.insertTripGalleryImage({
+      trip_id: tripId,
+      storage_key: storageKeyForRow,
+      blur_hash: former.blur_hash,
+      width: null,
+      height: null,
+      sort_order: count,
+      created_by: userId,
+    });
+  }
 
   async getTrips(userId: string) {
     try {
@@ -138,6 +216,18 @@ export class TripsService {
         Object.entries({ ...rest, ...(cover_photo_id ? { cover_photo_id } : {}) })
           .filter(([_, value]) => value !== undefined),
       );
+
+      if (cover_photo_id) {
+        const former = readFormerCoverForGalleryPromotion(trip);
+        if (former) {
+          await this.promoteFormerCoverIntoGalleryIfNeeded(
+            tripId,
+            userId,
+            former,
+            cover_photo_id,
+          );
+        }
+      }
 
       const updatedTrip = await this.supabaseService.updateTrip(tripId, filteredData);
       return updatedTrip;
@@ -307,5 +397,131 @@ export class TripsService {
       }
       throw new NotFoundException('Failed to fetch trip members');
     }
+  }
+
+  async listTripGalleryImages(tripId: string, userId: string) {
+    const trip = await this.supabaseService.getTrip(tripId, userId);
+    if (!trip) {
+      throw new ForbiddenException('Trip not found or access denied');
+    }
+    return this.supabaseService.listTripGalleryImages(tripId);
+  }
+
+  async addTripGalleryImageFromUnsplash(
+    tripId: string,
+    userId: string,
+    input: CoverPhotoInput,
+  ): Promise<TripGalleryImage> {
+    const trip = await this.supabaseService.getTrip(tripId, userId);
+    if (!trip) {
+      throw new ForbiddenException('Trip not found or access denied');
+    }
+
+    const current = await this.supabaseService.countTripGalleryImages(tripId);
+    if (current >= MAX_TRIP_GALLERY_IMAGES) {
+      throw new BadRequestException(
+        `You can upload at most ${MAX_TRIP_GALLERY_IMAGES} photos per trip`,
+      );
+    }
+
+    const { storage_key, blur_hash } =
+      await this.imagesService.downloadUnsplashImageToGalleryStorage(tripId, input);
+
+    return this.supabaseService.insertTripGalleryImage({
+      trip_id: tripId,
+      storage_key,
+      blur_hash,
+      width: null,
+      height: null,
+      sort_order: current,
+      created_by: userId,
+    });
+  }
+
+  async setTripCoverFromGalleryImage(
+    tripId: string,
+    userId: string,
+    galleryImageId: string,
+  ) {
+    const trip = await this.supabaseService.getTrip(tripId, userId);
+    if (!trip) {
+      throw new ForbiddenException('Trip not found or access denied');
+    }
+
+    const row = await this.supabaseService.getTripGalleryImageById(galleryImageId);
+    if (!row || row.trip_id !== tripId) {
+      throw new NotFoundException('Gallery image not found');
+    }
+
+    assertGalleryStorageKeyForTrip(tripId, row.storage_key);
+
+    const photoId = await this.imagesService.getOrCreatePhotoRowForStorageKey(row.storage_key);
+    const former = readFormerCoverForGalleryPromotion(trip);
+    if (former) {
+      await this.promoteFormerCoverIntoGalleryIfNeeded(tripId, userId, former, photoId);
+    }
+    return this.supabaseService.updateTrip(tripId, { cover_photo_id: photoId });
+  }
+
+  async addTripGalleryImage(tripId: string, userId: string, body: AddTripGalleryImageBody) {
+    const trip = await this.supabaseService.getTrip(tripId, userId);
+    if (!trip) {
+      throw new ForbiddenException('Trip not found or access denied');
+    }
+
+    assertGalleryStorageKeyForTrip(tripId, body.storage_key);
+
+    const current = await this.supabaseService.countTripGalleryImages(tripId);
+    if (current >= MAX_TRIP_GALLERY_IMAGES) {
+      throw new BadRequestException(
+        `You can upload at most ${MAX_TRIP_GALLERY_IMAGES} photos per trip`,
+      );
+    }
+
+    return this.supabaseService.insertTripGalleryImage({
+      trip_id: tripId,
+      storage_key: body.storage_key,
+      blur_hash: body.blur_hash ?? null,
+      width: body.width ?? null,
+      height: body.height ?? null,
+      sort_order: current,
+      created_by: userId,
+    });
+  }
+
+  async deleteTripGalleryImage(tripId: string, imageId: string, userId: string) {
+    const trip = await this.supabaseService.getTrip(tripId, userId);
+    if (!trip) {
+      throw new ForbiddenException('Trip not found or access denied');
+    }
+
+    const row = await this.supabaseService.getTripGalleryImageById(imageId);
+    if (!row || row.trip_id !== tripId) {
+      throw new NotFoundException('Gallery image not found');
+    }
+
+    assertGalleryStorageKeyForTrip(tripId, row.storage_key);
+
+    const cover = readTripCoverForSync(trip);
+    const isCover = Boolean(cover && cover.storage_key === row.storage_key);
+
+    if (isCover && cover) {
+      const all = await this.supabaseService.listTripGalleryImages(tripId);
+      const others = all.filter((g) => g.id !== imageId);
+      if (others.length > 0) {
+        const next = others[0];
+        const newPhotoId = await this.imagesService.getOrCreatePhotoRowForStorageKey(
+          next.storage_key,
+        );
+        await this.supabaseService.updateTrip(tripId, { cover_photo_id: newPhotoId });
+      } else {
+        await this.supabaseService.updateTrip(tripId, { cover_photo_id: null });
+      }
+      await this.imagesService.deletePhotoRowById(cover.id);
+    }
+
+    await this.imagesService.deleteR2Object(row.storage_key);
+    await this.supabaseService.deleteTripGalleryImageRow(imageId);
+    return { ok: true };
   }
 }

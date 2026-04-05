@@ -22,6 +22,8 @@ export {
   RemoveTripMemberSchema,
   PhotoSchema,
   CoverPhotoInputSchema,
+  TripGalleryImageSchema,
+  AddTripGalleryImageBodySchema,
   // Trip Location schemas
   TripLocationSchema,
   CreateTripLocationSchema,
@@ -53,6 +55,8 @@ export type {
   RemoveTripMember,
   Photo,
   CoverPhotoInput,
+  TripGalleryImage,
+  AddTripGalleryImageBody,
   // Trip Location types
   TripLocation,
   CreateTripLocation,

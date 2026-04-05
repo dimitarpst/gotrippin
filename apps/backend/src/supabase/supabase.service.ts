@@ -450,4 +450,67 @@ export class SupabaseService {
     });
     if (error) throw error;
   }
+
+  // --- Trip gallery (trip_gallery_images) ---
+
+  async listTripGalleryImages(tripId: string) {
+    const { data, error } = await this.supabase
+      .from('trip_gallery_images')
+      .select('id, trip_id, storage_key, blur_hash, width, height, sort_order, created_by, created_at')
+      .eq('trip_id', tripId)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async countTripGalleryImages(tripId: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('trip_gallery_images')
+      .select('*', { count: 'exact', head: true })
+      .eq('trip_id', tripId);
+
+    if (error) throw error;
+    return count ?? 0;
+  }
+
+  async getTripGalleryImageById(imageId: string) {
+    const { data, error } = await this.supabase
+      .from('trip_gallery_images')
+      .select('id, trip_id, storage_key, blur_hash, width, height, sort_order, created_by, created_at')
+      .eq('id', imageId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async insertTripGalleryImage(row: {
+    trip_id: string;
+    storage_key: string;
+    blur_hash?: string | null;
+    width?: number | null;
+    height?: number | null;
+    sort_order: number;
+    created_by: string;
+  }) {
+    const { data, error } = await this.supabase
+      .from('trip_gallery_images')
+      .insert(row)
+      .select('id, trip_id, storage_key, blur_hash, width, height, sort_order, created_by, created_at')
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async deleteTripGalleryImageRow(imageId: string) {
+    const { error } = await this.supabase
+      .from('trip_gallery_images')
+      .delete()
+      .eq('id', imageId);
+
+    if (error) throw error;
+  }
 }

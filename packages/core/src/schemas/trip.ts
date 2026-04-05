@@ -33,6 +33,29 @@ export const CoverPhotoInputSchema = z.object({
 export type Photo = z.infer<typeof PhotoSchema>;
 export type CoverPhotoInput = z.infer<typeof CoverPhotoInputSchema>;
 
+/** Row in `trip_gallery_images` — member uploads for trip lightbox grid */
+export const TripGalleryImageSchema = z.object({
+  id: z.string().uuid(),
+  trip_id: z.string().uuid(),
+  storage_key: z.string().min(1),
+  blur_hash: z.string().nullable().optional(),
+  width: z.number().int().positive().nullable().optional(),
+  height: z.number().int().positive().nullable().optional(),
+  sort_order: z.number().int(),
+  created_by: z.string().uuid(),
+  created_at: z.string(),
+});
+
+export const AddTripGalleryImageBodySchema = z.object({
+  storage_key: z.string().min(1),
+  blur_hash: z.string().nullable().optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+});
+
+export type TripGalleryImage = z.infer<typeof TripGalleryImageSchema>;
+export type AddTripGalleryImageBody = z.infer<typeof AddTripGalleryImageBodySchema>;
+
 /**
  * Zod schema for a trip
  * Matches the `public.trips` table in Supabase

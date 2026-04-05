@@ -25,6 +25,11 @@ interface BackgroundPickerProps {
   /** After a successful device upload to R2; parent saves `storage_key` on trip create/update. */
   onSelectUpload?: (payload: { storage_key: string }) => void
   defaultSearchQuery?: string
+  /**
+   * `unsplashOnly` — same Unsplash search grid as create trip, without color tab or device upload.
+   * Used e.g. trip gallery “add from Unsplash”.
+   */
+  variant?: "full" | "unsplashOnly"
 }
 
 const sampleGradients = [
@@ -45,8 +50,17 @@ const sampleGradients = [
   "linear-gradient(to bottom, #558b2f 0%, #33691e 100%)", // Deep lime green
 ]
 
-export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, onSelectUpload, defaultSearchQuery }: BackgroundPickerProps) {
+export function BackgroundPicker({
+  open,
+  onClose,
+  onSelect,
+  onSelectColor,
+  onSelectUpload,
+  defaultSearchQuery,
+  variant = "full",
+}: BackgroundPickerProps) {
   const { t } = useTranslation()
+  const unsplashOnly = variant === "unsplashOnly"
   const [activeTab, setActiveTab] = useState<"images" | "colors">("images")
   const [searchInput, setSearchInput] = useState("")
   const [hasSearched, setHasSearched] = useState(false)
@@ -92,6 +106,12 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, onSel
   }, [searchInput, setQuery, open])
 
   // Infinite scroll observer
+  useEffect(() => {
+    if (unsplashOnly && open) {
+      setActiveTab("images")
+    }
+  }, [unsplashOnly, open])
+
   useEffect(() => {
     if (!observerRef.current || activeTab !== "images") return
 
@@ -150,13 +170,18 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, onSel
             <DrawerClose asChild>
               <Button variant="ghost">{t('background_picker.cancel')}</Button>
             </DrawerClose>
-            <DrawerTitle className="mb-0">{t('background_picker.title')}</DrawerTitle>
+            <DrawerTitle className="mb-0">
+              {unsplashOnly
+                ? t("trip_gallery.unsplash_drawer_title", { defaultValue: "Unsplash" })
+                : t('background_picker.title')}
+            </DrawerTitle>
             <Button variant="ghost" onClick={onClose}>
               {t('background_picker.done')}
             </Button>
           </div>
         </DrawerHeader>
 
+        {!unsplashOnly && (
         <div className="flex gap-2 px-4 pb-4">
           <button
             onClick={() => setActiveTab("images")}
@@ -175,8 +200,9 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, onSel
             {t('background_picker.colors')}
           </button>
         </div>
+        )}
 
-        {activeTab === "images" && onSelectUpload && (
+        {!unsplashOnly && activeTab === "images" && onSelectUpload && (
           <div className="px-4 pb-3">
             <input
               ref={fileInputRef}
@@ -203,7 +229,7 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, onSel
           </div>
         )}
 
-        {activeTab === "images" && (
+        {(unsplashOnly || activeTab === "images") && (
           <div className="px-4 pb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -224,7 +250,7 @@ export function BackgroundPicker({ open, onClose, onSelect, onSelectColor, onSel
         )}
 
         <div className="flex-1 overflow-y-auto px-4 pb-6">
-              {activeTab === "images" ? (
+              {(unsplashOnly || activeTab === "images") ? (
                 <>
                   {loading ? (
                     <div className="flex items-center justify-center py-12">

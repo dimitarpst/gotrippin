@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
+import { randomUUID } from 'crypto';
 import { firstValueFrom } from 'rxjs';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import * as https from 'https';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -253,5 +254,101 @@ export class ImagesService {
 
     this.logger.log(`Registered user-uploaded trip cover ${photo.id} at ${storageKey}`);
     return photo.id;
+  }
+
+  /**
+   * Server-side copy within the CDN bucket into `trip-images/gallery/{tripId}/…`.
+   * Used when a stray cover (upload / global Unsplash path) is replaced so the old image can join the trip gallery.
+   */
+  async copyStorageKeyIntoTripGallery(tripId: string, sourceStorageKey: string): Promise<string> {
+    const extMatch = sourceStorageKey.match(/\.([a-z0-9]+)$/i);
+    const ext = extMatch ? `.${extMatch[1].toLowerCase()}` : '.jpg';
+    const destKey = `trip-images/gallery/${tripId}/${randomUUID()}${ext}`;
+    const copySourceKey = sourceStorageKey
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+    await this.r2.send(
+      new CopyObjectCommand({
+        Bucket: this.r2Bucket,
+        CopySource: `${this.r2Bucket}/${copySourceKey}`,
+        Key: destKey,
+      }),
+    );
+    this.logger.log(`Copied R2 ${sourceStorageKey} → ${destKey} for trip ${tripId} gallery`);
+    return destKey;
+  }
+
+  /** Remove an object from the public CDN bucket (idempotent if key is already gone). */
+  async deleteR2Object(storageKey: string): Promise<void> {
+    await this.r2.send(
+      new DeleteObjectCommand({
+        Bucket: this.r2Bucket,
+        Key: storageKey,
+      }),
+    );
+    this.logger.log(`Deleted R2 object: ${storageKey}`);
+  }
+
+  /**
+   * Download an Unsplash image into the trip gallery R2 prefix (not the global Unsplash cover path).
+   * Tracks download per Unsplash API rules. Does not create a `photos` row.
+   */
+  async downloadUnsplashImageToGalleryStorage(
+    tripId: string,
+    input: CoverPhotoInput,
+  ): Promise<{ storage_key: string; blur_hash: string | null }> {
+    void this.trackDownload(input.download_location);
+    const imageRes = await fetch(input.image_url);
+    if (!imageRes.ok) {
+      throw new Error(`Failed to download Unsplash image: ${imageRes.status}`);
+    }
+    const buffer = Buffer.from(await imageRes.arrayBuffer());
+    const contentType = imageRes.headers.get('content-type') ?? 'image/jpeg';
+    const storageKey = `trip-images/gallery/${tripId}/${randomUUID()}.jpg`;
+    await this.r2.send(
+      new PutObjectCommand({
+        Bucket: this.r2Bucket,
+        Key: storageKey,
+        Body: buffer,
+        ContentType: contentType,
+      }),
+    );
+    this.logger.log(`Unsplash image stored for gallery: ${storageKey}`);
+    return { storage_key: storageKey, blur_hash: input.blur_hash ?? null };
+  }
+
+  /** Reuse or create a `photos` row for an existing R2 key (e.g. gallery image as trip cover). */
+  async getOrCreatePhotoRowForStorageKey(storageKey: string): Promise<string> {
+    const supabase = this.supabaseService.getClient();
+    const { data: existing } = await supabase
+      .from('photos')
+      .select('id')
+      .eq('storage_key', storageKey)
+      .maybeSingle();
+    if (existing?.id) {
+      return existing.id;
+    }
+    const { data: photo, error } = await supabase
+      .from('photos')
+      .insert({
+        storage_key: storageKey,
+        source: 'upload',
+        unsplash_photo_id: null,
+      })
+      .select('id')
+      .single();
+    if (error) {
+      throw new Error(`Failed to create photos row: ${error.message}`);
+    }
+    return photo.id;
+  }
+
+  async deletePhotoRowById(photoId: string): Promise<void> {
+    const supabase = this.supabaseService.getClient();
+    const { error } = await supabase.from('photos').delete().eq('id', photoId);
+    if (error) {
+      throw new Error(`Failed to delete photo row: ${error.message}`);
+    }
   }
 }
