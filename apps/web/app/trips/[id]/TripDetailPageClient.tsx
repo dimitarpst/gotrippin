@@ -316,6 +316,7 @@ export default function TripDetailPageClient({
           activity: `/trips/${shareCode}/activity`,
           weather: `/trips/${shareCode}/weather`,
           map: `/trips/${shareCode}/map`,
+          timeline: `/trips/${shareCode}/timeline`,
         };
         const path = routes[screen];
         if (path) router.push(path);

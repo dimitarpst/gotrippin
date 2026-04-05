@@ -12,6 +12,8 @@ import {
   HelpCircle,
   Loader2,
   Map as MapIcon,
+  MoreHorizontal,
+  Plus,
   Search,
   Star,
   Utensils,
@@ -27,7 +29,14 @@ import type { CreateTripLocation, Trip, TripLocation, UpdateTripLocation } from 
 import { MapView, tripLocationsToWaypoints } from "@/components/maps";
 import { useAlongRoutePlaces, useRouteDirections } from "@/hooks";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import * as Sortable from "@/components/ui/sortable";
 import { DatePicker } from "@/components/trips/date-picker";
 import type { DateRange } from "react-day-picker";
@@ -112,6 +121,8 @@ export default function RouteMapPageClient({
   );
   const { results: placeResults, loading: placesLoading, error: placesError, search } = useGooglePlaces();
   const [routeTourOpen, setRouteTourOpen] = useState(false);
+  const routeTourOpenRef = useRef(routeTourOpen);
+  routeTourOpenRef.current = routeTourOpen;
   const [routeTourStep, setRouteTourStep] = useState(0);
   const [showCongrats, setShowCongrats] = useState(false);
   const hasMarkedRouteTourRef = useRef(false);
@@ -122,6 +133,10 @@ export default function RouteMapPageClient({
   const tourPendingStep4Ref = useRef(false);
   const tourJustAdvancedToStep3Ref = useRef(false);
   const tourClosingForPrevRef = useRef(false);
+  /** True after tour "Next" on drawer step until drawer is closed (covers Vaul skipping onOpenChange). */
+  const pendingTourAdvanceFromDrawerStepRef = useRef(false);
+  /** Ignore Vaul/Radix spurious onOpenChange(true) right after tour 2→3 close (drawer flicker). */
+  const suppressTourDrawerSnapOpenRef = useRef(false);
 
   // When drawer opens for tour step 3, advance only after open animation completes (event-driven).
   const handleDrawerOpenComplete = useCallback(() => {
@@ -136,7 +151,10 @@ export default function RouteMapPageClient({
   // We advance in handleDrawerOpenChange; this callback is only for Vaul's unreliable onAnimationEnd.
   const handleDrawerCloseComplete = useCallback(() => {
     if (!tourPendingStep4Ref.current) return;
-    // Intentionally do nothing - keep tourPendingStep4Ref true so tour stays open
+    // Drawer has finished closing; release guard so the tour can dismiss and outside interaction works again.
+    queueMicrotask(() => {
+      tourPendingStep4Ref.current = false;
+    });
   }, []);
 
   // After we've advanced to step 3, focus the Next button once the step popover is in the DOM (frame-based, no static ms).
@@ -158,6 +176,19 @@ export default function RouteMapPageClient({
     schedule();
     return () => cancelAnimationFrame(rafId);
   }, [routeTourStep]);
+
+  // If Vaul omits onOpenChange(false), still advance past the drawer spotlight once `open` becomes false.
+  useEffect(() => {
+    if (open || !routeTourOpen) return;
+    const pendingBefore = pendingTourAdvanceFromDrawerStepRef.current;
+    if (!pendingBefore) return;
+    pendingTourAdvanceFromDrawerStepRef.current = false;
+    setRouteTourStep((step) => {
+      if (step !== 2) return step;
+      tourPendingStep4Ref.current = true;
+      return 3;
+    });
+  }, [open, routeTourOpen]);
 
   // "You're all set" when landing on route page after creating trip (wizard + 1 stop).
   useEffect(() => {
@@ -244,7 +275,9 @@ export default function RouteMapPageClient({
   };
 
   const handleRouteTourOpenChange = (openTour: boolean) => {
-    if (!openTour && (tourPendingStep3Ref.current || tourPendingStep4Ref.current)) {
+    const blocked =
+      !openTour && (tourPendingStep3Ref.current || tourPendingStep4Ref.current);
+    if (blocked) {
       return;
     }
     setRouteTourOpen(openTour);
@@ -269,8 +302,13 @@ export default function RouteMapPageClient({
     stopNames.length > 1 ? `${stopNames[0]} \u2192 ${stopNames[stopNames.length - 1]}` : stopNames[0] ?? "";
   const canExitWizard = locations.length >= 2;
 
+  const hideFloatingRouteBar =
+    open ||
+    Boolean(previewPlace) ||
+    showAlongPanel ||
+    (routeTourOpen && routeTourStep === 0);
+
   const handleShowRouteTourAgain = () => {
-    if (!isWizard) return;
     setRouteTourStep(0);
     setRouteTourOpen(true);
   };
@@ -280,9 +318,37 @@ export default function RouteMapPageClient({
       tourPendingStep3Ref.current = true;
       setOpen(true);
     } else if (routeTourStep === 2) {
-      tourPendingStep4Ref.current = true;
-      setOpen(false);
-      // Step 4 advances in handleDrawerCloseComplete when drawer close animation completes
+      // Drawer already closed (e.g. user dismissed sheet first): onOpenChange(false) never runs — advance here.
+      if (!open) {
+        pendingTourAdvanceFromDrawerStepRef.current = false;
+        tourPendingStep4Ref.current = true;
+        setRouteTourStep(3);
+        queueMicrotask(() => {
+          tourPendingStep4Ref.current = false;
+        });
+        return;
+      }
+      // Drawer open: only calling setOpen(false) does not run handleDrawerOpenChange; Vaul often omits
+      // onOpenChange when the parent sets controlled `open`, so closingAdvance (2→3) never runs.
+      handleDrawerOpenChange(false);
+      // If closingAdvance did not run (stale tourClosingForPrevRef, etc.), the drawer still closes but
+      // the tour stays on 2 — fix after the current stack so state is consistent.
+      queueMicrotask(() => {
+        if (!routeTourOpenRef.current) return;
+        setRouteTourStep((s) => {
+          if (s !== 2) return s;
+          tourPendingStep3Ref.current = false;
+          tourPendingStep4Ref.current = true;
+          pendingTourAdvanceFromDrawerStepRef.current = false;
+          suppressTourDrawerSnapOpenRef.current = true;
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              suppressTourDrawerSnapOpenRef.current = false;
+            });
+          });
+          return 3;
+        });
+      });
     } else if (routeTourStep === 4) {
       tourPendingStep4Ref.current = false;
       setOpen(false);
@@ -303,6 +369,7 @@ export default function RouteMapPageClient({
       // Step 3 shows in handleDrawerOpenComplete when drawer open animation completes
     } else if (routeTourStep === 2) {
       tourClosingForPrevRef.current = true;
+      pendingTourAdvanceFromDrawerStepRef.current = false;
       setRouteTourStep(1);
       setOpen(false);
     } else {
@@ -311,13 +378,37 @@ export default function RouteMapPageClient({
   };
 
   const handleDrawerOpenChange = (nextOpen: boolean) => {
-    // Only block drawer close on steps 4–5. On step 3, allow close so first Next click works (Vaul fires onOpenChange before our click).
-    const willBlock = !nextOpen && routeTourOpen && routeTourStep >= 3;
+    // Block drawer close only on the final guide step (index 4). Using >= 3 wrongly blocked the *second*
+    // onOpenChange(false) after 2→3: step was already 3, we returned early and skipped setOpen(false), desyncing Vaul.
+    const willBlock = !nextOpen && routeTourOpen && routeTourStep >= 4;
+    const closingAdvance =
+      !nextOpen &&
+      routeTourOpen &&
+      routeTourStep === 2 &&
+      !tourClosingForPrevRef.current;
     if (willBlock) return;
+
+    if (nextOpen && suppressTourDrawerSnapOpenRef.current) {
+      // Avoid stranding tourClosingForPrevRef when we bail out early (breaks closingAdvance on the next close).
+      tourClosingForPrevRef.current = false;
+      return;
+    }
+
+    if (closingAdvance) {
+      tourPendingStep3Ref.current = false;
+      suppressTourDrawerSnapOpenRef.current = true;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          suppressTourDrawerSnapOpenRef.current = false;
+        });
+      });
+    }
+
     setOpen(nextOpen);
-    // When closing from step 3 (user clicked Next), advance to step 4. Do NOT advance when closing for Previous (step 3→2).
-    if (!nextOpen && routeTourOpen && routeTourStep === 2 && !tourClosingForPrevRef.current) {
+    // Drawer spotlight is routeTourStep === 2; closing advances to along (3). Skip when Previous moved 2→1.
+    if (closingAdvance) {
       tourPendingStep4Ref.current = true;
+      pendingTourAdvanceFromDrawerStepRef.current = false;
       setRouteTourStep(3);
     }
     tourClosingForPrevRef.current = false;
@@ -548,16 +639,28 @@ export default function RouteMapPageClient({
                 </span>
               </div>
               <div className="pointer-events-auto flex items-center gap-2">
-                {alongRoute.places.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAlongPanel((prev) => !prev)}
-                    className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/60 transition-colors shadow-lg"
-                    aria-label={t("trip_overview.route_along_label", { defaultValue: "Along this route" })}
-                  >
-                    <Compass className="w-5 h-5" />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  id="route-along-button"
+                  onClick={() => {
+                    if (locations.length < 2 || alongRoute.places.length === 0) return;
+                    setShowAlongPanel((prev) => !prev);
+                  }}
+                  disabled={locations.length < 2 || alongRoute.places.length === 0}
+                  className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white shadow-lg transition-colors hover:bg-black/60 disabled:pointer-events-none disabled:opacity-40 disabled:hover:bg-black/40"
+                  aria-label={t("trip_overview.route_along_label", { defaultValue: "Along this route" })}
+                >
+                  <Compass className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  id="route-guide-button"
+                  onClick={handleShowRouteTourAgain}
+                  className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white/90 shadow-lg transition-colors hover:bg-white/20"
+                  aria-label={t("trip_overview.show_route_tips_again", { defaultValue: "Show guide again" })}
+                >
+                  <HelpCircle className="w-5 h-5" />
+                </button>
                 <button
                   type="button"
                   id="route-search-button"
@@ -697,7 +800,14 @@ export default function RouteMapPageClient({
       </Dialog>
 
       {/* Bottom overlay stack: confirm card + along-route panel */}
-      <div className="fixed bottom-4 left-0 right-0 z-30 px-4 space-y-3 pointer-events-none">
+      <div
+        className={cn(
+          "fixed left-0 right-0 z-30 px-4 space-y-3 pointer-events-none",
+          hideFloatingRouteBar
+            ? "bottom-4"
+            : "bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+4.25rem))]",
+        )}
+      >
         {/* Floating confirm card: location + timeframe then confirm */}
         <AnimatePresence>
           {previewPlace && (
@@ -834,35 +944,16 @@ export default function RouteMapPageClient({
           )}
         </AnimatePresence>
 
-      {/* Bottom sheet via shared Drawer.
-          When closed, a small floating pill (DrawerTrigger) stays at bottom center to reopen it.
-          During the tour we hide the pill only on step 1 (search) so steps 2–3 can target it / the drawer. */}
+      {/* Bottom sheet (controlled open; bottom bar below opens it). */}
       <Drawer
-            open={open}
-            onOpenChange={handleDrawerOpenChange}
-            onOpenComplete={handleDrawerOpenComplete}
-            onCloseComplete={handleDrawerCloseComplete}
-            modal={false}
-            handleOnly
-            dismissible
-          >
-        <DrawerTrigger asChild>
-          <button
-            type="button"
-            id="route-itinerary-trigger"
-            onClick={() => setOpen(true)}
-            className={`fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 rounded-full px-4 py-2 bg-black/70 backdrop-blur-md border border-white/15 text-xs font-semibold text-white flex items-center gap-2 shadow-lg transition-all pointer-events-auto ${
-              open || previewPlace || showAlongPanel || (routeTourOpen && routeTourStep === 0)
-                ? "opacity-0 pointer-events-none translate-y-2"
-                : "opacity-100 translate-y-0"
-            }`}
-            aria-label={t("trip_overview.route_title")}
-          >
-            <MapIcon className="w-3 h-3" />
-            <span>{t("trip_overview.route_title")}</span>
-          </button>
-        </DrawerTrigger>
-
+        open={open}
+        onOpenChange={handleDrawerOpenChange}
+        onOpenComplete={handleDrawerOpenComplete}
+        onCloseComplete={handleDrawerCloseComplete}
+        modal={false}
+        handleOnly
+        dismissible
+      >
         <DrawerContent
           id="route-drawer-root"
           className={cn(
@@ -872,12 +963,12 @@ export default function RouteMapPageClient({
             routeReorderMode
               ? "max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-bottom,0px)-0.5rem))]"
               : "max-h-[min(72dvh,calc(100dvh-env(safe-area-inset-bottom,0px)-1rem))]",
-            "flex min-h-0 flex-col overflow-hidden shadow-2xl ring-1 ring-white/10",
+            "flex min-h-0 flex-col overflow-hidden shadow-xl ring-1 ring-white/5",
           )}
         >
           <div id="route-drawer-content" className="flex flex-1 flex-col min-h-0">
           {/* Header: route title + N stops */}
-          <div className="px-4 pb-3 shrink-0">
+          <div className="px-3 pb-2 shrink-0">
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-col min-w-0">
                 <span className="text-xs uppercase tracking-wide text-white/60">
@@ -934,7 +1025,7 @@ export default function RouteMapPageClient({
 
           {/* Route list: Vaul sets touch-action:none on the drawer root; pan-y helps touch scroll inside. */}
           <div
-            className="flex-1 overflow-y-auto overscroll-y-contain px-4 pb-4 min-h-0 [touch-action:pan-y]"
+            className="flex-1 overflow-y-auto overscroll-y-contain px-3 pb-3 min-h-0 [touch-action:pan-y]"
             data-vaul-no-drag=""
           >
             {locations.length === 0 ? (
@@ -963,7 +1054,7 @@ export default function RouteMapPageClient({
                   }
                 }}
               >
-                <Sortable.Content className="space-y-3">
+                <Sortable.Content className="space-y-2">
                   {locations.map((loc, index) => (
                     <Sortable.Item
                       key={loc.id}
@@ -996,7 +1087,7 @@ export default function RouteMapPageClient({
                 </Sortable.Content>
               </Sortable.Root>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {locations.map((loc, index) => (
                   <RouteLocationRow
                     key={loc.id}
@@ -1132,20 +1223,109 @@ export default function RouteMapPageClient({
         </AnimatePresence>
       </div>
 
-      {isWizard && (
-        <Tour
+      <div
+        className={cn(
+          "pointer-events-none fixed left-0 right-0 z-[60] mx-auto flex w-full justify-center px-4",
+          "bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))]",
+          hideFloatingRouteBar && "translate-y-2 opacity-0",
+        )}
+      >
+        <div
+          className={cn(
+            "flex w-full max-w-lg items-center justify-between gap-3",
+            hideFloatingRouteBar ? "pointer-events-none" : "pointer-events-auto",
+          )}
+        >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/70 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80"
+              aria-label={t("trip_overview.route_bar_more", { defaultValue: "Route menu" })}
+            >
+              <MoreHorizontal className="h-5 w-5" aria-hidden />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="top" className="w-56">
+            <DropdownMenuItem
+              onSelect={() => {
+                setOpen(true);
+              }}
+            >
+              {t("trip_overview.route_title")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={routeTourOpen}
+              onSelect={() => {
+                setSearchOpen(true);
+              }}
+            >
+              {t("trip_overview.route_bar_add_stop", { defaultValue: "Add stop" })}
+            </DropdownMenuItem>
+            {alongRoute.places.length > 0 && locations.length >= 2 ? (
+              <DropdownMenuItem
+                onSelect={() => {
+                  setOpen(false);
+                  setShowAlongPanel(true);
+                }}
+              >
+                {t("trip_overview.route_along_label", { defaultValue: "Along this route" })}
+              </DropdownMenuItem>
+            ) : null}
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => {
+                  handleShowRouteTourAgain();
+                }}
+              >
+                {t("trip_overview.show_route_tips_again", { defaultValue: "Show guide again" })}
+              </DropdownMenuItem>
+            </>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <button
+          type="button"
+          id="route-itinerary-trigger"
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80"
+          aria-label={t("trip_overview.route_title")}
+        >
+          <MapIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>{t("trip_overview.route_title")}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          disabled={routeTourOpen}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/70 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/80 disabled:pointer-events-none disabled:opacity-40"
+          aria-label={t("trip_overview.route_search_dialog_title")}
+        >
+          <Plus className="h-5 w-5" aria-hidden />
+        </button>
+        </div>
+      </div>
+
+      <Tour
           open={routeTourOpen}
           onOpenChange={handleRouteTourOpenChange}
           value={routeTourStep}
           onValueChange={setRouteTourStep}
+          modal={false}
           alignOffset={0}
           sideOffset={16}
           spotlightPadding={8}
           pointerDownOutsideIgnoreSelectors={["[data-drawer-overlay]", "#route-drawer-root"]}
           onInteractOutside={(e) => {
+            // Step 2 spotlights the drawer; with modal={false} drawer, focus/pointer can leave the
+            // target subtree and the tour's focusin handler would dismiss the whole tour.
+            if (routeTourStep === 2) e.preventDefault();
             if (routeTourStep === 3 && tourPendingStep4Ref.current) e.preventDefault();
           }}
           onPointerDownOutside={(e) => {
+            if (routeTourStep === 2) e.preventDefault();
             if (routeTourStep === 3 && tourPendingStep4Ref.current) e.preventDefault();
           }}
           stepFooter={
@@ -1271,7 +1451,6 @@ export default function RouteMapPageClient({
             </TourStep>
           </TourPortal>
         </Tour>
-      )}
     </div>
   );
 }
@@ -1367,8 +1546,8 @@ function RouteLocationRow({
         }}
         className={
           reorderMode
-            ? "flex select-none items-center gap-3 rounded-2xl border border-dashed border-white/35 bg-white/[0.04] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors"
-            : "flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 transition-colors hover:bg-white/[0.07]"
+            ? "flex select-none items-center gap-3 rounded-2xl border border-dashed border-white/35 bg-white/[0.04] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors"
+            : "flex cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 transition-colors hover:bg-white/[0.07]"
         }
       >
         <div

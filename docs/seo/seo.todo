@@ -2,6 +2,8 @@ SEO (gotrippin — **homepage-first**; discovery after the page tells the truth)
   Ref: Google Search Central — canonicals, sitemaps, hreflang (developers.google.com/search/docs)
   Sitemap is not a file in the repo: Next serves https://gotrippin.app/sitemap.xml from apps/web/app/sitemap.ts; robots.txt points crawlers there.
   Docs: docs/seo/README.md, docs/seo/marketing/
+  Strategy anchor (market / JTBD / positioning): docs/seo/marketing/market-strategy-idea-origin-deep-dive-2026-04.md
+  Activation funnel spec: docs/product/activation-aha-metrics-2026-04.md
   Page-structure refs: docs/seo/marketing/arturia-page-structure-reference.md, docs/seo/marketing/tripsy-marketing-reference.md
 
 Done (technical baseline):
@@ -15,7 +17,7 @@ Phase 1 — Homepage IA & narrative (primary SEO work):
   ✔ Map sections (story → map → AI → together + bento + final CTA); arturia + tripsy refs @done(26-04-03)
   ✔ Hero visuals: wireframe placeholders in /public/landing (swap WebP when ready — README) @done(26-04-03)
   ✔ CTA microcopy: “plan”; footer + bento aligned @done(26-04-03)
-  ☐ Keyword map: intent → on-page placement (EN: trip planner, plan a trip, group trip, itinerary; BG later)
+  ☐ Keyword map: intent → on-page placement (EN: trip planner, plan a trip, group trip, itinerary; BG later) — ref `docs/seo/marketing/seo-search-intent-trip-planning-2026-04.md`
   ✔ Landing body copy: truthful sharing roadmap @done(26-04-03)
   ☐ Locale strategy: single URL + i18n cookie — document crawler tradeoff; BG URLs when ready
 
@@ -39,6 +41,10 @@ Phase 5 — International (when ready):
 Phase 6 — After launch / distribution:
   ☐ Backlinks: ethical listings, roundups, founder content
   ☐ Monthly GSC: queries, CTR, coverage — once homepage is indexed
+
+Phase 6b — App Store / Play (when native app ships):
+  ☐ ASO baseline per `docs/seo/marketing/aso-vs-web-seo-trip-planning-2026-04.md` (title, subtitle/short desc, keywords iOS, long description Android, screenshots, category, honest copy per Play policy)
+  ☐ Align store listing value prop with `/home` (no contradictory claims)
 
 Phase 7 — Google: submit last (when the page is ready to represent the product):
   ☐ GSC → Sitemaps: submit https://gotrippin.app/sitemap.xml

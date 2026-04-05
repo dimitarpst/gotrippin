@@ -114,8 +114,8 @@ export default function TimelinePageClient({
   return (
     <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
       <AuroraBackground />
-      <div className="flex-1 relative z-10 px-4 pb-8 pt-4 sm:px-6">
-        <header className="mb-6 flex items-center gap-3 sm:gap-4">
+      <div className="flex-1 relative z-10 px-4 pb-6 pt-4 sm:px-6">
+        <header className="mb-4 flex items-center gap-3 sm:gap-4">
           <Button
             type="button"
             variant="ghost"
@@ -152,14 +152,14 @@ export default function TimelinePageClient({
         </header>
 
         {weatherError ? (
-          <Alert variant="destructive" className="mb-4 bg-destructive/10 border-destructive/20 p-3">
+          <Alert variant="destructive" className="mb-3 bg-destructive/10 border-destructive/20 p-3">
             <AlertCircle className="size-4" />
             <AlertDescription className="text-xs">{weatherError}</AlertDescription>
           </Alert>
         ) : null}
 
         {!hasRoute ? (
-          <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-3 dark:border-white/15 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/40 px-3 py-2.5 dark:border-white/15 dark:bg-white/[0.02]">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted dark:bg-white/10">
               <Plus className="h-5 w-5 text-foreground dark:text-white" />
             </div>
@@ -169,7 +169,7 @@ export default function TimelinePageClient({
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
               {locations.map((location, index) => {
                 const acts = activitiesByLocation[location.id] || [];
                 const dateLabel = getLocationDateLabel(location);
@@ -189,9 +189,9 @@ export default function TimelinePageClient({
                         <span className="mt-1 flex-1 w-px bg-border dark:bg-white/15" />
                       ) : null}
                     </div>
-                    <div className="min-w-0 flex-1 rounded-2xl border border-border bg-muted/35 shadow-sm transition-colors group-hover:border-primary/20 dark:border-white/[0.08] dark:bg-white/[0.04] dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)] dark:group-hover:border-white/[0.15]">
+                    <div className="min-w-0 flex-1 rounded-2xl border border-border bg-muted/35 shadow-none transition-colors group-hover:border-primary/20 dark:border-white/[0.08] dark:bg-white/[0.04] dark:group-hover:border-white/[0.15]">
                       <div
-                        className="cursor-pointer rounded-t-2xl px-3 py-3 transition-colors hover:bg-muted/40 dark:px-4 dark:hover:bg-white/[0.03] sm:px-4"
+                        className="cursor-pointer rounded-t-2xl px-3 py-2.5 transition-colors hover:bg-muted/40 dark:px-4 dark:hover:bg-white/[0.03] sm:px-4"
                         onClick={() => router.push(`/trips/${shareCode}/timeline/${location.id}`)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
@@ -202,7 +202,7 @@ export default function TimelinePageClient({
                         role="button"
                         tabIndex={0}
                       >
-                        <div className="mb-2 flex items-start justify-between gap-3">
+                        <div className="mb-1.5 flex items-start justify-between gap-3">
                           <div className="mt-0.5 flex min-w-0 items-center gap-3">
                             <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                               {(index + 1).toString().padStart(2, "0")}
@@ -215,7 +215,7 @@ export default function TimelinePageClient({
                             {renderLocationWeather(location, trip, weatherByLocation, weatherLoading, t)}
                           </div>
                         </div>
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                           {dateLabel ? <div className="whitespace-nowrap">{dateLabel}</div> : <div />}
                           <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground/80 dark:text-white/40 dark:group-hover:text-white/60">
                             {t("trip_overview.view_all_days")}
@@ -223,19 +223,19 @@ export default function TimelinePageClient({
                         </div>
                       </div>
 
-                      <div className="border-t border-border px-3 pb-3 pt-0 dark:border-white/10 sm:px-4">
+                      <div className="border-t border-border px-3 pb-2.5 pt-0 dark:border-white/10 sm:px-4">
                         {acts.length === 0 ? (
-                          <p className="pt-3 text-sm text-muted-foreground dark:text-white/60">
+                          <p className="pt-2 text-sm text-muted-foreground dark:text-white/60">
                             {t("trip_overview.no_activities_stop")}
                           </p>
                         ) : (
-                          <ul className="space-y-2 pt-3">
+                          <ul className="space-y-1.5 pt-2">
                             {acts.map((act) => (
                               <li key={act.id}>
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  className="h-auto w-full justify-between gap-3 rounded-xl border border-border bg-muted/50 px-3 py-2 text-left font-normal hover:bg-muted dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                                  className="h-auto w-full justify-between gap-3 rounded-xl border border-border bg-muted/50 px-3 py-1.5 text-left font-normal hover:bg-muted dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                                   onClick={() => router.push(`/trips/${shareCode}/activity/${act.id}/edit`)}
                                 >
                                   <div className="min-w-0">

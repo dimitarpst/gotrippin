@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { Cloud, Sun, CloudRain, CloudSnow, Wind, Droplets, MapPin } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 import type { WeatherData } from "@gotrippin/core"
 import { useTranslation } from "react-i18next"
 
@@ -15,6 +16,8 @@ interface WeatherWidgetProps {
   updatedAt?: number | null
   showMeta?: boolean
   minimal?: boolean
+  /** Merged onto the root of the `inline` variant (e.g. borderless glass on trip overview). */
+  className?: string
 }
 
 /**
@@ -67,6 +70,7 @@ export default function WeatherWidget({
   updatedAt,
   showMeta = false,
   minimal = false,
+  className,
 }: WeatherWidgetProps) {
   const { t } = useTranslation()
   const activeVariant = variant || (compact ? "compact" : "full")
@@ -84,7 +88,10 @@ export default function WeatherWidget({
 
     return (
       <motion.div
-        className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-card-foreground shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)]"
+        className={cn(
+          "inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-card-foreground shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:shadow-[0_8px_30px_rgba(0,0,0,0.25)]",
+          className,
+        )}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={onClick}

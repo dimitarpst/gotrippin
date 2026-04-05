@@ -71,7 +71,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
   return (
     <main className="relative min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
       <AuroraBackground />
-      <div className="relative z-10 px-4 py-4 sm:px-6 space-y-6">
+      <div className="relative z-10 space-y-4 px-4 py-4 sm:px-6">
         <div className="flex items-center justify-between">
           <button
             onClick={handleBack}
@@ -86,17 +86,17 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <motion.div
-            className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl"
+            className="relative overflow-hidden rounded-3xl border border-white/10 shadow-xl"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 26 }}
           >
             <div className="absolute inset-0" style={heroStyle} />
             <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
-            <div className="relative z-10 p-6 sm:p-8 flex flex-col gap-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="relative z-10 flex flex-col gap-4 p-5 sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center border border-white/20">
                     <MapPin className="w-5 h-5 text-white" />
@@ -146,7 +146,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                   </div>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button className="bg-[#ff7670] hover:bg-[#ff7670]/90 text-white font-semibold px-4" onClick={() => router.push(`/trips/${shareCode}/activity`)}>
                   {t("trip_overview.add_first_activity", { defaultValue: "Add activity" })}
                 </Button>
@@ -161,9 +161,9 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
             </div>
           </motion.div>
 
-          <div className="grid gap-4 md:grid-cols-[1.4fr,1fr]">
+          <div className="grid gap-3 md:grid-cols-[1.4fr,1fr]">
             <motion.div
-              className="rounded-3xl border border-border bg-card/95 p-6 text-card-foreground backdrop-blur-lg shadow-xl flex flex-col gap-4 dark:border-white/10 dark:bg-white/5"
+              className="flex flex-col gap-3 rounded-3xl border border-border bg-card/95 p-5 text-card-foreground shadow-lg backdrop-blur-lg dark:border-white/10 dark:bg-white/5"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05, type: "spring", stiffness: 320, damping: 26 }}
@@ -201,7 +201,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
             </motion.div>
 
             <motion.div
-              className="relative rounded-3xl overflow-hidden border border-border bg-muted/40 shadow-xl min-h-[260px] dark:border-white/10 dark:bg-white/5"
+              className="relative min-h-[260px] overflow-hidden rounded-3xl border border-border bg-muted/40 shadow-lg dark:border-white/10 dark:bg-white/5"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, type: "spring", stiffness: 320, damping: 26 }}
@@ -269,14 +269,14 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
             </motion.div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[1.1fr,1fr]">
+          <div className="grid gap-3 md:grid-cols-[1.1fr,1fr]">
             <motion.div
-              className="rounded-3xl border border-border bg-card/95 p-6 text-card-foreground backdrop-blur-lg shadow-xl dark:border-white/10 dark:bg-white/5"
+              className="rounded-3xl border border-border bg-card/95 p-5 text-card-foreground shadow-lg backdrop-blur-lg dark:border-white/10 dark:bg-white/5"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15, type: "spring", stiffness: 320, damping: 26 }}
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-muted-foreground text-sm dark:text-white/70">
                   <Calendar className="w-4 h-4" />
                   <span>{t("trip_overview.view_all_days")}</span>
@@ -290,11 +290,11 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                   {t("route_empty", { defaultValue: "No activities for this stop yet." })}
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {activities.map((act) => (
                     <div
                       key={act.id}
-                      className="rounded-2xl border border-border bg-muted/50 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-muted transition-colors dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                      className="flex cursor-pointer items-center justify-between rounded-2xl border border-border bg-muted/50 px-3 py-2.5 transition-colors hover:bg-muted dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                       onClick={() => router.push(`/trips/${shareCode}/activity/${act.id}/edit`)}
                     >
                       <div>
@@ -317,7 +317,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
             </motion.div>
 
             <motion.div
-              className="rounded-3xl border border-border bg-card/95 p-4 sm:p-5 text-card-foreground backdrop-blur-lg shadow-xl dark:border-white/10 dark:bg-white/5"
+              className="rounded-3xl border border-border bg-card/95 p-3 text-card-foreground shadow-lg backdrop-blur-lg sm:p-4 dark:border-white/10 dark:bg-white/5"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 320, damping: 26 }}

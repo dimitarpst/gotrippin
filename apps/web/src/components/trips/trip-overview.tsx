@@ -71,7 +71,14 @@ import { getLegColor, isSolidRouteColor } from "@/lib/route-colors"
 
 export interface TripOverviewActions {
   onNavigate: (
-    screen: "activity" | "flight" | "lodging" | "place" | "weather" | "map",
+    screen:
+      | "activity"
+      | "flight"
+      | "lodging"
+      | "place"
+      | "weather"
+      | "map"
+      | "timeline",
   ) => void
   onOpenLocation?: (locationId: string) => void
   onBack: () => void
@@ -111,6 +118,9 @@ export interface TripOverviewWeather {
 
 /** Max stops shown in the overview itinerary card before "show all". */
 const ITINERARY_OVERVIEW_VISIBLE_MAX = 3
+
+/** Phase 2: slightly tighter overview cards; mobile a notch denser, sm+ stays comfortable. */
+const TRIP_OVERVIEW_CARD_PADDING = "p-4 sm:p-5"
 
 /** Same glassy black treatment as the floating header (search / close). */
 const TRIP_OVERVIEW_QUICK_ACTION_GLASS_CLASS =
@@ -256,32 +266,25 @@ export default function TripOverview({
     return t("trip_overview.route_today", { date: todayFormatted })
   }, [t])
 
-  const getLocationDateLabel = (location: TripLocation) => {
+  /** Plain text dates for overview rows (no pill borders). */
+  const getLocationDateOverviewCompact = (location: TripLocation) => {
     const arrival = location.arrival_date ? new Date(location.arrival_date) : null
     const departure = location.departure_date ? new Date(location.departure_date) : null
-
+    const muted = "text-[11px] tabular-nums text-muted-foreground dark:text-white/50"
     if (arrival && departure) {
       return (
-        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted border border-border text-[11px] font-medium text-foreground shadow-inner dark:bg-black/20 dark:border-white/10 dark:text-white/80">
-          <span>{format(arrival, "MMM d")}</span>
-          <ArrowRight className="w-2.5 h-2.5 text-muted-foreground dark:text-white/40" />
-          <span>{format(departure, "MMM d")}</span>
+        <span className={muted}>
+          {format(arrival, "MMM d")}
+          <span className="mx-0.5 text-muted-foreground/70 dark:text-white/35">→</span>
+          {format(departure, "MMM d")}
         </span>
       )
     }
     if (arrival) {
-      return (
-        <span className="px-2.5 py-1 rounded-md bg-muted border border-border text-[11px] font-medium text-foreground shadow-inner dark:bg-black/20 dark:border-white/10 dark:text-white/80">
-          {format(arrival, "MMM d")}
-        </span>
-      )
+      return <span className={muted}>{format(arrival, "MMM d")}</span>
     }
     if (departure) {
-      return (
-        <span className="px-2.5 py-1 rounded-md bg-muted border border-border text-[11px] font-medium text-foreground shadow-inner dark:bg-black/20 dark:border-white/10 dark:text-white/80">
-          {format(departure, "MMM d")}
-        </span>
-      )
+      return <span className={muted}>{format(departure, "MMM d")}</span>
     }
     return null
   }
@@ -303,6 +306,7 @@ export default function TripOverview({
         <WeatherWidget
           variant="inline"
           minimal
+          className="rounded-full border-0 bg-black/30 px-2 py-1 shadow-none backdrop-blur-md dark:border-transparent dark:bg-black/40 dark:shadow-none"
           weather={{
             ...weather,
             location: location.location_name || trip.destination || weather.location,
@@ -851,7 +855,7 @@ export default function TripOverview({
           </div>
         </motion.div>
 
-        <div className="relative z-10 px-6 pb-8 space-y-4">
+        <div className="relative z-10 px-6 pb-7 space-y-3">
           <AnimatePresence>
             {scheduleAttention && scheduleAttention.itemCount > 0 ? (
               <motion.div
@@ -865,8 +869,8 @@ export default function TripOverview({
                   opacity: { duration: 0.22, ease: "easeOut" },
                 }}
               >
-                <Card className="rounded-2xl p-5 bg-card text-card-foreground border-2 border-[#ff7670]/35">
-                  <div className="flex items-start justify-between gap-3 mb-3">
+                <Card className={`rounded-2xl ${TRIP_OVERVIEW_CARD_PADDING} bg-card text-card-foreground border-2 border-[#ff7670]/35`}>
+                  <div className="flex items-start justify-between gap-3 mb-2.5">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-xl bg-[#ff7670]/15 flex items-center justify-center shrink-0 dark:bg-white/10">
                         <AlertTriangle className="w-5 h-5 text-[#ff7670]" aria-hidden />
@@ -890,7 +894,7 @@ export default function TripOverview({
                       {scheduleAttention.itemCount}
                     </Badge>
                   </div>
-                  <p className="text-muted-foreground text-sm mb-4">
+                  <p className="text-muted-foreground text-sm mb-3">
                     {t("trip_overview.schedule_attention_body")}
                   </p>
                   <button
@@ -908,8 +912,8 @@ export default function TripOverview({
 
           {/* Itinerary Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-            <Card className="border-border dark:border-white/[0.08] rounded-2xl p-5 bg-card text-card-foreground shadow-none">
-              <div className="flex items-center justify-between gap-3 mb-3">
+            <Card className={`border-border dark:border-white/[0.08] rounded-2xl ${TRIP_OVERVIEW_CARD_PADDING} bg-card text-card-foreground shadow-none`}>
+              <div className="flex items-center justify-between gap-3 mb-2.5">
                 <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -932,82 +936,95 @@ export default function TripOverview({
               </div>
 
               {loadingRoute && (
-                <div className="space-y-4 mb-4">
+                <div className="relative mb-3">
+                  <div
+                    className="pointer-events-none absolute bottom-2 left-[10px] top-2 w-px -translate-x-1/2 bg-white/10"
+                    aria-hidden
+                  />
                   {[0, 1, 2].map((idx) => (
-                    <div key={idx} className="flex gap-4">
-                      <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
-                      <div className="flex-1 h-14 rounded-2xl bg-muted/80 border border-border animate-pulse" />
+                    <div
+                      key={idx}
+                      className="relative flex min-h-[2.75rem] items-center gap-3 py-1 pl-7 pr-1 sm:pr-2"
+                    >
+                      <div
+                        className="absolute left-[10px] top-1/2 z-[1] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-muted ring-2 ring-card animate-pulse dark:ring-[#17131a]"
+                        aria-hidden
+                      />
+                      <div className="h-9 flex-1 rounded-lg bg-muted/80 animate-pulse" />
                     </div>
                   ))}
                 </div>
               )}
 
               {!loadingRoute && hasRoute && (
-                <div className="space-y-3 mb-4">
-                  {itineraryOverviewVisible.map((location, index) => {
-                    const dateLabel = getLocationDateLabel(location)
-                    const stopDotColor =
-                      location.marker_color != null && isSolidRouteColor(location.marker_color)
-                        ? location.marker_color
-                        : getLegColor(index)
-                    return (
-                      <div
-                        key={location.id}
-                        className="flex gap-3 group cursor-pointer"
-                        onClick={() => onOpenLocation?.(location.id)}
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault()
-                            onOpenLocation?.(location.id)
-                          }
-                        }}
-                      >
-                        <div className="flex flex-col items-center">
+                <div className="mb-3">
+                  <div className="relative">
+                    {/* One soft spine like Tripsy — not per-row flex segments */}
+                    <div
+                      className="pointer-events-none absolute bottom-1 left-[10px] top-1 w-px -translate-x-1/2 bg-white/[0.1] dark:bg-white/[0.12]"
+                      aria-hidden
+                    />
+                    {itineraryOverviewVisible.map((location, index) => {
+                      const dateCompact = getLocationDateOverviewCompact(location)
+                      const stopDotColor =
+                        location.marker_color != null && isSolidRouteColor(location.marker_color)
+                          ? location.marker_color
+                          : getLegColor(index)
+                      return (
+                        <div
+                          key={location.id}
+                          className="group relative flex min-h-[2.75rem] cursor-pointer items-center gap-3 py-1 pl-7 pr-1 first:pt-0 last:pb-0 sm:pr-2"
+                          onClick={() => onOpenLocation?.(location.id)}
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault()
+                              onOpenLocation?.(location.id)
+                            }
+                          }}
+                        >
                           <div
-                            className="w-2 h-2 rounded-full mt-1 shrink-0"
+                            className="absolute left-[10px] top-1/2 z-[1] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card dark:ring-[#17131a]"
                             style={{ backgroundColor: stopDotColor }}
+                            aria-hidden
                           />
-                          {index < itineraryOverviewVisible.length - 1 && (
-                            <span className="flex-1 w-px bg-border mt-1 dark:bg-white/15" />
-                          )}
-                        </div>
-                        <div className="flex-1 rounded-2xl border border-border bg-muted/35 px-4 py-3 transition-colors group-hover:border-primary/20 dark:bg-white/[0.04] dark:border-white/[0.08] dark:group-hover:border-white/[0.15]">
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div className="flex items-center gap-3 mt-0.5">
-                              <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                                {(index + 1).toString().padStart(2, "0")}
-                              </span>
-                              <p className="text-foreground font-semibold truncate text-lg">
-                                {location.location_name || t('trips.untitled_trip')}
-                              </p>
+                          <div className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg px-1 py-1.5 transition-colors group-hover:bg-muted/30 dark:group-hover:bg-white/[0.04] sm:gap-3 sm:px-2">
+                            <p className="min-w-0 truncate text-base font-semibold leading-tight text-foreground dark:text-white">
+                              {location.location_name || t("trips.untitled_trip")}
+                            </p>
+                            <div className="flex shrink-0 items-center justify-end gap-2 text-right">
+                              {renderLocationWeather(location)}
+                              {dateCompact}
                             </div>
-                            <div className="shrink-0">{renderLocationWeather(location)}</div>
-                          </div>
-                          <div className="flex items-center justify-between gap-2 mt-3">
-                            {dateLabel ? (
-                              <div className="whitespace-nowrap">{dateLabel}</div>
-                            ) : <div />}
-                            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground group-hover:text-foreground/80 transition-colors shrink-0 dark:text-white/40 dark:group-hover:text-white/60">
-                              {t('trip_overview.view_all_days')}
-                            </span>
                           </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                  {itineraryOverviewMoreCount > 0 ? (
-                    <p className="text-xs text-muted-foreground pt-1 dark:text-white/55">
-                      {t("trip_overview.itinerary_more_stops", {
-                        count: itineraryOverviewMoreCount,
-                      })}
-                    </p>
-                  ) : null}
+                      )
+                    })}
+                  </div>
+                  <div className="mt-3 flex flex-col gap-2 border-t border-border/40 pt-3 dark:border-white/[0.08]">
+                    {itineraryOverviewMoreCount > 0 ? (
+                      <p className="text-xs text-muted-foreground dark:text-white/55">
+                        {t("trip_overview.itinerary_more_stops", {
+                          count: itineraryOverviewMoreCount,
+                        })}
+                      </p>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="w-fit text-left text-xs font-semibold uppercase tracking-wider text-[#ff7670] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff7670]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onNavigate("timeline")
+                      }}
+                    >
+                      {t("trip_overview.view_all_days")}
+                    </button>
+                  </div>
                 </div>
               )}
 
               {!routeLoading && !hasRoute && (
-                <div className="flex items-center justify-between gap-3 border border-dashed border-border rounded-2xl px-4 py-3 mb-3 bg-muted/40 dark:border-white/15 dark:bg-white/[0.02]">
+                <div className="flex items-center justify-between gap-3 border border-dashed border-border rounded-2xl px-3.5 py-2.5 mb-2.5 bg-muted/40 dark:border-white/15 dark:bg-white/[0.02]">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center dark:bg-white/10">
                       <Plus className="w-5 h-5 text-foreground dark:text-white" />
@@ -1047,12 +1064,12 @@ export default function TripOverview({
                   </div>
 
                   {/* Content on top of map */}
-                  <div className="relative z-10 h-full flex flex-col justify-center items-center p-5 text-center">
+                  <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 text-center sm:p-5">
                     <div className="flex flex-col items-center">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff7670] drop-shadow-md mb-1">
                         {t("trip_overview.route_map_title")}
                       </span>
-                      <span className="text-3xl font-bold text-white drop-shadow-xl mb-4">
+                      <span className="text-3xl font-bold text-white drop-shadow-xl mb-3 sm:mb-4">
                         {trip.destination || trip.title || t("trips.untitled_trip")}
                       </span>
                     </div>
@@ -1085,7 +1102,7 @@ export default function TripOverview({
                       }}
                     >
                       <div className="absolute top-0 left-0 right-0 h-1/2 bg-linear-to-b from-white/10 to-transparent pointer-events-none" />
-                      <div className="relative p-6 z-10 flex items-center justify-between gap-6">
+                      <div className="relative z-10 flex items-center justify-between gap-5 p-5 sm:p-6">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 text-white/90 text-sm font-medium mb-2 truncate">
                             <span className="inline-block w-2 h-2 rounded-full bg-white/70 shrink-0" />
@@ -1138,9 +1155,9 @@ export default function TripOverview({
           {/* Documents Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
             <Card
-              className="border-border dark:border-white/[0.08] rounded-2xl p-5 bg-card text-card-foreground"
+              className={`border-border dark:border-white/[0.08] rounded-2xl ${TRIP_OVERVIEW_CARD_PADDING} bg-card text-card-foreground`}
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center dark:bg-white/10">
                     <FileText className="w-5 h-5 text-primary dark:text-white" />
@@ -1158,14 +1175,14 @@ export default function TripOverview({
                 </div>
               </div>
 
-              <div className="flex justify-center gap-6 mb-4 py-4">
+              <div className="flex justify-center gap-5 mb-3 py-3">
                 <Mail className="w-6 h-6 text-muted-foreground" />
                 <ImageIcon className="w-6 h-6 text-muted-foreground" />
                 <FileType className="w-6 h-6 text-muted-foreground" />
                 <LinkIcon className="w-6 h-6 text-muted-foreground" />
               </div>
 
-              <p className="text-muted-foreground text-sm text-center mb-4">
+              <p className="text-muted-foreground text-sm text-center mb-3">
                 {t('trip_overview.add_documents_description')}
               </p>
 
@@ -1177,7 +1194,7 @@ export default function TripOverview({
 
           {hasCustomizeActions && (
             <motion.div
-              className="flex justify-center pt-4 pb-2"
+              className="flex justify-center pt-3 pb-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.7 }}
@@ -1186,7 +1203,7 @@ export default function TripOverview({
                 <PopoverTrigger asChild>
                   <motion.button
                     type="button"
-                    className="flex items-center gap-2 overflow-hidden rounded-full border border-border bg-card/90 px-6 py-3 text-foreground shadow-sm backdrop-blur-md dark:border-white/20 dark:bg-white/10 dark:text-white"
+                    className="flex items-center gap-2 overflow-hidden rounded-full border border-border bg-card/90 px-5 py-2.5 text-foreground shadow-sm backdrop-blur-md dark:border-white/20 dark:bg-white/10 dark:text-white"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
