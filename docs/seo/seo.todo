@@ -4,6 +4,21 @@ SEO (gotrippin — **homepage-first**; discovery after the page tells the truth)
   Docs: docs/seo/README.md, docs/seo/marketing/
   Strategy anchor (market / JTBD / positioning): docs/seo/marketing/market-strategy-idea-origin-deep-dive-2026-04.md
   Activation funnel spec: docs/product/activation-aha-metrics-2026-04.md
+  Marketing frontend (/home patterns vs competitors): docs/seo/marketing/marketing-frontend-home-deep-dive-2026-04.md
+  Marketing crawl round 2 (more URLs + “spectrum”): docs/seo/marketing/marketing-frontend-crawl-round2-2026-04.md
+  Marketing rubric round 3 (live browser scores): docs/seo/marketing/marketing-frontend-rubric-round3-2026-04.md
+  Marketing saturation round 4 (B2B/vertical/40 ideas): docs/seo/marketing/marketing-frontend-saturation-round4-2026-04.md
+  Marketing rubric round 4 (scores + DOM: Komoot, Pilot, Perk, TripIt cookie note): docs/seo/marketing/marketing-frontend-rubric-round4-2026-04.md
+  Marketing saturation round 5 (outdoor, Furkot, AI distribution patterns): docs/seo/marketing/marketing-frontend-saturation-round5-2026-04.md
+  Marketing saturation round 6 (Layla, KAYAK Trips, Navan a11y, Pebbls): docs/seo/marketing/marketing-frontend-saturation-round6-2026-04.md
+  Marketing saturation round 7 (Partiful, Meetup, Wanderboat dual surface): docs/seo/marketing/marketing-frontend-saturation-round7-2026-04.md
+  Marketing saturation round 8 (Expedia home OK; TripAdvisor/Roamaround retry; lighter megasite URLs): docs/seo/marketing/marketing-frontend-saturation-round8-2026-04.md
+  Marketing saturation round 9 (Trainline, Omio, Seat61, Wanderlog Pro PDFs; Eurail/Rail Europe): docs/seo/marketing/marketing-frontend-saturation-round9-2026-04.md
+  Marketing saturation round 10 (Roadtrippers, Polarsteps, TripIt; TripAdvisor 403; Roamaround 503): docs/seo/marketing/marketing-frontend-saturation-round10-2026-04.md
+  Marketing saturation round 11 (Royal, NCL, G Adventures, Intrepid, GetYourGuide): docs/seo/marketing/marketing-frontend-saturation-round11-2026-04.md
+  Marketing saturation round 12 (Hostelworld, Viator OK, OnTheSnow, REI Adventures, Lonely Planet): docs/seo/marketing/marketing-frontend-saturation-round12-2026-04.md
+  Marketing saturation round 13 (AllTrails, Komoot, Mapbox, Withlocals, Couchsurfing): docs/seo/marketing/marketing-frontend-saturation-round13-2026-04.md
+  Marketing saturation round 14 (meta: queue, themes 7–14, Rome2rio/Culture Trip timeout): docs/seo/marketing/marketing-frontend-saturation-round14-2026-04.md
   Page-structure refs: docs/seo/marketing/arturia-page-structure-reference.md, docs/seo/marketing/tripsy-marketing-reference.md
 
 Done (technical baseline):

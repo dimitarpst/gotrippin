@@ -9,6 +9,8 @@ Shorter notes (pricing, SEO keyword clusters, ASO vs web, collaboration primitiv
 
 **Activation & metrics (operational):** funnel stages, “aha” definitions, instrumentation notes — [`docs/product/activation-aha-metrics-2026-04.md`](../product/activation-aha-metrics-2026-04.md).
 
+**Marketing frontend (`/home` & public pages):** competitor UI patterns, section taxonomy, gaps vs gotrippin — [`docs/seo/marketing/marketing-frontend-home-deep-dive-2026-04.md`](./marketing-frontend-home-deep-dive-2026-04.md).
+
 ---
 
 ## Part A — What “similar idea origin” actually means

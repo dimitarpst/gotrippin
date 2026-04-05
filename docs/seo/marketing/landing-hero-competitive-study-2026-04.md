@@ -3,6 +3,8 @@
 **Date:** 2026-04-04  
 **Canonical strategy (full market + JTBD + positioning):** [`market-strategy-idea-origin-deep-dive-2026-04.md`](./market-strategy-idea-origin-deep-dive-2026-04.md) — read that first; this file focuses **hero format and competitor presentation patterns**.
 
+**Full marketing frontend (`/home` IA, sections, gaps vs competitors):** [`marketing-frontend-home-deep-dive-2026-04.md`](./marketing-frontend-home-deep-dive-2026-04.md).
+
 **Why:** Stakeholder feedback: the current hero (product screenshots inside a desktop-style chrome + map/timeline split) does not feel sufficiently **intriguing or engaging**; openness to **not** relying on marketing photos. This document **studies how similar products present themselves** and proposes **strategic directions** for gotrippin’s `/home` hero.
 
 **Method (not a full crawl):** Manual review via public fetches + web search of positioning. Pages consulted in this pass:
