@@ -66,6 +66,7 @@ export class TripsService {
     cover_upload_storage_key?: string;
     color?: string;
     description?: string;
+    notes?: string | null;
   }) {
     try {
       const { cover_photo, cover_upload_storage_key, ...rest } = tripData;
@@ -111,6 +112,7 @@ export class TripsService {
     cover_upload_storage_key: string;
     color: string;
     description: string;
+    notes: string | null;
   }>) {
     try {
       const existingTrip = await this.supabaseService.getTrips(userId);

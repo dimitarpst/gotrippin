@@ -31,6 +31,7 @@ import {
   Map as MapIcon,
   FileDown,
   AlertTriangle,
+  NotebookPen,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -68,7 +69,6 @@ import { toast } from "sonner"
 import { MapView, tripLocationsToWaypoints } from "@/components/maps"
 import { useRouteDirections } from "@/hooks"
 import { getStablePaletteColorForLocationId, isSolidRouteColor } from "@/lib/route-colors"
-
 export interface TripOverviewActions {
   onNavigate: (
     screen:
@@ -78,6 +78,7 @@ export interface TripOverviewActions {
       | "place"
       | "weather"
       | "map"
+      | "notes"
       | "timeline",
   ) => void
   onOpenLocation?: (locationId: string) => void
@@ -1149,6 +1150,34 @@ export default function TripOverview({
                   />
                 )
               })()}
+            </div>
+          </motion.div>
+
+          {/* Trip notes — full-page editor */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.58 }}>
+            <div onClick={() => onNavigate("notes")}>
+              <Card
+                className={`relative cursor-pointer overflow-hidden border-border dark:border-white/[0.08] rounded-2xl ${TRIP_OVERVIEW_CARD_PADDING} bg-card text-card-foreground transition-colors hover:bg-accent/5 dark:hover:bg-white/[0.04]`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 dark:bg-white/10">
+                      <NotebookPen className="h-5 w-5 text-primary dark:text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-base font-semibold text-foreground">
+                        {t("trip_overview.notes_title")}
+                      </h2>
+                      <p className="text-muted-foreground mt-0.5 text-sm">
+                        {t("trip_notes.overview_hint", {
+                          defaultValue: "Plans, checklists, links — open the full editor.",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+                </div>
+              </Card>
             </div>
           </motion.div>
 

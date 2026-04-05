@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import type { Trip } from "@gotrippin/core"
 import { formatTripDate, calculateDaysUntil, calculateDuration } from "@gotrippin/core"
+import { tripNotesStorageToPlainText } from "@/lib/trip-notes-doc"
 import TripFilters from "./trip-filters"
 import TripGrid from "./trip-grid"
 import EmptyState from "./empty-state"
@@ -39,11 +40,17 @@ export default function TripsList({ trips, loading, onSelectTrip, onCreateTrip }
     const query = searchQuery.toLowerCase().trim()
     const matchesStatus = (trip: { daysUntil: number }) =>
       filter === "all" || (filter === "upcoming" && trip.daysUntil > 0) || (filter === "past" && trip.daysUntil < 0)
-    const matchesSearch = (trip: { title?: string | null; destination?: string | null; description?: string | null }) =>
+    const matchesSearch = (trip: {
+      title?: string | null
+      destination?: string | null
+      description?: string | null
+      notes?: string | null
+    }) =>
       !query ||
       (trip.title?.toLowerCase().includes(query) ?? false) ||
       (trip.destination?.toLowerCase().includes(query) ?? false) ||
-      (trip.description?.toLowerCase().includes(query) ?? false)
+      (trip.description?.toLowerCase().includes(query) ?? false) ||
+      tripNotesStorageToPlainText(trip.notes).toLowerCase().includes(query)
     return tripsWithCalculations.filter(
       (trip) => matchesStatus(trip) && matchesSearch(trip)
     )

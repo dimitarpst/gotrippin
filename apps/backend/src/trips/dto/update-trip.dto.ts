@@ -84,6 +84,16 @@ export class UpdateTripDto {
   @MaxLength(2000)
   description?: string;
 
+  @ApiProperty({
+    required: false,
+    description:
+      'Trip notes — rich-text JSON (Tiptap) or plain text; max 500000 characters',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500000)
+  notes?: string | null;
+
   /**
    * Validates the data using Zod schema
    * Throws error if validation fails

@@ -341,6 +341,7 @@ export default function TripDetailPageClient({
           activity: `/trips/${shareCode}/activity`,
           weather: `/trips/${shareCode}/weather`,
           map: `/trips/${shareCode}/map`,
+          notes: `/trips/${shareCode}/notes`,
         };
         const path = routes[screen];
         if (path) router.push(path);

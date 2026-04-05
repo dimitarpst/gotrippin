@@ -10,6 +10,7 @@ import type { Activity, Trip, TripLocation } from "@gotrippin/core";
 import { Card } from "@/components/ui/card";
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
 import { resolveTripCoverUrl } from "@/lib/r2";
+import { tripNotesStorageToPlainText } from "@/lib/trip-notes-doc";
 
 export interface TripPrintViewProps {
   trip: Trip;
@@ -241,6 +242,18 @@ export default function TripPrintView({
               <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-white/90">{trip.description.trim()}</p>
             </Card>
           )}
+
+          {(() => {
+            const notesPlain = tripNotesStorageToPlainText(trip.notes);
+            return notesPlain ? (
+              <Card className="border-white/[0.08] bg-[var(--color-card)] p-5 rounded-2xl">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#ff7670]">
+                  {t("trips.pdf_notes", { defaultValue: "Trip notes" })}
+                </p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-white/90">{notesPlain}</p>
+              </Card>
+            ) : null;
+          })()}
 
           <Card className="border-white/[0.08] rounded-2xl p-5 bg-[var(--color-card)]">
             <div className="mb-4 flex items-center gap-3">

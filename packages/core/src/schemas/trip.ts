@@ -76,6 +76,12 @@ export const TripSchema = z.object({
     .max(2000, 'Description must be less than 2000 characters')
     .nullable()
     .optional(),
+  /** Long-form notes (trip overview); JSON document string from Tiptap or legacy plain text. */
+  notes: z
+    .string()
+    .max(500000, 'Notes must be less than 500000 characters')
+    .nullable()
+    .optional(),
   created_at: z.string().datetime({ message: 'Invalid creation date format' }),
 })
   .refine(
