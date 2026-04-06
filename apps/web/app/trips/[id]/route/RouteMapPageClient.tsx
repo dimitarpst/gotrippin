@@ -31,7 +31,11 @@ import { ColorPicker } from "@/components/color-picker";
 import { getLegColor, getStablePaletteColorForLocationId, isSolidRouteColor } from "@/lib/route-colors";
 import { useTranslation } from "react-i18next";
 import type { CreateTripLocation, Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
-import { MapView, tripLocationsToWaypoints } from "@/components/maps";
+import {
+  MapView,
+  SelectedRouteStopPeek,
+  tripLocationsToWaypoints,
+} from "@/components/maps";
 import { useAlongRoutePlaces, useRouteDirections } from "@/hooks";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -307,7 +311,19 @@ export default function RouteMapPageClient({
   const canExitWizard = locations.length >= 2;
 
   const hideFloatingRouteBar =
-    open || Boolean(previewPlace) || showAlongPanel;
+    open ||
+    Boolean(previewPlace) ||
+    showAlongPanel ||
+    Boolean(selectedLocationId && !previewPlace && !open);
+
+  const mapSelectedStopPeek =
+    selectedLocationId && !previewPlace && !open
+      ? (() => {
+          const stopIdx = locations.findIndex((l) => l.id === selectedLocationId);
+          if (stopIdx < 0) return null;
+          return { location: locations[stopIdx], stopIndex: stopIdx };
+        })()
+      : null;
 
   const handleShowRouteTourAgain = () => {
     setRouteTourStep(0);
@@ -406,6 +422,9 @@ export default function RouteMapPageClient({
     }
 
     setOpen(nextOpen);
+    if (nextOpen) {
+      setSelectedLocationId(null);
+    }
     // Drawer spotlight is routeTourStep === 2; closing advances to along (3). Skip when Previous moved 2→1.
     if (closingAdvance) {
       tourPendingStep4Ref.current = true;
@@ -923,6 +942,37 @@ export default function RouteMapPageClient({
               />
             </>
           )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {mapSelectedStopPeek ? (
+            <motion.div
+              key={`stop-peek-${mapSelectedStopPeek.location.id}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="pointer-events-auto"
+            >
+              <SelectedRouteStopPeek
+                location={mapSelectedStopPeek.location}
+                stopIndex={mapSelectedStopPeek.stopIndex}
+                shareCode={shareCode}
+                editable
+                onDismiss={() => {
+                  setSelectedLocationId(null);
+                }}
+                onOpenRouteList={() => {
+                  setOpen(true);
+                }}
+                minDate={tripMinDate}
+                maxDate={tripMaxDate}
+                onNameCommit={handleNameCommit}
+                onDatesCommit={handleDatesCommit}
+                onMarkerColorCommit={handleMarkerColorCommit}
+              />
+            </motion.div>
+          ) : null}
         </AnimatePresence>
 
       {/* Bottom sheet (controlled open; bottom bar below opens it). */}

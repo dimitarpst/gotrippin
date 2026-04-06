@@ -1,15 +1,30 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Map as MapIcon, Navigation } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Trip, TripLocation } from "@gotrippin/core";
 import type { MapWaypoint } from "@/components/maps";
-import { MapView, tripLocationsToWaypoints } from "@/components/maps";
+import {
+  MapView,
+  SelectedRouteStopPeek,
+  tripLocationsToWaypoints,
+} from "@/components/maps";
 import { useRouteDirections } from "@/hooks";
 
-function MapViewWithRoute({ waypoints }: { waypoints: MapWaypoint[] }) {
+function MapViewWithRoute({
+  waypoints,
+  selectedWaypointId,
+  onWaypointClick,
+  focusLngLat,
+}: {
+  waypoints: MapWaypoint[];
+  selectedWaypointId: string | null;
+  onWaypointClick: (detail: { id: string; index: number; lat: number; lng: number }) => void;
+  focusLngLat: { lng: number; lat: number } | null;
+}) {
   const { routeGeo } = useRouteDirections(waypoints);
   return (
     <MapView
@@ -18,6 +33,9 @@ function MapViewWithRoute({ waypoints }: { waypoints: MapWaypoint[] }) {
       fitToRoute
       fitPadding={80}
       className="w-full h-full"
+      selectedWaypointId={selectedWaypointId}
+      onWaypointClick={onWaypointClick}
+      focusLngLat={focusLngLat}
     />
   );
 }
@@ -35,7 +53,22 @@ export default function MapPageClient({
 }: MapPageClientProps) {
   const router = useRouter();
   const { t } = useTranslation();
-  
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [focusLngLat, setFocusLngLat] = useState<{ lng: number; lat: number } | null>(null);
+
+  const waypoints = tripLocationsToWaypoints(routeLocations);
+
+  const mapSelectedStopPeek =
+    selectedLocationId && routeLocations.length > 0
+      ? (() => {
+          const stopIdx = routeLocations.findIndex((l) => l.id === selectedLocationId);
+          if (stopIdx < 0) return null;
+          return { location: routeLocations[stopIdx], stopIndex: stopIdx };
+        })()
+      : null;
+
+  const hideBottomRouteCta = Boolean(selectedLocationId);
+
   return (
     <div className="h-screen w-full bg-[#0a0a0a] relative overflow-hidden flex flex-col">
       {/* Floating Header Overlay */}
@@ -47,7 +80,7 @@ export default function MapPageClient({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          
+
           <div className="flex-1 flex flex-col">
             <span className="text-xs uppercase tracking-wide text-white/80 font-medium drop-shadow-md">
               {t("trip_overview.route_map_title")}
@@ -62,7 +95,15 @@ export default function MapPageClient({
       {/* Map Content */}
       <div className="absolute inset-0 z-0">
         {routeLocations.length > 0 ? (
-          <MapViewWithRoute waypoints={tripLocationsToWaypoints(routeLocations)} />
+          <MapViewWithRoute
+            waypoints={waypoints}
+            selectedWaypointId={selectedLocationId}
+            focusLngLat={focusLngLat}
+            onWaypointClick={({ id, lat, lng }) => {
+              setSelectedLocationId(id);
+              setFocusLngLat({ lng, lat });
+            }}
+          />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a] text-center p-6 pointer-events-auto">
             <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4 border border-white/10">
@@ -74,13 +115,48 @@ export default function MapPageClient({
         )}
       </div>
 
+      <AnimatePresence>
+        {mapSelectedStopPeek ? (
+          <motion.div
+            key={`map-stop-peek-${mapSelectedStopPeek.location.id}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute left-4 right-4 z-20 pointer-events-none"
+            style={{
+              bottom: hideBottomRouteCta
+                ? "max(1rem, env(safe-area-inset-bottom, 0px))"
+                : "max(5.5rem, calc(env(safe-area-inset-bottom, 0px) + 4.5rem))",
+            }}
+          >
+            <div className="pointer-events-auto max-w-lg mx-auto">
+              <SelectedRouteStopPeek
+                location={mapSelectedStopPeek.location}
+                stopIndex={mapSelectedStopPeek.stopIndex}
+                shareCode={shareCode}
+                editable={false}
+                onDismiss={() => {
+                  setSelectedLocationId(null);
+                  setFocusLngLat(null);
+                }}
+              />
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
       {/* Floating Route Legend / Info Panel that links to the route editor */}
       {routeLocations.length > 0 && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.4 }}
+          animate={{
+            opacity: hideBottomRouteCta ? 0 : 1,
+            y: hideBottomRouteCta ? 12 : 0,
+          }}
+          transition={{ duration: 0.2 }}
           className="absolute bottom-6 left-4 right-4 z-10 pointer-events-none"
+          style={{ pointerEvents: hideBottomRouteCta ? "none" : undefined }}
         >
           <div className="max-w-md mx-auto">
             <button
