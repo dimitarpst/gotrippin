@@ -67,6 +67,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "patch-package": "^8.0.1",
     "@types/mapbox__point-geometry": "^1.0.87",
     "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",

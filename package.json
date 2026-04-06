@@ -19,7 +19,7 @@
     "deploy": "bash ./deploy.sh",
     "sync": "npm run deploy",
     "deploy:win": "wsl bash -lc \"cd /mnt/d/Coding/gotrippin && ./deploy.sh\"",
-    "postinstall": "npm run build --workspace=@gotrippin/core && node node_modules/patch-package/index.js",
+    "postinstall": "node scripts/postinstall-root.cjs",
     "build:core": "npm run build --workspace=@gotrippin/core"
   },
   "dependencies": {
@@ -48,7 +48,6 @@
     "react-bits": "^1.0.5",
     "react-dom": "^19.2.1",
     "reflect-metadata": "^0.2.2",
-    "patch-package": "^8.0.1",
     "rxjs": "^7.8.1",
     "tailwindcss": "^4.1.16",
     "tailwindcss-animate": "^1.0.7",
