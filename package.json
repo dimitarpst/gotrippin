@@ -19,7 +19,7 @@
     "deploy": "bash ./deploy.sh",
     "sync": "npm run deploy",
     "deploy:win": "wsl bash -lc \"cd /mnt/d/Coding/gotrippin && ./deploy.sh\"",
-    "postinstall": "npm run build --workspace=@gotrippin/core && patch-package",
+    "postinstall": "npm run build --workspace=@gotrippin/core && node node_modules/patch-package/index.js",
     "build:core": "npm run build --workspace=@gotrippin/core"
   },
   "dependencies": {
