@@ -1,3 +1,7 @@
+/**
+ * Node-only R2 / S3 client for server actions and API routes.
+ * Do not import this file from Client Components — use `@/lib/r2-public` for URL helpers.
+ */
 import https from "node:https";
 import { S3Client } from "@aws-sdk/client-s3";
 import { NodeHttpHandler } from "@smithy/node-http-handler";
@@ -5,11 +9,6 @@ import { NodeHttpHandler } from "@smithy/node-http-handler";
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID!;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY!;
-
-// Bucket "cdn" → URLs: cdn.gotrippin.app/avatars/... and cdn.gotrippin.app/trip-images/...
-export const AVATARS_BUCKET = "cdn";
-export const TRIP_IMAGES_KEY_PREFIX = "trip-images/";
-export const TRIP_IMAGES_BUCKET = AVATARS_BUCKET;
 
 /** Custom HTTPS agent to avoid TLS handshake failures on Windows with Cloudflare R2 */
 const httpsAgent = new https.Agent({
@@ -30,42 +29,3 @@ export const r2Client = new S3Client({
   }),
 });
 
-/**
- * Build a public URL for an object in R2.
- * Uses NEXT_PUBLIC_R2_PUBLIC_URL only — your custom domain (e.g. https://cdn.gotrippin.app).
- *
- * Per Cloudflare R2 docs (https://developers.cloudflare.com/r2/buckets/public-buckets/):
- * - r2.dev is rate-limited and for development only; do not use in production.
- * - Use a custom domain for production; disable "Public development URL" on the bucket.
- * - WAF, caching, and access control require a custom domain (not available on r2.dev).
- */
-export function getR2PublicUrl(key: string): string {
-  const trimmed = key.trim();
-  if (!trimmed) {
-    return key;
-  }
-  // Already a full URL — do not concatenate (avoids broken double URLs).
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
-  }
-  // Leading slash on storage_key + "/" after base produced "//" in the path (e.g. on edit preview).
-  const normalizedKey = trimmed.replace(/^\/+/, "");
-  const base = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "";
-  if (!base) {
-    return normalizedKey;
-  }
-  return `${base.replace(/\/$/, "")}/${normalizedKey}`;
-}
-
-/**
- * Resolve the display URL for a trip's cover photo.
- * Reads from cover_photo.storage_key (joined from photos table) → R2 CDN URL.
- */
-export function resolveTripCoverUrl(trip: {
-  cover_photo?: { storage_key: string } | null;
-}): string | null {
-  if (trip.cover_photo?.storage_key) {
-    return getR2PublicUrl(trip.cover_photo.storage_key);
-  }
-  return null;
-}

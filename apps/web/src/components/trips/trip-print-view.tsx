@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import type { Activity, Trip, TripLocation } from "@gotrippin/core";
 import { Card } from "@/components/ui/card";
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
-import { resolveTripCoverUrl } from "@/lib/r2";
+import { resolveTripCoverUrl } from "@/lib/r2-public";
 import { tripNotesStorageToPlainText } from "@/lib/trip-notes-doc";
 
 export interface TripPrintViewProps {

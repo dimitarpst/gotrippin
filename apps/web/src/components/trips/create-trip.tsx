@@ -8,7 +8,7 @@ import { DatePicker, type DatePickerTimelineContext } from "./date-picker";
 import type { DateRange } from "react-day-picker";
 import { useTranslation } from "react-i18next";
 import type { CoverPhotoInput, Photo } from "@gotrippin/core";
-import { getR2PublicUrl } from "@/lib/r2";
+import { getR2PublicUrl } from "@/lib/r2-public";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import {

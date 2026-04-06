@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation"
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server"
 import { fetchTripByShareCode } from "@/lib/api/trips"
 import { getGroupedActivities, normalizeTimelineData } from "@/lib/api/activities"
-import { resolveTripCoverUrl } from "@/lib/r2"
+import { resolveTripCoverUrl } from "@/lib/r2-public"
 import TimelineLocationPageClient from "./TimelineLocationPageClient"
 
 export const dynamic = "force-dynamic"

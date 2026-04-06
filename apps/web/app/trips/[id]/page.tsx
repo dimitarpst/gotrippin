@@ -24,12 +24,31 @@ export default async function TripDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ itinerary?: string }>;
+  searchParams: Promise<{
+    itinerary?: string;
+    budget?: string;
+    expenseLocation?: string;
+    expenseActivity?: string;
+  }>;
 }) {
   const { id: shareCode } = await params;
   const query = await searchParams;
   const initialItineraryOpen =
     query.itinerary === "1" || query.itinerary === "true" || query.itinerary === "open";
+  const budgetDeepLink =
+    query.budget === "1" || query.budget === "true" || query.budget === "open";
+  const hasExpenseParams =
+    Boolean(query.expenseLocation?.trim()) || Boolean(query.expenseActivity?.trim());
+  if (budgetDeepLink || hasExpenseParams) {
+    const p = new URLSearchParams();
+    if (query.expenseLocation?.trim()) {
+      p.set("expenseLocation", query.expenseLocation.trim());
+    }
+    if (query.expenseActivity?.trim()) {
+      p.set("expenseActivity", query.expenseActivity.trim());
+    }
+    redirect(`/trips/${shareCode}/budget${p.toString() ? `?${p.toString()}` : ""}`);
+  }
 
   const supabase = await createServerSupabaseClient();
   const {

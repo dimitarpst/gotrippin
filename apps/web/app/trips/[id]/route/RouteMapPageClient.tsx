@@ -959,6 +959,8 @@ export default function RouteMapPageClient({
                 stopIndex={mapSelectedStopPeek.stopIndex}
                 shareCode={shareCode}
                 editable
+                expenseTripId={trip.id}
+                tripBudgetCurrency={trip.budget_currency ?? null}
                 onDismiss={() => {
                   setSelectedLocationId(null);
                 }}

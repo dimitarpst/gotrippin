@@ -23,7 +23,7 @@ Trip UX (Tripsy-inspired — tight density, map + sheets):
   ✔ Phase 3 — Itinerary preview rows: shallower rows, typography hierarchy, right-aligned meta where it fits, optional hairline dividers between stops (`trip-overview.tsx`)
   ✔ Phase 4 — Route map bottom sheet: compact bottom bar (menu / more / primary +) and sheet content using same density rules (`RouteMapPageClient.tsx` + shared `Drawer` patterns)
   ✔ Phase 5 — Timeline and per-day location views: reuse the same spacing scale (`app/trips/[id]/timeline/**`)
-  ☐ Later — Expenses & documents cards (when features exist); match tight card + list pattern for consistency
+  ✔ Later — Expenses & documents cards (when features exist); match tight card + list pattern for consistency — budget: full page `/trips/[id]/budget` + overview row card below notes; documents card unchanged
   ☐ Tripsy day-first flow (ref. screenshots — Vilnius hub card, white day list, TapSmart carousel): horizontal day strip scoped to trip window; selected day drives the list below; rows = primary title left + time/meta right in muted type (not a fat Mar→Mar span per stop on compact UI); hub itinerary card = one trip date range on the header row (small grey, right) plus optional summary row (activity-type icons + count like “4 activities”); keep multi-night / arrival–departure truth on timeline & stop detail, not repeated on overview
 
 Archive:

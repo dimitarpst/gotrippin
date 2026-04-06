@@ -5,7 +5,7 @@ import { Calendar, MapPin } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Trip } from "@gotrippin/core"
-import { resolveTripCoverUrl } from "@/lib/r2"
+import { resolveTripCoverUrl } from "@/lib/r2-public"
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 
 interface TripWithCalculations extends Trip {

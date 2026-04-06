@@ -69,17 +69,5 @@ export type Language = 'en' | 'bg';
 export type ThemeColor = 'light' | 'dark';
 
 // Activity and ActivityType are now exported from ../schemas/trip
-
-/**
- * Future: Expense tracking
- */
-export interface Expense {
-  id: string;
-  trip_id: string;
-  amount: number;
-  category: string;
-  note?: string;
-  created_at: string;
-}
-
+// Trip expenses: TripExpense, CreateTripExpense, UpdateTripExpense from ../schemas/trip
 

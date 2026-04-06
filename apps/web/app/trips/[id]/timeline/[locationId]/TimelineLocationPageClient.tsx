@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { MapPin, ArrowLeft, Calendar, Navigation, Sparkles, ArrowRight, Map as MapIcon } from "lucide-react"
+import { MapPin, ArrowLeft, Calendar, Navigation, Sparkles, ArrowRight, Map as MapIcon, Wallet } from "lucide-react"
 import AuroraBackground from "@/components/effects/aurora-background"
 import WeatherWidget from "@/components/trips/weather-widget"
 import { WeatherUnavailableIndicator } from "@/components/trips/weather-unavailable-indicator"
@@ -157,6 +157,18 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                 >
                   {t("trip_overview.view_all_days", { defaultValue: "Back to timeline" })}
                 </Button>
+                <Button
+                  variant="outline"
+                  className="border-white/35 bg-black/30 text-white shadow-sm backdrop-blur-md hover:bg-black/45 hover:text-white focus-visible:ring-white/40 dark:border-white/30 dark:bg-white/10 dark:hover:bg-white/18 dark:hover:text-white"
+                  onClick={() =>
+                    router.push(
+                      `/trips/${shareCode}/budget?expenseLocation=${encodeURIComponent(locationId)}`,
+                    )
+                  }
+                >
+                  <Wallet className="h-4 w-4 mr-2" aria-hidden />
+                  {t("timeline_location.add_expense_stop", { defaultValue: "Add expense here" })}
+                </Button>
               </div>
             </div>
           </motion.div>
@@ -294,22 +306,41 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                   {activities.map((act) => (
                     <div
                       key={act.id}
-                      className="flex cursor-pointer items-center justify-between rounded-2xl border border-border bg-muted/50 px-3 py-2.5 transition-colors hover:bg-muted dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-                      onClick={() => router.push(`/trips/${shareCode}/activity/${act.id}/edit`)}
+                      className="flex items-center gap-2 rounded-2xl border border-border bg-muted/50 px-2 py-2 transition-colors hover:bg-muted dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                     >
-                      <div>
-                        <p className="text-foreground font-semibold text-sm dark:text-white">{act.title}</p>
-                        {act.start_time && (
-                          <p className="text-xs text-muted-foreground dark:text-white/60">
-                            {new Date(act.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        )}
-                      </div>
-                      {act.type && (
-                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground dark:text-white/50">
-                          {act.type.replace("_", " ")}
-                        </span>
-                      )}
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 rounded-xl px-1 py-0.5 text-left"
+                        onClick={() => router.push(`/trips/${shareCode}/activity/${act.id}/edit`)}
+                      >
+                        <div>
+                          <p className="text-foreground font-semibold text-sm dark:text-white">{act.title}</p>
+                          {act.start_time && (
+                            <p className="text-xs text-muted-foreground dark:text-white/60">
+                              {new Date(act.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          )}
+                        </div>
+                        {act.type ? (
+                          <span className="shrink-0 text-[11px] uppercase tracking-wide text-muted-foreground dark:text-white/50">
+                            {act.type.replace("_", " ")}
+                          </span>
+                        ) : null}
+                      </button>
+                      <button
+                        type="button"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-background/80 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground dark:border-white/15 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/15"
+                        aria-label={t("timeline_location.add_expense_activity_a11y", {
+                          defaultValue: "Add expense for this activity",
+                        })}
+                        onClick={() =>
+                          router.push(
+                            `/trips/${shareCode}/budget?expenseLocation=${encodeURIComponent(locationId)}&expenseActivity=${encodeURIComponent(act.id)}`,
+                          )
+                        }
+                      >
+                        <Wallet className="h-4 w-4" aria-hidden />
+                      </button>
                     </div>
                   ))}
                 </div>

@@ -136,6 +136,8 @@ export default function MapPageClient({
                 stopIndex={mapSelectedStopPeek.stopIndex}
                 shareCode={shareCode}
                 editable={false}
+                expenseTripId={trip.id}
+                tripBudgetCurrency={trip.budget_currency ?? null}
                 onDismiss={() => {
                   setSelectedLocationId(null);
                   setFocusLngLat(null);

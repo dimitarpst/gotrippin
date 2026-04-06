@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Calendar, ExternalLink, List, X } from "lucide-react";
-import type { TripLocation } from "@gotrippin/core";
+import type { TripExpense, TripLocation } from "@gotrippin/core";
 import type { DateRange } from "react-day-picker";
 import { ColorPicker } from "@/components/color-picker";
 import { DatePicker } from "@/components/trips/date-picker";
 import { getStablePaletteColorForLocationId, isSolidRouteColor } from "@/lib/route-colors";
+import { fetchTripExpenses } from "@/lib/api/trip-expenses";
+import {
+  expensesByCurrency,
+  formatMoneyMinor,
+  sumExpensesInCurrency,
+} from "@/lib/trip-budget";
 
 export interface SelectedRouteStopPeekProps {
   location: TripLocation;
@@ -24,6 +30,9 @@ export interface SelectedRouteStopPeekProps {
   onNameCommit?: (id: string, name: string) => void;
   onDatesCommit?: (id: string, range: DateRange | undefined) => void;
   onMarkerColorCommit?: (id: string, hex: string) => void;
+  /** When set, show spent total for expenses linked to this stop. */
+  expenseTripId?: string;
+  tripBudgetCurrency?: string | null;
 }
 
 function formatDateRangeLabel(
@@ -56,15 +65,66 @@ export function SelectedRouteStopPeek({
   onNameCommit,
   onDatesCommit,
   onMarkerColorCommit,
+  expenseTripId,
+  tripBudgetCurrency,
 }: SelectedRouteStopPeekProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [draftName, setDraftName] = useState(location.location_name || "");
+  const [stopExpenses, setStopExpenses] = useState<TripExpense[] | null>(null);
+  const [stopExpensesFailed, setStopExpensesFailed] = useState(false);
 
   useEffect(() => {
     setDraftName(location.location_name || "");
   }, [location.id, location.location_name]);
+
+  useEffect(() => {
+    if (!expenseTripId) {
+      setStopExpenses(null);
+      setStopExpensesFailed(false);
+      return;
+    }
+    let cancelled = false;
+    setStopExpenses(null);
+    setStopExpensesFailed(false);
+    fetchTripExpenses(expenseTripId, undefined, { locationId: location.id })
+      .then((rows) => {
+        if (!cancelled) setStopExpenses(rows);
+      })
+      .catch((err: unknown) => {
+        console.error("[SelectedRouteStopPeek] fetchTripExpenses", err);
+        if (!cancelled) {
+          setStopExpenses([]);
+          setStopExpensesFailed(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [expenseTripId, location.id]);
+
+  const stopSpendLabel = useMemo(() => {
+    if (!stopExpenses || stopExpenses.length === 0) return null;
+    const budgetCur = tripBudgetCurrency?.trim().toUpperCase() ?? null;
+    if (budgetCur) {
+      const hasInBudgetCur = stopExpenses.some(
+        (e) => e.currency_code.toUpperCase() === budgetCur,
+      );
+      if (hasInBudgetCur) {
+        const sum = sumExpensesInCurrency(stopExpenses, budgetCur);
+        return formatMoneyMinor(sum, budgetCur);
+      }
+    }
+    const byCur = expensesByCurrency(stopExpenses);
+    if (byCur.size === 1) {
+      const [code, minor] = [...byCur.entries()][0];
+      return formatMoneyMinor(minor, code);
+    }
+    return t("trip_overview.budget_multi_currency", {
+      defaultValue: "Multiple currencies",
+    });
+  }, [stopExpenses, tripBudgetCurrency, t]);
 
   const markerPickerValue =
     location.marker_color != null && isSolidRouteColor(location.marker_color)
@@ -161,6 +221,28 @@ export function SelectedRouteStopPeek({
                 <span>{dateLabel}</span>
               </div>
             )}
+            {expenseTripId ? (
+              <p className="mt-2 text-xs text-white/70">
+                {stopExpenses === null ? (
+                  t("trip_overview.map_stop_peek_spent_loading", {
+                    defaultValue: "Loading spending…",
+                  })
+                ) : stopExpensesFailed ? (
+                  t("trip_overview.map_stop_peek_spent_error", {
+                    defaultValue: "Could not load spending for this stop.",
+                  })
+                ) : stopSpendLabel ? (
+                  t("trip_overview.map_stop_peek_spent", {
+                    defaultValue: "Spent on this stop: {{amount}}",
+                    amount: stopSpendLabel,
+                  })
+                ) : (
+                  t("trip_overview.map_stop_peek_spent_none", {
+                    defaultValue: "No expenses linked to this stop yet.",
+                  })
+                )}
+              </p>
+            ) : null}
             {!editable ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 <button

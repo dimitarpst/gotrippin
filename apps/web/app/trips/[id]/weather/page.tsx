@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation"
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server"
 import { fetchTripByShareCode } from "@/lib/api/trips"
 import { getTripWeather } from "@/lib/api/weather"
-import { resolveTripCoverUrl } from "@/lib/r2"
+import { resolveTripCoverUrl } from "@/lib/r2-public"
 import WeatherPageClient from "./WeatherPageClient"
 import type { TripWeatherResponse } from "@gotrippin/core"
 

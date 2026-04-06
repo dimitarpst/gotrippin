@@ -20,7 +20,7 @@ import {
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getR2PublicUrl } from "@/lib/r2";
+import { getR2PublicUrl } from "@/lib/r2-public";
 import {
   galleryImageStorageKey,
   tripCoverBlurHash,
@@ -479,7 +479,7 @@ export function TripGallery({
           type="button"
           variant="outline"
           size="sm"
-          className="w-full shrink-0 gap-2 sm:w-auto dark:border-white/20"
+          className="w-full shrink-0 gap-2 rounded-xl sm:w-auto dark:border-white/20"
           disabled={atLimit || unsplashBusy || uploadBusy}
           onClick={() => setUnsplashOpen(true)}
         >

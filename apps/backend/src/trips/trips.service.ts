@@ -191,6 +191,8 @@ export class TripsService {
     color: string;
     description: string;
     notes: string | null;
+    budget_amount_minor: number | null;
+    budget_currency: string | null;
   }>) {
     try {
       const existingTrip = await this.supabaseService.getTrips(userId);

@@ -105,6 +105,19 @@ export const TripSchema = z.object({
     .max(500000, 'Notes must be less than 500000 characters')
     .nullable()
     .optional(),
+  /** Total budget in minor units (e.g. cents); pair with budget_currency */
+  budget_amount_minor: z.number().int().min(0).nullable().optional(),
+  /** ISO 4217 uppercase (e.g. EUR) */
+  budget_currency: z
+    .union([
+      z.null(),
+      z
+        .string()
+        .length(3)
+        .regex(/^[A-Za-z]{3}$/, 'Invalid currency code')
+        .transform((s) => s.toUpperCase()),
+    ])
+    .optional(),
   created_at: z.string().datetime({ message: 'Invalid creation date format' }),
 })
   .refine(
@@ -445,6 +458,68 @@ export const UpdateActivitySchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').nullable().optional(),
 });
 
+// ============================================
+// Trip expense schemas (`trip_expenses` table)
+// ============================================
+
+const ExpenseCurrencyCodeSchema = z
+  .string()
+  .min(1)
+  .max(3)
+  .transform((s) => s.trim().toUpperCase())
+  .refine((s) => /^[A-Z]{3}$/.test(s), 'Currency must be a 3-letter ISO 4217 code');
+
+export const TripExpenseSchema = z.object({
+  id: z.string().uuid('Invalid expense ID format'),
+  trip_id: z.string().uuid('Invalid trip ID format'),
+  location_id: z.string().uuid('Invalid location ID format').nullable().optional(),
+  activity_id: z.string().uuid('Invalid activity ID format').nullable().optional(),
+  amount_minor: z
+    .number()
+    .int('Amount must be a whole number of minor units')
+    .positive('Amount must be positive'),
+  currency_code: z
+    .string()
+    .length(3)
+    .regex(/^[A-Z]{3}$/, 'Invalid currency code'),
+  title: z.string().min(1, 'Title is required').max(200, 'Title too long'),
+  notes: z.string().max(5000, 'Notes too long').nullable().optional(),
+  category: z.string().max(100).nullable().optional(),
+  spent_at: z.string().datetime({ message: 'Invalid spent_at format' }),
+  created_by: z.string().uuid('Invalid user ID format'),
+  created_at: z.string().datetime({ message: 'Invalid creation date format' }),
+  updated_at: z.string().datetime({ message: 'Invalid update date format' }),
+});
+
+export const CreateTripExpenseSchema = z.object({
+  location_id: z.string().uuid('Invalid location ID format').nullable().optional(),
+  activity_id: z.string().uuid('Invalid activity ID format').nullable().optional(),
+  amount_minor: z
+    .number()
+    .int('Amount must be a whole number of minor units')
+    .positive('Amount must be positive'),
+  currency_code: ExpenseCurrencyCodeSchema,
+  title: z.string().min(1, 'Title is required').max(200, 'Title too long').trim(),
+  notes: z.string().max(5000, 'Notes too long').nullable().optional(),
+  category: z.string().max(100).nullable().optional(),
+  spent_at: z.string().datetime({ message: 'Invalid spent_at format' }).optional(),
+});
+
+export const UpdateTripExpenseSchema = z.object({
+  location_id: z.string().uuid('Invalid location ID format').nullable().optional(),
+  activity_id: z.string().uuid('Invalid activity ID format').nullable().optional(),
+  amount_minor: z
+    .number()
+    .int('Amount must be a whole number of minor units')
+    .positive('Amount must be positive')
+    .optional(),
+  currency_code: ExpenseCurrencyCodeSchema.optional(),
+  title: z.string().min(1, 'Title is required').max(200, 'Title too long').trim().optional(),
+  notes: z.string().max(5000, 'Notes too long').nullable().optional(),
+  category: z.string().max(100).nullable().optional(),
+  spent_at: z.string().datetime({ message: 'Invalid spent_at format' }).optional(),
+});
+
 // Trip Location Types
 export type TripLocation = z.infer<typeof TripLocationSchema>;
 export type CreateTripLocation = z.infer<typeof CreateTripLocationSchema>;
@@ -457,4 +532,7 @@ export type Activity = z.infer<typeof ActivitySchema>;
 export type CreateActivity = z.infer<typeof CreateActivitySchema>;
 export type UpdateActivity = z.infer<typeof UpdateActivitySchema>;
 
+export type TripExpense = z.infer<typeof TripExpenseSchema>;
+export type CreateTripExpense = z.infer<typeof CreateTripExpenseSchema>;
+export type UpdateTripExpense = z.infer<typeof UpdateTripExpenseSchema>;
 

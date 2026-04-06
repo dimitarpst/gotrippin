@@ -1,5 +1,5 @@
 import { TripUpdateDataSchema } from '@gotrippin/core';
-import { IsOptional, IsString, MaxLength, MinLength, IsISO8601, ValidateNested } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength, Min, IsISO8601, ValidateNested, IsInt } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { z } from 'zod';
@@ -93,6 +93,27 @@ export class UpdateTripDto {
   @IsString()
   @MaxLength(500000)
   notes?: string | null;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description: 'Total budget in minor units (e.g. cents); set with budget_currency',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  budget_amount_minor?: number | null;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description: 'ISO 4217 currency for budget_amount_minor (e.g. EUR)',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(3)
+  budget_currency?: string | null;
 
   /**
    * Validates the data using Zod schema

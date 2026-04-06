@@ -6,6 +6,7 @@ import { ProfilesModule } from "./profiles/profiles.module";
 import { TripsModule } from "./trips/trips.module";
 import { TripLocationsModule } from "./trip-locations/trip-locations.module";
 import { ActivitiesModule } from "./activities/activities.module";
+import { TripExpensesModule } from "./trip-expenses/trip-expenses.module";
 import { AiModule } from "./ai/ai.module";
 import { SupabaseModule } from "./supabase/supabase.module";
 import { ImagesModule } from "./images/images.module";
@@ -30,6 +31,7 @@ import { HealthController } from "./health.controller";
     TripsModule,
     TripLocationsModule,
     ActivitiesModule,
+    TripExpensesModule,
     AiModule,
     ImagesModule,
     WeatherModule,

@@ -1,42 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Images } from "lucide-react";
+import { ArrowLeft, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { Trip, TripGalleryImage } from "@gotrippin/core";
+import type { Activity, Trip, TripLocation } from "@gotrippin/core";
 
 import AuroraBackground from "@/components/effects/aurora-background";
-import { TripGallery } from "@/components/trips/trip-gallery";
-import { resolveTripCoverUrl } from "@/lib/r2-public";
-import { tripCoverStorageKey } from "@/lib/trip-cover-key";
+import { TripBudgetEditor } from "@/components/trips/trip-budget-section";
 
-export default function GalleryPageClient({
+export default function BudgetPageClient({
   trip,
   shareCode,
-  initialGallery,
+  routeLocations,
+  activitiesByLocation,
+  unassignedActivities,
+  defaultExpenseLocationId,
+  defaultExpenseActivityId,
 }: {
   trip: Trip;
   shareCode: string;
-  initialGallery: TripGalleryImage[];
+  /** Unused — kept for API compatibility with server page. */
+  coverImageUrl?: string | null;
+  routeLocations: TripLocation[];
+  activitiesByLocation: Record<string, Activity[]>;
+  unassignedActivities: Activity[];
+  defaultExpenseLocationId: string;
+  defaultExpenseActivityId: string;
 }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [tripFromSetCover, setTripFromSetCover] = useState<Trip | null>(null);
-
-  const displayTrip = tripFromSetCover ?? trip;
-  const coverImageUrl = resolveTripCoverUrl(displayTrip);
-
-  useEffect(() => {
-    if (!tripFromSetCover) {
-      return;
-    }
-    const a = tripCoverStorageKey(tripFromSetCover);
-    const b = tripCoverStorageKey(trip);
-    if (a !== null && b !== null && a === b) {
-      setTripFromSetCover(null);
-    }
-  }, [trip, tripFromSetCover]);
 
   return (
     <main className="relative flex min-h-screen flex-col overflow-hidden bg-[var(--color-background)] text-[var(--color-foreground)]">
@@ -49,22 +41,17 @@ export default function GalleryPageClient({
               type="button"
               onClick={() => router.push(`/trips/${shareCode}`)}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground transition-colors hover:bg-muted"
-              aria-label={t("trip_gallery.back_to_trip", {
-                defaultValue: "Back to trip",
-              })}
+              aria-label={t("trip_budget.back_to_trip", { defaultValue: "Back to trip" })}
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="min-w-0 flex-1">
               <h1 className="font-display text-base font-semibold leading-tight tracking-tight text-foreground sm:text-lg">
-                {t("trip_overview.gallery_title", {
-                  defaultValue: "Trip gallery",
-                })}
+                {t("trip_overview.budget_drawer_title", { defaultValue: "Trip budget" })}
               </h1>
               <p className="mt-0.5 line-clamp-2 text-[11px] leading-tight text-muted-foreground sm:text-xs">
-                {t("trip_gallery.page_subtitle", {
-                  defaultValue:
-                    "Upload photos, full-screen zoom, set the trip background, or add from Unsplash — shared with everyone on the trip.",
+                {t("trip_budget.page_subtitle", {
+                  defaultValue: "Log what you spend on the road — one place for the whole trip.",
                 })}
               </p>
             </div>
@@ -72,18 +59,20 @@ export default function GalleryPageClient({
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15"
               aria-hidden
             >
-              <Images className="h-4 w-4 text-primary" />
+              <Wallet className="h-4 w-4 text-primary" />
             </div>
           </div>
         </header>
 
         <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-4 pb-safe-bottom sm:px-6 sm:py-5">
-          <TripGallery
-            trip={displayTrip}
-            tripId={trip.id}
-            initialImages={initialGallery}
-            coverImageUrl={coverImageUrl ?? null}
-            onCoverPersistedFromApi={setTripFromSetCover}
+          <TripBudgetEditor
+            key={trip.id}
+            trip={trip}
+            routeLocations={routeLocations}
+            activitiesByLocation={activitiesByLocation}
+            unassignedActivities={unassignedActivities}
+            defaultExpenseLocationId={defaultExpenseLocationId}
+            defaultExpenseActivityId={defaultExpenseActivityId}
           />
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
 import { fetchTripByShareCode } from "@/lib/api/trips";
-import { resolveTripCoverUrl } from "@/lib/r2";
+import { resolveTripCoverUrl } from "@/lib/r2-public";
 import NotesPageClient from "./NotesPageClient";
 
 export const dynamic = "force-dynamic";

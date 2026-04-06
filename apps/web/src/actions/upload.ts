@@ -7,7 +7,8 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { r2Client, AVATARS_BUCKET, getR2PublicUrl, TRIP_IMAGES_KEY_PREFIX } from "@/lib/r2";
+import { r2Client } from "@/lib/r2";
+import { AVATARS_BUCKET, getR2PublicUrl, TRIP_IMAGES_KEY_PREFIX } from "@/lib/r2-public";
 import { ApiError, fetchTripById } from "@/lib/api/trips";
 import { createServerSupabaseClient, getServerAuthToken } from "@/lib/supabase-server";
 

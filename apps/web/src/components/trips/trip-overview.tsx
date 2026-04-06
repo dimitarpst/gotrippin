@@ -19,7 +19,6 @@ import {
   Plane,
   MapPin,
   Utensils,
-  DollarSign,
   Zap,
   Users,
   Settings,
@@ -33,6 +32,7 @@ import {
   AlertTriangle,
   NotebookPen,
   Images,
+  Wallet,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -63,7 +63,7 @@ import {
 import type { DateRange } from "react-day-picker"
 import type { WeatherData } from "@gotrippin/core"
 import { format } from "date-fns"
-import { resolveTripCoverUrl } from "@/lib/r2"
+import { resolveTripCoverUrl } from "@/lib/r2-public"
 import { updateTripCoverDominantColor } from "@/lib/api/trips"
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur"
 import { toast } from "sonner"
@@ -81,7 +81,8 @@ export interface TripOverviewActions {
       | "map"
       | "notes"
       | "gallery"
-      | "timeline",
+      | "timeline"
+      | "budget",
   ) => void
   onOpenLocation?: (locationId: string) => void
   onBack: () => void
@@ -1203,6 +1204,34 @@ export default function TripOverview({
                       <p className="text-muted-foreground mt-0.5 text-sm">
                         {t("trip_notes.overview_hint", {
                           defaultValue: "Plans, checklists, links — open the full editor.",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+                </div>
+              </Card>
+            </div>
+          </motion.div>
+
+          {/* Trip budget — full page like notes */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.59 }}>
+            <div onClick={() => onNavigate("budget")}>
+              <Card
+                className={`relative cursor-pointer overflow-hidden border-border dark:border-white/[0.08] rounded-2xl ${TRIP_OVERVIEW_CARD_PADDING} bg-card text-card-foreground transition-colors hover:bg-accent/5 dark:hover:bg-white/[0.04]`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 dark:bg-white/10">
+                      <Wallet className="h-5 w-5 text-primary dark:text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-base font-semibold text-foreground">
+                        {t("trip_overview.budget_title", { defaultValue: "Budget" })}
+                      </h2>
+                      <p className="text-muted-foreground mt-0.5 text-sm">
+                        {t("trip_budget.overview_hint", {
+                          defaultValue: "Cap, expenses, and stops — open the full budget.",
                         })}
                       </p>
                     </div>

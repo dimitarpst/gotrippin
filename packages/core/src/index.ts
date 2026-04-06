@@ -34,6 +34,9 @@ export {
   ActivitySchema,
   CreateActivitySchema,
   UpdateActivitySchema,
+  TripExpenseSchema,
+  CreateTripExpenseSchema,
+  UpdateTripExpenseSchema,
 } from './schemas/trip';
 
 // Export TypeScript types
@@ -67,6 +70,9 @@ export type {
   Activity,
   CreateActivity,
   UpdateActivity,
+  TripExpense,
+  CreateTripExpense,
+  UpdateTripExpense,
 } from './schemas/trip';
 
 export type {
@@ -75,7 +81,6 @@ export type {
   AuthUser,
   Language,
   ThemeColor,
-  Expense,
 } from './types';
 
 export type {

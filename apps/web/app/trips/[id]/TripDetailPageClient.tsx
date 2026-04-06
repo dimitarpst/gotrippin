@@ -343,6 +343,7 @@ export default function TripDetailPageClient({
           map: `/trips/${shareCode}/map`,
           gallery: `/trips/${shareCode}/gallery`,
           notes: `/trips/${shareCode}/notes`,
+          budget: `/trips/${shareCode}/budget`,
         };
         const path = routes[screen];
         if (path) router.push(path);

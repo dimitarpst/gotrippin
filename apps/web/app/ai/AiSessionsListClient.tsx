@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/ai";
 import type { AiSessionListItem } from "@/lib/api/ai";
 import AuroraBackground from "@/components/effects/aurora-background";
-import { Logo } from "@/components/Logo";
+import { GoAiWordmark } from "@/components/ai/go-ai-wordmark";
 import { MessageSquarePlus, ChevronRight, ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -192,10 +192,9 @@ export default function AiSessionsListClient({
               <ArrowLeft className="w-5 h-5 text-white/50 group-hover:text-white/80 transition-colors" />
             </button>
             <div className="flex flex-col gap-0.5 min-w-0">
-              <div className="flex items-center gap-2 flex-nowrap">
-                <Logo variant="sm" className="h-8 w-auto shrink-0" />
-                <h1 className="text-lg font-semibold tracking-tight text-white whitespace-nowrap">{t("ai.title_short")}</h1>
-              </div>
+              <h1 className="m-0 shrink-0 leading-none">
+                <GoAiWordmark alt={t("ai.title")} />
+              </h1>
               <p className="text-xs text-white/50 font-medium">{t("ai.recent_chats")}</p>
             </div>
           </div>
