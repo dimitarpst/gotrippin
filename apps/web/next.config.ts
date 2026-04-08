@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import type { Configuration } from "webpack";
 
 /**
  * React Refresh injects `import.meta.webpackHot`, which is invalid in CJS output.
@@ -8,7 +7,17 @@ import type { Configuration } from "webpack";
  */
 const GOTRIPPIN_CORE_NO_REACT_REFRESH = /[/\\](?:packages[/\\]core|node_modules[/\\]@gotrippin[/\\]core)[/\\]/;
 
-type WebpackRules = NonNullable<NonNullable<Configuration["module"]>["rules"]>;
+/** Narrow webpack rule objects we may mutate (no `webpack` package — Vercel/CI typecheck). */
+type WebpackRuleObject = {
+  exclude?: unknown;
+  use?: unknown[];
+  oneOf?: unknown[];
+  rules?: unknown[];
+};
+
+function isWebpackRuleObject(rule: unknown): rule is WebpackRuleObject {
+  return typeof rule === "object" && rule !== null && !Array.isArray(rule);
+}
 
 function useEntryHasReactRefresh(useEntry: unknown): boolean {
   if (typeof useEntry === "string") return useEntry.includes("react-refresh-utils");
@@ -17,18 +26,20 @@ function useEntryHasReactRefresh(useEntry: unknown): boolean {
   return typeof loader === "string" && loader.includes("react-refresh-utils");
 }
 
-function excludeGotrippinCoreFromReactRefreshRules(rules: WebpackRules | undefined): void {
+function excludeGotrippinCoreFromReactRefreshRules(rules: unknown[] | undefined): void {
   if (!rules) return;
   for (const rule of rules) {
     if (rule === undefined || rule === null || rule === false || rule === "" || rule === 0) {
       continue;
     }
     if (typeof rule === "string") continue;
-    if ("oneOf" in rule && Array.isArray(rule.oneOf)) {
+    if (!isWebpackRuleObject(rule)) continue;
+
+    if (Array.isArray(rule.oneOf)) {
       excludeGotrippinCoreFromReactRefreshRules(rule.oneOf);
       continue;
     }
-    if ("rules" in rule && Array.isArray(rule.rules)) {
+    if (Array.isArray(rule.rules)) {
       excludeGotrippinCoreFromReactRefreshRules(rule.rules);
       continue;
     }
