@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, useReducedMotion } from "framer-motion"
-import { Map, Sparkles, Users } from "lucide-react"
+import { Link2, Map, Sparkles } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 export default function BentoFeatures() {
@@ -58,7 +58,7 @@ export default function BentoFeatures() {
     },
     {
       key: "share" as const,
-      icon: Users,
+      icon: Link2,
       className:
         "md:col-span-1 md:row-span-1 bg-gradient-to-br from-primary/12 to-transparent ring-1 ring-border dark:from-[#ff7670]/10 dark:ring-white/5",
       illustration: (

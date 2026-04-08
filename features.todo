@@ -4,6 +4,58 @@ Todo:
   ☐ Teacher feedback — more activities and notes
   ☐ Explore another weather api cuz current one sucks - look at https://open-meteo.com/en/docs
 
+Diploma — technical documentation (deadline ~2026-04-17; presentation ~6 weeks later):
+  ☐ Diploma in Word (manual paste/write): follow `docs/diploma-word-manual-guide.md` + `docs/Дипломен проект- структура.pdf` — no bulk AI prose; screenshots + your wording
+  ☐ Follow faculty brief: `docs/Дипломен проект- структура.pdf` (+ MoE ref in `.cursorrules`: „Указания от МОН за ДР.pdf“ if you use it). Style **„Дипломна работа“** → **30 реда × 60 знака на ред**; Heading 1/2/3 за дялове/точки/подточки; описателен текст с „Дипломна работа“; махни червените инструкции след попълване; номерирай фигури/таблици; пестеливо оформление около снимки (да не се „хабят“ листи); цитиране/АП; обнови СЪДЪРЖАНИЕТО; File → Info → автор; файлът: име на дипломанта + клас
+  ☐ Обем: МОН минимум **30** стр.; практика в училище **40+**; цел **45+** със съдържание (не „пълнене“). Ориентир от мрежата: ~30×60 ≈ **~1800 знака** на пълна текстова страница (реално по-малко с заглавия и илюстрации); за **~45–50** плътни текстови страници ≈ **порядък 70k–90k знака** — ориентир, не квота
+  ☐ Freeze a “doc UI” snapshot (dated screenshots) so text matches a known build; small visual drift before oral defense is acceptable if called out in doc
+  ☐ Cover: problem, goals, analysis, architecture (web + backend + shared core), features implemented, testing, limits, security/privacy, future work — human edit pass so it reads examiner-grade, not raw AI
+  ☐ Balance promised vs delivered: document what is realistically doable in the post-deadline month without inventing core features only in prose
+
+Competitor research — Tripsy (planning parity, not copying):
+  ☐ When a device is available: structured walkthrough (screens + flows) → checklist vs gotrippin
+  ☐ Map findings to roadmap phases here so thesis and product stay aligned
+
+Realtime collaboration & trip sharing:
+  ☐ Trips not locked to a single account: invite others, roles/permissions (viewer vs editor at minimum)
+  ☐ Realtime co-editing / presence for itinerary and shared state (see also Todo — AI operator Phase 5)
+  ☐ Product + doc wording: only claim what ships or is explicitly “planned” with scope
+
+AI — trip creation & editing depth:
+  ☐ Broaden AI create beyond bare dates + flaky cover step; reliable edit loop for existing trips (speed + correctness)
+  ☐ Parity goal: AI-assisted path should reach the same richness as manual create/edit where feasible
+
+AI — trip-context assistant (overview entry point):
+  ☐ Prominent trip-scoped entry (e.g. bubble/sheet) on trip overview; full trip context (stops, dates, notes) for “plan with me” / modify requests
+
+AI — collaborative / realtime assistant:
+  ☐ When sharing exists: multi-participant or shared AI sessions without conflicting edits (depends on collaboration layer)
+
+Marketing homepage & conversion:
+  ✔ Ship landing story using existing research under docs/seo/marketing (hero, proof, sections, FAQ/comparison if on-strategy) — phased /home: native-apps, intent copy, FAQ+JSON-LD, trust+sheets, OG 1200×630, WebP map band + hero
+  ☐ Tripsy and rubric references: docs/seo/README.md, tripsy-marketing-reference, saturation rounds
+
+Dashboard & first-run experience (density + guidance):
+  ☐ Reduce vertical chrome: search, upcoming/past filters, and header competing for ~30% of viewport — explore compact patterns / progressive disclosure
+  ☐ Empty dashboard: clear CTAs (create trip, open assistant) instead of a bare shelf; optional guided first path
+
+Flights & hotels APIs:
+  ☐ Execute on prior research (pricing, ToS, which APIs) — wire search or deep links into trip planning without overpromising in the thesis
+
+Booking email ingestion (Tripsy-style confirmations):
+  ☐ Inbound path: dedicated address or forwarding + parsing pipeline (deterministic first; optional AI for messy bodies)
+  ☐ Infrastructure: SMTP receive or provider (security, abuse, PII) — document constraints in thesis
+
+Map, routes & activities (planning depth on the map):
+  ☐ Activities visible on map in sync with route context (together vs separate layers — decide and implement)
+  ☐ Weather on map: placement + data source (pair with Open-Meteo / replacement API research in Todo)
+  ☐ Stop / route UX: replace weak “stop details → long load → poor itinerary” handoff with a coherent map-first or sheet-first detail experience
+  ☐ AI map tools: prefer reusing the standard map/route editor flow (user completes selection, returns to chat) over a parallel AI-only map
+
+AI ↔ native UI reuse (cover & map):
+  ☐ Cover: AI triggers the same image / Unsplash / upload drawer as manual create; user confirms; AI persists choice (add solid color option when product supports it)
+  ☐ Routes: AI hands off to the same route-building UI users already have; after confirmation, resume AI turn — avoid duplicate implementations
+
 Supabase Security:
   ☐ Password changed — gotrippin-branded HTML + enable (Auth → Emails → Security)
   ☐ Email address changed — template + enable
@@ -12,10 +64,6 @@ Supabase Security:
   ☐ Identity unlinked — template + enable
   ☐ Multi-factor authentication method added — template + enable
   ☐ Multi-factor authentication method removed — template + enable
-
-To plan:
-  ☐ How to display the activities on the map - together with the route? or seperate?
-  ☐ How to display the weather on the map?
 
 Trip UX (Tripsy-inspired — tight density, map + sheets):
   ✔ Phase 1 — Trip hub horizontal action cluster (+ Activity, Flight, Lodging/Place where routes exist); replace isolated large FAB and trim vertical padding around it (`trip-overview.tsx`)

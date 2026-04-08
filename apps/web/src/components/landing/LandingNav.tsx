@@ -1,10 +1,13 @@
 "use client"
 
+import { useCallback, useEffect, useState } from "react"
+
 import { motion } from "framer-motion"
 import { Menu } from "lucide-react"
 import Link from "next/link"
 import { useTranslation } from "react-i18next"
 
+import { Logo } from "@/components/Logo"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,18 +15,45 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Logo } from "@/components/Logo"
 import { useAuth } from "@/contexts/AuthContext"
+import { cn } from "@/lib/utils"
 
 const GITHUB_ISSUES = "https://github.com/dimitarpst/gotrippin/issues"
+
+const HERO_ANCHOR_ID = "landing-hero-anchor"
 
 export default function LandingNav() {
   const { user } = useAuth()
   const { t } = useTranslation()
+  const [pinned, setPinned] = useState(false)
+
+  const syncPinned = useCallback(() => {
+    const anchor = document.getElementById(HERO_ANCHOR_ID)
+    if (!anchor) {
+      return
+    }
+    const { bottom } = anchor.getBoundingClientRect()
+    setPinned(bottom <= 0)
+  }, [])
+
+  useEffect(() => {
+    syncPinned()
+    window.addEventListener("scroll", syncPinned, { passive: true })
+    window.addEventListener("resize", syncPinned)
+    return () => {
+      window.removeEventListener("scroll", syncPinned)
+      window.removeEventListener("resize", syncPinned)
+    }
+  }, [syncPinned])
 
   return (
     <motion.nav
-      className="fixed top-0 left-0 right-0 z-50 px-4 py-3 sm:px-8 sm:py-5 md:px-12 md:py-6 flex items-center gap-2 pointer-events-none"
+      className={cn(
+        "left-0 right-0 z-50 flex items-center gap-2 px-4 py-3 sm:px-8 sm:py-5 md:px-12 md:py-6 pointer-events-none",
+        pinned ? "fixed top-0" : "absolute top-0",
+        pinned &&
+          "border-b border-border/50 bg-background/80 backdrop-blur-md dark:border-white/10 dark:bg-background/70 supports-[backdrop-filter]:bg-background/55 dark:supports-[backdrop-filter]:bg-background/50",
+      )}
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -40,6 +70,9 @@ export default function LandingNav() {
         <div className="flex items-center gap-8 text-sm font-medium text-muted-foreground dark:text-white/60">
           <Link href="#features" className="transition-colors hover:text-foreground dark:hover:text-white">
             {t("landing.nav.features")}
+          </Link>
+          <Link href="#apps" className="transition-colors hover:text-foreground dark:hover:text-white">
+            {t("landing.nav.apps")}
           </Link>
           <a
             href={GITHUB_ISSUES}
@@ -85,6 +118,11 @@ export default function LandingNav() {
             <DropdownMenuItem asChild>
               <Link href="#features" className="cursor-pointer">
                 {t("landing.nav.features")}
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="#apps" className="cursor-pointer">
+                {t("landing.nav.apps")}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

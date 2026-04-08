@@ -32,14 +32,15 @@ Phase 1 — Homepage IA & narrative (primary SEO work):
   ✔ Map sections (story → map → AI → together + bento + final CTA); arturia + tripsy refs @done(26-04-03)
   ✔ Hero visuals: wireframe placeholders in /public/landing (swap WebP when ready — README) @done(26-04-03)
   ✔ CTA microcopy: “plan”; footer + bento aligned @done(26-04-03)
-  ☐ Keyword map: intent → on-page placement (EN: trip planner, plan a trip, group trip, itinerary; BG later) — ref `docs/seo/marketing/seo-search-intent-trip-planning-2026-04.md`
+  ✔ Keyword map: intent → on-page placement (EN) — ref `docs/seo/marketing/seo-search-intent-trip-planning-2026-04.md` @done(26-04-03)
+      Map (section id → intent phrases): `#story` group trip chaos / scattered plans; `#map` shared route, map, itinerary shape; `#ai` trip planning assistant, itinerary help; `#together` shared plan, one link, group; `#apps` web-first, native planned; `#trust` early access, feedback; `#sheets` spreadsheet alternative; `#features` bento (map + AI + share); `#faq` objections; hero H1 group trip + shared itinerary; metadata title/description align with same phrases (no stuffing).
   ✔ Landing body copy: truthful sharing roadmap @done(26-04-03)
   ☐ Locale strategy: single URL + i18n cookie — document crawler tradeoff; BG URLs when ready
 
 Phase 2 — Meta, rich results, social:
   ✔ Title + meta description: /home updated; no “route-first” @done(26-04-03)
-  ☐ JSON-LD: SoftwareApplication / WebApplication; FAQ only if visible on page
-  ☐ Open Graph: og:image 1200×630; twitter:card summary_large_image where applicable
+  ✔ JSON-LD: `WebApplication` + on-page `FAQPage` on `/home` (EN/BG copy via cookie lang for HTML + schema) @done(26-04-03)
+  ✔ Open Graph: `app/home/opengraph-image.tsx` (1200×630); `twitter:card` summary_large_image on `/home` metadata @done(26-04-03)
 
 Phase 3 — Trust & crawl hygiene:
   ✔ /privacy and /terms stub routes linked from footer (robots: noindex until real copy) @done(26-04-03)

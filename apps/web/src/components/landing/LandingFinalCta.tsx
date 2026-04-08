@@ -15,20 +15,27 @@ export default function LandingFinalCta() {
 
   return (
     <motion.section
-      className="relative py-24 px-6 bg-zinc-950 text-white overflow-hidden"
+      className="relative overflow-hidden border-t border-border bg-muted/40 py-24 px-6 text-foreground dark:border-transparent dark:bg-zinc-950 dark:text-white"
       initial={reduceMotion ? false : { opacity: 0, y: 20 }}
       whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.5 }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(255,118,112,0.35),transparent)] pointer-events-none" />
-      <div className="relative z-10 max-w-3xl mx-auto text-center">
-        <h2 className="font-display text-3xl sm:text-5xl font-bold tracking-tight mb-4">{t("landing.final_cta.title")}</h2>
-        <p className="text-lg text-white/70 mb-10">{t("landing.final_cta.sub")}</p>
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_-15%,rgba(255,118,112,0.1),transparent)] dark:hidden"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(255,118,112,0.35),transparent)] dark:block"
+        aria-hidden
+      />
+      <div className="relative z-10 mx-auto max-w-3xl text-center">
+        <h2 className="font-display mb-4 text-3xl font-bold tracking-tight sm:text-5xl">{t("landing.final_cta.title")}</h2>
+        <p className="mb-10 text-lg text-muted-foreground dark:text-white/70">{t("landing.final_cta.sub")}</p>
         <Link href={user ? "/trips" : "/auth"}>
           <Button
             size="lg"
-            className="rounded-full px-10 h-14 text-base font-semibold bg-primary text-zinc-950 hover:bg-primary/90 shadow-lg shadow-primary/30 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+            className="h-14 rounded-full bg-primary px-10 text-base font-semibold text-zinc-950 shadow-lg shadow-primary/25 hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:shadow-primary/30 dark:focus-visible:ring-white dark:focus-visible:ring-offset-zinc-950"
           >
             <span className="flex items-center">
               {user ? t("landing.final_cta.cta_open") : t("landing.final_cta.cta_start")}

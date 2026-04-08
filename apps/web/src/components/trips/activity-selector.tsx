@@ -114,11 +114,13 @@ export default function ActivitySelector({ tripId, shareCode, onBack }: Activity
           </h1>
           <motion.button
             type="button"
+            onClick={onBack}
+            aria-label={t("common.close")}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-muted hover:bg-muted/80 dark:hover:bg-white/10"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <X className="h-5 w-5 text-muted-foreground" />
+            <X className="h-5 w-5 text-muted-foreground" aria-hidden />
           </motion.button>
         </div>
 

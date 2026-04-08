@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useTranslation } from "react-i18next"
 
 /** Product screenshot in `public/landing/` — use a sharp source (e.g. 2× export); Next/Image quality + sizes drive retina clarity. */
-const HERO_MAP_SRC = "/landing/map.png"
+const HERO_MAP_SRC = "/landing/hero-map.webp"
 
 export default function HeroMockup() {
   const { t } = useTranslation()

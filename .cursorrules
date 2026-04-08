@@ -238,7 +238,7 @@ Copy code
 - Bulgarian documentation follows official MoE structure.
 - Practical part: this codebase.
 - Theoretical part: description of architecture, technologies, results.
-- Reference documents: “Указания от МОН за ДР.pdf”, “Дипломен проект – структура.docx”.
+- Reference documents: `docs/Указания от МОН за ДР.pdf`, `docs/Дипломен проект- структура.pdf`, `docs/for_access_to_dp.pdf` (style reference). English workflow notes: `docs/DIPLOMA_WORKFLOW.md`.
 
 ---
 

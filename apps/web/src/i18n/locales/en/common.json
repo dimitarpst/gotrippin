@@ -678,6 +678,7 @@
   "landing": {
     "nav": {
       "features": "Features",
+      "apps": "Apps",
       "support": "Support",
       "dashboard": "Dashboard",
       "get_started": "Get started",
@@ -686,9 +687,9 @@
       "menu_aria": "Open menu"
     },
     "hero": {
-      "h1_line1": "Plan trips together",
-      "h1_line2": "without the chaos.",
-      "lead": "Too many apps, threads, and half-baked plans? gotrippin is a trip planner built around a clear route, a calm timeline, and an AI assistant—so your crew stays aligned.",
+      "h1_line1": "Plan a group trip together",
+      "h1_line2": "with one shared itinerary.",
+      "lead": "Stop juggling threads and spreadsheets. gotrippin is a web-first group trip planner: a shared map and timeline, an AI assistant in context, and one link so everyone sees the same itinerary.",
       "cta_dashboard": "Go to Dashboard",
       "cta_start": "Start planning free",
       "cta_see_how": "See how it works"
@@ -705,25 +706,26 @@
     },
     "story": {
       "eyebrow": "The problem",
-      "title": "One trip. Five apps. Zero clarity.",
-      "body": "When plans live in screenshots, map pins, and endless chats, someone always misses the latest version. gotrippin is built so the route and the story of the trip live together—fewer tabs, fewer misunderstandings."
+      "title": "Group trips shouldn’t live in five apps.",
+      "body": "When the plan is scattered across screenshots, map pins, and chat threads, someone always misses the update. gotrippin keeps the route and the shared itinerary in one place on the web—fewer tabs, fewer crossed wires."
     },
     "map_section": {
       "eyebrow": "Your route",
-      "title": "See the whole journey on the map",
-      "body": "Lay out stops in order, preview the path, and adjust when plans change. The map and timeline stay connected so everyone is looking at the same shape of the trip—not a stale PDF or a half-finished note.",
-      "placeholder": "Product screenshots in the hero above are placeholders—swap in real captures from your own trips when you're ready."
+      "title": "One map for the whole group trip",
+      "body": "Order your stops, preview the path, and reshuffle when plans change. The map stays tied to the timeline so your crew is looking at the same trip—not a stale export or a half-finished doc.",
+      "image_alt": "gotrippin route map with ordered stops along the path",
+      "caption": "Real product view: your shared route stays visible while the itinerary evolves."
     },
     "ai_section": {
       "eyebrow": "Assistant",
-      "title": "Ask for ideas while you plan",
-      "body": "Use the AI trip assistant to brainstorm stops, tighten an itinerary, or get unstuck—without leaving the context of your trip. You stay in control; the assistant speeds up the messy middle.",
-      "card": "Grounded in your trip—not generic travel spam."
+      "title": "AI help inside your trip planning",
+      "body": "Use the assistant to suggest stops, tighten a day-by-day plan, or get unstuck—without leaving your trip. You stay in charge; it speeds up the messy middle of group planning.",
+      "card": "Answers stay grounded in your trip—not generic travel filler."
     },
     "together_section": {
       "eyebrow": "Your group",
-      "title": "Share the plan—not the headache",
-      "body": "Each trip has a link your people can open. Everyone sees the same map and timeline as you iterate. Rich collaboration (guest roles and invites) is improving over time—today, focus on one source of truth for the itinerary.",
+      "title": "One link. Same shared plan for everyone.",
+      "body": "Each trip has a link your group can open in the browser. Everyone sees the same map and itinerary while you refine it. Deeper guest roles and co-editing are on the roadmap—today, one honest source of truth beats another lost thread.",
       "view_title": "View",
       "view_body": "Share the trip link so friends and family can follow along with stops, dates, and details you've published.",
       "edit_title": "Edit",
@@ -731,14 +733,54 @@
       "footnote": "You'll use the same account flow to open trips; detailed guest permissions will show up here as we ship them."
     },
     "bento": {
-      "section_title": "Map, assistant, and one link for your crew",
-      "section_lead": "A calmer way to plan together—fewer scattered tabs, more clarity before you go.",
+      "section_title": "Shared itinerary, map, and AI—built for groups",
+      "section_lead": "Plan the trip on the web first: one calm place for your crew before you head out.",
       "map_title": "Interactive route map",
-      "map_desc": "Lay out stops, see the path, and reorder when plans change—without losing the big picture.",
+      "map_desc": "Sequence stops, preview the path, and adjust together—without losing the big picture.",
       "ai_title": "AI trip assistant",
-      "ai_desc": "Ask for ideas, refinements, or a second opinion—inside the context of your trip.",
+      "ai_desc": "Brainstorm and refine the itinerary with context from your actual trip.",
       "share_title": "Shareable trip link",
-      "share_desc": "Send one link so your group opens the same map and itinerary. Deeper guest permissions and co-editing are on the way."
+      "share_desc": "One URL opens the same map and plan for everyone. Richer permissions and co-editing are coming."
+    },
+    "native_apps": {
+      "eyebrow": "Platforms",
+      "title": "Web today. Native apps planned.",
+      "body": "gotrippin runs in your browser now—no install required. Dedicated iOS and Android apps are on our roadmap so you can pick up the same trip on the go when they ship.",
+      "card": "We’re not listing app stores yet. Follow progress on GitHub if you want native clients as soon as they’re ready."
+    },
+    "trust": {
+      "eyebrow": "Early days",
+      "title": "We’re building in the open",
+      "body": "gotrippin is early. If group trip planning has been painful for you, try the web app and tell us what matters—we read GitHub issues and use feedback to steer the roadmap."
+    },
+    "sheets_teaser": {
+      "title": "Why not just a spreadsheet?",
+      "body": "Sheets are flexible, but they’re easy to fork, easy to lose in chat, and weak at geography. gotrippin keeps stops, dates, and the route visually linked so “the latest plan” isn’t whichever file someone forwarded last."
+    },
+    "faq": {
+      "title": "Questions",
+      "items": [
+        {
+          "question": "Is gotrippin free to use?",
+          "answer": "You can start planning on the web for free. Pricing may evolve as the product grows—we’ll be upfront about any paid tiers before they affect how you work."
+        },
+        {
+          "question": "Do I need to install an app?",
+          "answer": "No. gotrippin works in a modern browser today. Native iOS and Android apps are planned; we don’t claim they’re available until they ship."
+        },
+        {
+          "question": "How does sharing a trip work?",
+          "answer": "Each trip has a link you can send your group. People with the link can view the map and itinerary you’ve set up. Fine-grained guest roles and collaborative editing are improving over time."
+        },
+        {
+          "question": "Can everyone edit the same trip?",
+          "answer": "Today, plan as the trip owner and share a read-friendly view with your group. Editing together from multiple accounts is on the roadmap—we’re honest about what’s live now versus what’s coming."
+        },
+        {
+          "question": "Is my data only on this device?",
+          "answer": "Trips live in your account on our servers so you can open them from any browser where you’re signed in. We don’t market “offline-first” unless that’s explicitly shipped."
+        }
+      ]
     },
     "final_cta": {
       "title": "Ready to plan your next adventure?",
