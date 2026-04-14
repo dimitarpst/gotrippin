@@ -50,4 +50,14 @@ Thumbs.db
 .vscode/
 .idea/
 
+# AI tooling configs (local only)
+.claude/
+AGENTS.md
+.cursorrules
 
+# Internal docs and planning (local only)
+docs/
+features.todo
+
+# Deployment scripts (contain server details)
+deploy.sh
