@@ -52,8 +52,12 @@ Thumbs.db
 
 # AI tooling configs (local only)
 .claude/
+.cursor/
 AGENTS.md
 .cursorrules
+
+# Build scripts (local only)
+scripts/
 
 # Internal docs and planning (local only)
 docs/
