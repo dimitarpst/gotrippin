@@ -1,15 +1,49 @@
 import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import type {
-  TomorrowTimelineResponse,
   WeatherData,
   TripWeatherResponse,
   TripLocationWeather,
 } from '@gotrippin/core';
 import { getWeatherDescription } from '@gotrippin/core';
 import { TripLocationsService } from '../trip-locations/trip-locations.service';
+
+interface OpenMeteoForecastResponse {
+  latitude: number;
+  longitude: number;
+  current?: {
+    time: string;
+    temperature_2m?: number;
+    relative_humidity_2m?: number;
+    apparent_temperature?: number;
+    weather_code?: number;
+    wind_speed_10m?: number;
+    wind_direction_10m?: number;
+    cloud_cover?: number;
+  };
+  daily?: {
+    time: string[];
+    weather_code?: number[];
+    temperature_2m_max?: number[];
+    temperature_2m_min?: number[];
+    precipitation_probability_max?: number[];
+    precipitation_sum?: number[];
+    wind_speed_10m_max?: number[];
+    cloud_cover_mean?: number[];
+    uv_index_max?: number[];
+  };
+}
+
+interface OpenMeteoGeocodingResponse {
+  results?: Array<{
+    name: string;
+    latitude: number;
+    longitude: number;
+    country?: string;
+    admin1?: string;
+  }>;
+}
 
 interface CacheEntry {
   data: WeatherData;
@@ -19,30 +53,20 @@ interface CacheEntry {
 @Injectable()
 export class WeatherService {
   private readonly logger = new Logger(WeatherService.name);
-  private readonly apiKey: string;
-  private readonly baseUrl = 'https://api.tomorrow.io/v4';
+  private readonly forecastBaseUrl = 'https://api.open-meteo.com/v1/forecast';
+  private readonly geocodingBaseUrl = 'https://geocoding-api.open-meteo.com/v1/search';
   private readonly cache = new Map<string, CacheEntry>();
   private readonly cacheTTL = 10 * 60 * 1000; // 10 minutes
   private readonly maxForecastDays = 14;
-  // Tomorrow.io free plan restriction: endTime cannot be more than 5 days ahead.
-  private readonly maxPlanDaysAhead = 5;
+  private readonly maxRetries = 2;
+  private readonly requestTimeoutMs = 6000;
+  private readonly minRequestIntervalMs = 150;
+  private lastRequestAt = 0;
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService,
     private readonly tripLocationsService: TripLocationsService,
-  ) {
-    this.apiKey = this.configService.get<string>('TOMORROW_IO_API_KEY');
-    if (!this.apiKey) {
-      this.logger.warn(
-        'TOMORROW_IO_API_KEY not found in environment variables',
-      );
-    } else {
-      this.logger.log(
-        `Tomorrow.io API key loaded (length: ${this.apiKey.length})`,
-      );
-    }
-  }
+  ) {}
 
   /**
    * Get weather for all trip locations
@@ -66,14 +90,12 @@ export class WeatherService {
             : loc.location_name;
 
         // Date window rules:
-        // - Tomorrow.io rejects requests where endTime is earlier than startTime (or when endTime is in the past and startTime defaults to "now")
-        // - Free tier also rejects startTime > 24h in the past
+        // - If both dates exist, end must be strictly after start.
+        // - Forecast window is capped to maxForecastDays.
         const nowIso = new Date().toISOString();
         let normalizedStart = this.normalizeStartDate(loc.arrival_date);
         let normalizedEnd = this.normalizeEndDate(loc.departure_date, normalizedStart);
 
-        // If arrival is too far in the past, normalizeStartDate() returns undefined.
-        // In that case, never send an endTime in the past (Tomorrow will treat startTime as "now" and fail).
         if (!normalizedStart && loc.departure_date) {
           const endFromDeparture = this.normalizeEndDate(loc.departure_date, nowIso);
           if (endFromDeparture) {
@@ -97,29 +119,6 @@ export class WeatherService {
             if (endMs - startMs > maxWindowMs) {
               normalizedEnd = new Date(startMs + maxWindowMs).toISOString();
             }
-          }
-        }
-
-        // Respect plan restriction: never send a request when endTime is more than
-        // `maxPlanDaysAhead` days in the future, otherwise Tomorrow.io returns a 403.
-        if (normalizedEnd) {
-          const endMs = Date.parse(normalizedEnd);
-          const nowMs = Date.now();
-          const maxAheadMs = this.maxPlanDaysAhead * 24 * 60 * 60 * 1000;
-          if (Number.isFinite(endMs) && endMs - nowMs > maxAheadMs) {
-            // Skip calling the API for this far-future stop; surface a soft error instead.
-            return {
-              locationId: loc.id,
-              locationName: loc.location_name,
-              orderIndex: loc.order_index,
-              arrivalDate: loc.arrival_date,
-              departureDate: loc.departure_date,
-              latitude: loc.latitude ?? null,
-              longitude: loc.longitude ?? null,
-              weather: null,
-              error:
-                'Weather forecast is only available up to 5 days from today with the current plan.',
-            } as TripLocationWeather;
           }
         }
 
@@ -189,159 +188,23 @@ export class WeatherService {
       return cached;
     }
 
-    if (!this.apiKey) {
-      throw new HttpException(
-        'Weather API key not configured',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
     try {
-      // Build request body for Timeline API
-      const requestBody: any = {
-        location,
-        fields: [
-          'temperature',
-          'temperatureMin',
-          'temperatureMax',
-          'temperatureApparent',
-          'humidity',
-          'precipitationProbability',
-          'precipitationIntensity',
-          'weatherCode',
-          'windSpeed',
-          'windDirection',
-          'cloudCover',
-          'visibility',
-          'uvIndex',
-        ],
-        timesteps: ['current', '1h', '1d'],
-        units: 'metric',
-      };
-
-      // Validate dates - free tier doesn't allow historical data more than 24 hours in the past
-      if (startDate) {
-        const start = new Date(startDate);
-        const now = new Date();
-        const hoursDiff = (now.getTime() - start.getTime()) / (1000 * 60 * 60);
-        
-        if (hoursDiff > 24) {
-          throw new HttpException(
-            'Free tier plan restriction: startTime cannot be more than 24 hours in the past. Please use current or future dates.',
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-        
-        requestBody.startTime = startDate;
-      }
-      if (endDate) {
-        requestBody.endTime = endDate;
-      }
-
-      // Adjust timesteps based on window length to avoid Tomorrow.io rule violations
-      if (requestBody.startTime && requestBody.endTime) {
-        const start = new Date(requestBody.startTime).getTime();
-        const end = new Date(requestBody.endTime).getTime();
-        const windowMs = end - start;
-
-        // If window invalid or <=0, drop endTime and keep default timesteps
-        if (windowMs <= 0) {
-          delete requestBody.endTime;
-        } else if (windowMs < 24 * 60 * 60 * 1000) {
-          // For windows < 24h use current + hourly
-          requestBody.timesteps = ['current', '1h'];
-        } else {
-          // For >=24h use current + hourly + daily
-          requestBody.timesteps = ['current', '1h', '1d'];
-        }
-      } else {
-        // When no range provided, default to current + hourly + daily
-        requestBody.timesteps = ['current', '1h', '1d'];
-      }
-
-      const url = `${this.baseUrl}/timelines`;
-      const response = await firstValueFrom(
-        this.httpService.post<TomorrowTimelineResponse>(
-          url,
-          requestBody,
-          {
-            params: {
-              apikey: this.apiKey,
-            },
-          },
-        ),
+      const coordinates = await this.resolveCoordinates(location);
+      const params = this.buildForecastParams(coordinates.latitude, coordinates.longitude, startDate, endDate);
+      const response = await this.requestWithRetry<OpenMeteoForecastResponse>(
+        this.forecastBaseUrl,
+        params,
       );
-
-      const weatherData = this.transformTimelineResponse(
-        response.data,
-        location,
-      );
+      const weatherData = this.transformForecastResponse(response, location);
       // Cache the result
       this.setCachedData(cacheKey, weatherData);
-      
       return weatherData;
-    } catch (error: any) {
-      // Preserve intentionally thrown HttpExceptions (e.g., date validation)
+    } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
-
-      this.logger.error('Error fetching weather timeline', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-      });
-      
-      if (error.response) {
-        const status = error.response.status;
-        const data = error.response.data;
-        const message = data?.message || data?.type || error.message;
-        const code = data?.code;
-        
-        if (status === 401) {
-          this.logger.error(
-            `Authentication failed. API key length: ${this.apiKey?.length || 0}`,
-          );
-          throw new HttpException(
-            `Invalid weather API key: ${message}`,
-            HttpStatus.UNAUTHORIZED,
-          );
-        } else if (status === 403) {
-          // 403 can be either authentication or plan restrictions
-          if (code === 403003 || message?.includes('plan is restricted') || message?.includes('cannot be more than')) {
-            // Plan restriction error (e.g., free tier limitations)
-            throw new HttpException(
-              `Plan restriction: ${message}`,
-              HttpStatus.FORBIDDEN,
-            );
-          } else {
-            // Authentication error (wrong key)
-            throw new HttpException(
-              `Invalid weather API key: ${message}`,
-              HttpStatus.UNAUTHORIZED,
-            );
-          }
-        } else if (status === 429) {
-          throw new HttpException(
-            'Weather API rate limit exceeded',
-            HttpStatus.TOO_MANY_REQUESTS,
-          );
-        } else if (status === 400) {
-          throw new HttpException(
-            `Invalid request: ${message}`,
-            HttpStatus.BAD_REQUEST,
-          );
-        } else if (status === 404) {
-          throw new HttpException(
-            'Location not found',
-            HttpStatus.NOT_FOUND,
-          );
-        }
-      }
-      
       throw new HttpException(
-        `Failed to fetch weather data: ${error.message}`,
+        'Failed to fetch weather data',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -359,126 +222,36 @@ export class WeatherService {
       return cached;
     }
 
-    if (!this.apiKey) {
-      throw new HttpException(
-        'Weather API key not configured',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
     try {
-      // Build request body for Timeline API with current timestep
-      const requestBody = {
-        location,
-        fields: [
-          'temperature',
-          'temperatureApparent',
-          'humidity',
-          'precipitationProbability',
-          'precipitationIntensity',
-          'weatherCode',
-          'windSpeed',
-          'windDirection',
-          'cloudCover',
-          'visibility',
-          'uvIndex',
-        ],
-        timesteps: ['current'],
-        units: 'metric',
-      };
-
-      const url = `${this.baseUrl}/timelines`;
-      this.logger.debug(`Calling Tomorrow.io API (realtime): ${url}`);
-      
-      const response = await firstValueFrom(
-        this.httpService.post<TomorrowTimelineResponse>(
-          url,
-          requestBody,
-          {
-            headers: {
-              apikey: this.apiKey,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
+      const coordinates = await this.resolveCoordinates(location);
+      const params = this.buildForecastParams(
+        coordinates.latitude,
+        coordinates.longitude,
       );
-
-      const weatherData = this.transformRealtimeResponse(
-        response.data,
-        location,
+      const response = await this.requestWithRetry<OpenMeteoForecastResponse>(
+        this.forecastBaseUrl,
+        params,
       );
-      
+      const weatherData = this.transformRealtimeResponse(response, location);
       // Cache the result
       this.setCachedData(cacheKey, weatherData);
-      
       return weatherData;
-    } catch (error: any) {
-      this.logger.error('Error fetching realtime weather', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-      });
-      
-      if (error.response) {
-        const status = error.response.status;
-        const data = error.response.data;
-        const message = data?.message || data?.type || error.message;
-        const code = data?.code;
-        
-        if (status === 401) {
-          this.logger.error(
-            `Authentication failed. API key length: ${this.apiKey?.length || 0}`,
-          );
-          throw new HttpException(
-            `Invalid weather API key: ${message}`,
-            HttpStatus.UNAUTHORIZED,
-          );
-        } else if (status === 403) {
-          // 403 can be either authentication or plan restrictions
-          if (code === 403003 || message?.includes('plan is restricted') || message?.includes('cannot be more than')) {
-            // Plan restriction error (e.g., free tier limitations)
-            throw new HttpException(
-              `Plan restriction: ${message}`,
-              HttpStatus.FORBIDDEN,
-            );
-          } else {
-            // Authentication error (wrong key)
-            throw new HttpException(
-              `Invalid weather API key: ${message}`,
-              HttpStatus.UNAUTHORIZED,
-            );
-          }
-        } else if (status === 429) {
-          throw new HttpException(
-            'Weather API rate limit exceeded',
-            HttpStatus.TOO_MANY_REQUESTS,
-          );
-        } else if (status === 400) {
-          throw new HttpException(
-            `Invalid request: ${message}`,
-            HttpStatus.BAD_REQUEST,
-          );
-        } else if (status === 404) {
-          throw new HttpException(
-            'Location not found',
-            HttpStatus.NOT_FOUND,
-          );
-        }
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
       }
-      
       throw new HttpException(
-        `Failed to fetch weather data: ${error.message}`,
+        'Failed to fetch weather data',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   /**
-   * Transform Tomorrow.io timeline response to simplified WeatherData
+   * Transform Open-Meteo forecast response to simplified WeatherData.
    */
-  private transformTimelineResponse(
-    response: TomorrowTimelineResponse,
+  private transformForecastResponse(
+    response: OpenMeteoForecastResponse,
     location: string,
   ): WeatherData {
     const weatherData: WeatherData = {
@@ -486,78 +259,53 @@ export class WeatherService {
       forecast: [],
     };
 
-    if (!response.data?.timelines || response.data.timelines.length === 0) {
-      return weatherData;
-    }
+    if (response.daily?.time && response.daily.time.length > 0) {
+      weatherData.forecast = response.daily.time.map((date, index) => {
+        const temperatureMin = response.daily?.temperature_2m_min?.[index];
+        const temperatureMax = response.daily?.temperature_2m_max?.[index];
+        const averageTemperature =
+          temperatureMin !== undefined && temperatureMax !== undefined
+            ? (temperatureMin + temperatureMax) / 2
+            : temperatureMax ?? temperatureMin ?? 0;
+        const precipitationProbability =
+          response.daily?.precipitation_probability_max?.[index] ?? 0;
+        const precipitationIntensity =
+          response.daily?.precipitation_sum?.[index] ?? 0;
+        const weatherCode = response.daily?.weather_code?.[index] ?? 0;
+        const windSpeed = response.daily?.wind_speed_10m_max?.[index] ?? 0;
+        const cloudCover = response.daily?.cloud_cover_mean?.[index] ?? 0;
 
-    // Find daily timeline (1d timestep)
-    const dailyTimeline = response.data.timelines.find(
-      (t) => t.timestep === '1d',
-    );
-
-    if (dailyTimeline && dailyTimeline.intervals) {
-      weatherData.forecast = dailyTimeline.intervals.map((interval) => {
-        const values = interval.values as typeof interval.values & {
-          temperatureMin?: number;
-          temperatureMax?: number;
-        };
-        const tempMin = values.temperatureMin ?? values.temperature;
-        const tempMax = values.temperatureMax ?? values.temperature;
-        const temp = values.temperature ?? tempMax ?? tempMin;
         return {
-          date: interval.startTime,
-          temperatureMin: tempMin,
-          temperatureMax: tempMax,
-          temperature: temp,
-          humidity: values.humidity || 0,
-          precipitationProbability: values.precipitationProbability || 0,
-          precipitationIntensity: values.precipitationIntensity || 0,
-          weatherCode: values.weatherCode || 1000,
-          description: getWeatherDescription(values.weatherCode || 1000),
-          windSpeed: values.windSpeed || 0,
-          cloudCover: values.cloudCover || 0,
+          date,
+          temperatureMin,
+          temperatureMax,
+          temperature: averageTemperature,
+          humidity: 0,
+          precipitationProbability,
+          precipitationIntensity,
+          weatherCode,
+          description: getWeatherDescription(weatherCode),
+          windSpeed,
+          cloudCover,
         };
       });
     }
 
-    // Prefer current timeline for "now" if present
-    const currentTimeline = response.data.timelines.find((t) => t.timestep === 'current');
-    if (currentTimeline && currentTimeline.intervals.length > 0) {
-      const interval = currentTimeline.intervals[0];
-      const values = interval.values;
+    if (response.current) {
+      const weatherCode = response.current.weather_code ?? 0;
       weatherData.current = {
-        temperature: values.temperature || 0,
-        temperatureApparent: values.temperatureApparent || values.temperature || 0,
-        humidity: values.humidity || 0,
-        weatherCode: values.weatherCode || 1000,
-        description: getWeatherDescription(values.weatherCode || 1000),
-        windSpeed: values.windSpeed || 0,
-        windDirection: values.windDirection || 0,
-        cloudCover: values.cloudCover || 0,
-        uvIndex: values.uvIndex,
-      };
-      return weatherData;
-    }
-
-    // Fallback: Find hourly timeline for current weather (1h timestep, first interval)
-    const hourlyTimeline = response.data.timelines.find(
-      (t) => t.timestep === '1h',
-    );
-
-    if (hourlyTimeline && hourlyTimeline.intervals.length > 0) {
-      const currentInterval = hourlyTimeline.intervals[0];
-      const values = currentInterval.values;
-      
-      weatherData.current = {
-        temperature: values.temperature || 0,
-        temperatureApparent: values.temperatureApparent || values.temperature || 0,
-        humidity: values.humidity || 0,
-        weatherCode: values.weatherCode || 1000,
-        description: getWeatherDescription(values.weatherCode || 1000),
-        windSpeed: values.windSpeed || 0,
-        windDirection: values.windDirection || 0,
-        cloudCover: values.cloudCover || 0,
-        uvIndex: values.uvIndex,
+        temperature: response.current.temperature_2m ?? 0,
+        temperatureApparent:
+          response.current.apparent_temperature ??
+          response.current.temperature_2m ??
+          0,
+        humidity: response.current.relative_humidity_2m ?? 0,
+        weatherCode,
+        description: getWeatherDescription(weatherCode),
+        windSpeed: response.current.wind_speed_10m ?? 0,
+        windDirection: response.current.wind_direction_10m ?? 0,
+        cloudCover: response.current.cloud_cover ?? 0,
+        uvIndex: response.daily?.uv_index_max?.[0],
       };
     }
 
@@ -565,41 +313,35 @@ export class WeatherService {
   }
 
   /**
-   * Transform Tomorrow.io realtime response to simplified WeatherData
+   * Transform Open-Meteo current response to simplified WeatherData.
    */
   private transformRealtimeResponse(
-    response: TomorrowTimelineResponse,
+    response: OpenMeteoForecastResponse,
     location: string,
   ): WeatherData {
     const weatherData: WeatherData = {
       location,
     };
 
-    if (!response.data?.timelines || response.data.timelines.length === 0) {
+    if (!response.current) {
       return weatherData;
     }
 
-    // Find current timeline
-    const currentTimeline = response.data.timelines.find(
-      (t) => t.timestep === 'current',
-    );
-
-    if (currentTimeline && currentTimeline.intervals.length > 0) {
-      const interval = currentTimeline.intervals[0];
-      const values = interval.values;
-      
-      weatherData.current = {
-        temperature: values.temperature || 0,
-        temperatureApparent: values.temperatureApparent || values.temperature || 0,
-        humidity: values.humidity || 0,
-        weatherCode: values.weatherCode || 1000,
-        description: getWeatherDescription(values.weatherCode || 1000),
-        windSpeed: values.windSpeed || 0,
-        windDirection: values.windDirection || 0,
-        cloudCover: values.cloudCover || 0,
-        uvIndex: values.uvIndex,
-      };
-    }
+    const weatherCode = response.current.weather_code ?? 0;
+    weatherData.current = {
+      temperature: response.current.temperature_2m ?? 0,
+      temperatureApparent:
+        response.current.apparent_temperature ??
+        response.current.temperature_2m ??
+        0,
+      humidity: response.current.relative_humidity_2m ?? 0,
+      weatherCode,
+      description: getWeatherDescription(weatherCode),
+      windSpeed: response.current.wind_speed_10m ?? 0,
+      windDirection: response.current.wind_direction_10m ?? 0,
+      cloudCover: response.current.cloud_cover ?? 0,
+      uvIndex: response.daily?.uv_index_max?.[0],
+    };
 
     return weatherData;
   }
@@ -639,8 +381,6 @@ export class WeatherService {
     if (!date) return undefined;
     const parsed = new Date(date);
     if (isNaN(parsed.getTime())) return undefined;
-    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
-    if (parsed.getTime() < twentyFourHoursAgo) return undefined;
     return parsed.toISOString();
   }
 
@@ -659,6 +399,209 @@ export class WeatherService {
       if (parsed.getTime() < startDate.getTime()) return undefined;
     }
     return parsed.toISOString();
+  }
+
+  private async resolveCoordinates(
+    location: string,
+  ): Promise<{ latitude: number; longitude: number }> {
+    const parsedCoordinates = this.parseCoordinateLocation(location);
+    if (parsedCoordinates) {
+      return parsedCoordinates;
+    }
+
+    const geocodingResponse = await this.requestWithRetry<OpenMeteoGeocodingResponse>(
+      this.geocodingBaseUrl,
+      {
+        name: location,
+        count: 1,
+      },
+    );
+
+    const firstResult = geocodingResponse.results?.[0];
+    if (!firstResult) {
+      throw new HttpException('Location not found', HttpStatus.NOT_FOUND);
+    }
+
+    return {
+      latitude: firstResult.latitude,
+      longitude: firstResult.longitude,
+    };
+  }
+
+  private parseCoordinateLocation(
+    location: string,
+  ): { latitude: number; longitude: number } | null {
+    const splitLocation = location.split(',');
+    if (splitLocation.length !== 2) {
+      return null;
+    }
+
+    const latitude = Number(splitLocation[0].trim());
+    const longitude = Number(splitLocation[1].trim());
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+
+    return { latitude, longitude };
+  }
+
+  private buildForecastParams(
+    latitude: number,
+    longitude: number,
+    startDate?: string,
+    endDate?: string,
+  ): Record<string, string | number> {
+    const params: Record<string, string | number> = {
+      latitude,
+      longitude,
+      timezone: 'auto',
+      current:
+        'temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,cloud_cover',
+      daily:
+        'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,cloud_cover_mean,uv_index_max',
+    };
+
+    if (startDate) {
+      const startIso = this.toDateOnly(startDate);
+      if (!startIso) {
+        throw new HttpException('Invalid start date', HttpStatus.BAD_REQUEST);
+      }
+      params.start_date = startIso;
+    }
+
+    if (endDate) {
+      const endIso = this.toDateOnly(endDate);
+      if (!endIso) {
+        throw new HttpException('Invalid end date', HttpStatus.BAD_REQUEST);
+      }
+      params.end_date = endIso;
+    }
+
+    const now = new Date();
+    const defaultStart = new Date(now);
+    const defaultEnd = new Date(now);
+    defaultEnd.setDate(defaultEnd.getDate() + this.maxForecastDays - 1);
+
+    const selectedStart = params.start_date ? new Date(String(params.start_date)) : defaultStart;
+    const selectedEnd = params.end_date ? new Date(String(params.end_date)) : defaultEnd;
+    const daySpan = Math.ceil(
+      (selectedEnd.getTime() - selectedStart.getTime()) / (24 * 60 * 60 * 1000),
+    );
+    if (daySpan < 0) {
+      throw new HttpException('End date must be after start date', HttpStatus.BAD_REQUEST);
+    }
+    if (daySpan >= this.maxForecastDays) {
+      selectedEnd.setTime(
+        selectedStart.getTime() + (this.maxForecastDays - 1) * 24 * 60 * 60 * 1000,
+      );
+      params.end_date = selectedEnd.toISOString().slice(0, 10);
+    }
+
+    return params;
+  }
+
+  private toDateOnly(value: string): string | null {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  private async requestWithRetry<T>(
+    url: string,
+    params: Record<string, string | number>,
+  ): Promise<T> {
+    let attempt = 0;
+    let lastError: unknown = null;
+
+    while (attempt <= this.maxRetries) {
+      try {
+        await this.waitForRateLimit();
+        const response = await firstValueFrom(
+          this.httpService.get<T>(url, {
+            params,
+            timeout: this.requestTimeoutMs,
+          }),
+        );
+        return response.data;
+      } catch (error) {
+        lastError = error;
+        const shouldRetry = attempt < this.maxRetries;
+        if (!shouldRetry) {
+          break;
+        }
+        await this.delay(250 * (attempt + 1));
+      }
+      attempt += 1;
+    }
+
+    this.logger.error('Weather provider request failed', {
+      url,
+      message: this.extractErrorMessage(lastError),
+    });
+
+    const errorStatus = this.extractErrorStatus(lastError);
+    if (errorStatus === 400) {
+      throw new HttpException('Invalid weather request', HttpStatus.BAD_REQUEST);
+    }
+    if (errorStatus === 404) {
+      throw new HttpException('Location not found', HttpStatus.NOT_FOUND);
+    }
+    if (errorStatus === 429) {
+      throw new HttpException(
+        'Weather API rate limit exceeded',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    throw new HttpException(
+      'Weather provider unavailable',
+      HttpStatus.BAD_GATEWAY,
+    );
+  }
+
+  private async waitForRateLimit(): Promise<void> {
+    const now = Date.now();
+    const elapsed = now - this.lastRequestAt;
+    if (elapsed < this.minRequestIntervalMs) {
+      await this.delay(this.minRequestIntervalMs - elapsed);
+    }
+    this.lastRequestAt = Date.now();
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise<void>((resolve) => {
+      setTimeout(() => resolve(), ms);
+    });
+  }
+
+  private extractErrorStatus(error: unknown): number | null {
+    if (typeof error !== 'object' || error === null) {
+      return null;
+    }
+    if (!('response' in error)) {
+      return null;
+    }
+    const response = error.response;
+    if (typeof response !== 'object' || response === null) {
+      return null;
+    }
+    if (!('status' in response)) {
+      return null;
+    }
+    const status = response.status;
+    if (typeof status !== 'number') {
+      return null;
+    }
+    return status;
+  }
+
+  private extractErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return 'Unknown provider error';
   }
 }
 

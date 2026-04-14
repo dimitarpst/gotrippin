@@ -19,7 +19,7 @@
     "deploy": "bash ./deploy.sh",
     "sync": "npm run deploy",
     "deploy:win": "wsl bash -lc \"cd /mnt/d/Coding/gotrippin && ./deploy.sh\"",
-    "postinstall": "node scripts/postinstall-root.cjs",
+    "postinstall": "node -e \"const fs=require('fs');const p='scripts/postinstall-root.cjs';if(fs.existsSync(p)){require('./'+p)}else{console.log('Skipping optional root postinstall script');}\"",
     "build:core": "npm run build --workspace=@gotrippin/core"
   },
   "dependencies": {

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   getAiSessionWithMessages,
   postAiMessage,
+  type AiPlaceSuggestion,
   type AiImageSuggestion,
 } from "@/lib/api/ai";
 import { Button } from "@/components/ui/button";
@@ -25,12 +26,76 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
+import AiPlaceSuggestions from "@/components/ai/AiPlaceSuggestions";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   quick_replies?: Array<{ label: string; action: string }>;
   image_suggestions?: AiImageSuggestion[];
+  place_suggestions?: AiPlaceSuggestion[];
+}
+
+interface WizardAnswer {
+  heading: string;
+  vibe: string;
+  joining: string;
+}
+
+const WIZARD_STEPS: Array<{
+  key: keyof WizardAnswer;
+  question: string;
+  options: string[];
+}> = [
+  {
+    key: "heading",
+    question: "Where are you heading?",
+    options: ["Staying in Bulgaria", "Somewhere in Europe", "Further abroad", "Still deciding"],
+  },
+  {
+    key: "vibe",
+    question: "What's the vibe you're going for?",
+    options: ["Nature & outdoors", "City exploration", "Food & culture", "Chill & relaxed"],
+  },
+  {
+    key: "joining",
+    question: "Who's joining you?",
+    options: ["Solo", "With my partner", "Friends group", "Family"],
+  },
+];
+
+const WORKING_STATUSES = [
+  "Thinking...",
+  "Searching for places...",
+  "Building your route...",
+  "Checking availability...",
+  "Planning your trip...",
+];
+
+function WorkingStatus() {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIdx((prev) => (prev + 1) % WORKING_STATUSES.length);
+    }, 2400);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.p
+        key={idx}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.25 }}
+        className="text-xs text-white/60"
+      >
+        {WORKING_STATUSES[idx]}
+      </motion.p>
+    </AnimatePresence>
+  );
 }
 
 type SelectedTool =
@@ -54,6 +119,8 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
   const [error, setError] = useState<string | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
+  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardAnswers, setWizardAnswers] = useState<Partial<WizardAnswer>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -111,6 +178,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
             content: m.content,
             quick_replies: m.quick_replies,
             image_suggestions: m.image_suggestions,
+            place_suggestions: m.place_suggestions,
           })),
         );
       })
@@ -165,6 +233,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
           content: safeMessage,
           quick_replies: res.quick_replies,
           image_suggestions: res.image_suggestions,
+          place_suggestions: res.place_suggestions,
         },
       ]);
       if (res.usage) setAiUsage(res.usage);
@@ -186,6 +255,66 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
       abortControllerRef.current = null;
       setLoading(false);
     }
+  }
+
+  const wizardActive = wizardStep < WIZARD_STEPS.length && messages.every((m) => m.role !== "user");
+
+  async function handleWizardSelect(value: string) {
+    const currentStep = WIZARD_STEPS[wizardStep];
+    if (!currentStep || loading) return;
+    const nextAnswers = { ...wizardAnswers, [currentStep.key]: value };
+    setWizardAnswers(nextAnswers);
+
+    if (wizardStep < WIZARD_STEPS.length - 1) {
+      setWizardStep((prev) => prev + 1);
+      return;
+    }
+
+    setWizardStep(WIZARD_STEPS.length);
+
+    const heading = nextAnswers.heading ?? "Still deciding";
+    const vibe = nextAnswers.vibe ?? "City exploration";
+    const joining = nextAnswers.joining ?? "Solo";
+
+    const displayText = `${heading} · ${vibe} · ${joining}`;
+    const wizardPrompt = [
+      `create_trip: Plan a trip with these preferences: destination region: ${heading}, vibe: ${vibe}, group: ${joining}.`,
+      "Ask 1-2 follow-up questions if needed, then suggest a concrete itinerary with places.",
+      "When possible, include structured PLACE_CARDS output.",
+    ].join("\n");
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setMessages((prev) => [...prev, { role: "user", content: displayText }]);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await postAiMessage(sessionId, wizardPrompt, { signal: controller.signal });
+      const safeMessage = res.message?.trim() || t("ai.empty_reply");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: safeMessage,
+          quick_replies: res.quick_replies,
+          image_suggestions: res.image_suggestions,
+          place_suggestions: res.place_suggestions,
+        },
+      ]);
+      if (res.usage) setAiUsage(res.usage);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setError(err instanceof Error ? err.message : t("ai.failed_request"));
+      setMessages((prev) => prev.slice(0, -1));
+    } finally {
+      abortControllerRef.current = null;
+      setLoading(false);
+    }
+  }
+
+  function handleWizardSkip() {
+    setWizardStep(WIZARD_STEPS.length);
   }
 
   async function handleSend() {
@@ -257,6 +386,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
           content: safeMessage,
           quick_replies: res.quick_replies,
           image_suggestions: res.image_suggestions,
+          place_suggestions: res.place_suggestions,
         },
       ]);
       if (res.usage) setAiUsage(res.usage);
@@ -364,6 +494,26 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
         {/* Chat Area — only this scrolls */}
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           <div className="max-w-3xl mx-auto px-4 py-6 pb-4 space-y-8">
+            {messages.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="flex flex-col items-center justify-center pt-[15vh] text-center"
+              >
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--color-accent)]/30 to-[var(--color-accent)]/10 border border-white/10 flex items-center justify-center mb-5">
+                  <Sparkles className="w-7 h-7 text-[var(--color-accent)]" />
+                </div>
+                <h2 className="text-xl font-semibold text-white/90 mb-2">
+                  {wizardActive ? "Let's plan your trip" : t("ai.title")}
+                </h2>
+                <p className="text-sm text-white/50 max-w-sm">
+                  {wizardActive
+                    ? "Answer a few quick questions below to get started"
+                    : "Ask me anything about travel — I'll help you plan, find places, and build your perfect trip."}
+                </p>
+              </motion.div>
+            )}
             <AnimatePresence initial={false}>
               {messages.map((m, i) => (
                 <motion.div
@@ -451,6 +601,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                             ))}
                           </div>
                         )}
+                        {m.place_suggestions && m.place_suggestions.length > 0 ? (
+                          <AiPlaceSuggestions places={m.place_suggestions} />
+                        ) : null}
                       </div>
                     ) : editingIndex === i ? (
                       <div className="flex flex-col gap-2 w-full min-w-0">
@@ -525,7 +678,10 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                     <AssistantAvatar />
                   </div>
                   <div className="relative rounded-[1.5rem] rounded-tl-sm bg-card/40 backdrop-blur-2xl border border-white/10 px-6 py-5 min-w-[80px] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_8px_24px_-6px_rgba(0,0,0,0.2)]">
-                    <ThinkingDots />
+                    <div className="space-y-3">
+                      <ThinkingDots />
+                      <WorkingStatus />
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -551,15 +707,80 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
           </div>
         )}
 
-        {/* Input Area — always visible at bottom */}
+        {/* Input Area — dynamic island */}
         <div className="shrink-0 px-4 py-4 pb-6 pt-2">
           <div className="max-w-3xl mx-auto">
-            <motion.div 
+            <motion.div
+              layout
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5, type: "spring" }}
-              className={`relative rounded-[2rem] bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col gap-0 min-w-0 ${selectedTool ? "p-2 pb-2 pt-3" : "p-2"}`}
+              transition={{ layout: { type: "spring", stiffness: 400, damping: 30 }, delay: 0.1, duration: 0.4, type: "spring" }}
+              className={`relative rounded-[2rem] bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col gap-0 min-w-0 overflow-hidden ${selectedTool || wizardActive ? "p-2 pb-2 pt-3" : "p-2"}`}
             >
+              {/* Wizard dynamic island expansion */}
+              <AnimatePresence mode="wait">
+                {wizardActive && !loading && WIZARD_STEPS[wizardStep] ? (
+                  <motion.div
+                    key={`wizard-${wizardStep}`}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-3 pb-3 pt-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <motion.p
+                          key={`q-${wizardStep}`}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.1 }}
+                          className="text-sm font-medium text-white/90"
+                        >
+                          {WIZARD_STEPS[wizardStep].question}
+                        </motion.p>
+                        <button
+                          type="button"
+                          onClick={handleWizardSkip}
+                          className="text-[11px] text-white/50 hover:text-white/80 transition-colors px-1.5 py-0.5 rounded-md hover:bg-white/5"
+                        >
+                          Skip
+                        </button>
+                      </div>
+                      <div className="flex gap-1 mb-3">
+                        {WIZARD_STEPS.map((_, sIdx) => (
+                          <motion.div
+                            key={sIdx}
+                            className="h-0.5 flex-1 rounded-full overflow-hidden bg-white/10"
+                          >
+                            <motion.div
+                              className="h-full bg-[var(--color-accent)]"
+                              initial={{ width: sIdx < wizardStep ? "100%" : "0%" }}
+                              animate={{ width: sIdx <= wizardStep ? "100%" : "0%" }}
+                              transition={{ duration: 0.4, ease: "easeOut" }}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {WIZARD_STEPS[wizardStep].options.map((option, idx) => (
+                          <motion.button
+                            key={option}
+                            type="button"
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.05 * idx + 0.12, type: "spring", stiffness: 500, damping: 30 }}
+                            onClick={() => void handleWizardSelect(option)}
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-[13px] font-medium text-white/90 transition-all hover:bg-white/10 hover:border-white/20 hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            {option}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
               <AnimatePresence mode="wait">
                 {selectedTool && (
                   <motion.div
@@ -660,13 +881,13 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                   </DropdownMenu>
                 )}
                 <Input
-                  placeholder={t("ai.placeholder")}
+                  placeholder={wizardActive ? "Choose an option above..." : t("ai.placeholder")}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) =>
-                    e.key === "Enter" && !e.shiftKey && !loading && handleSend()
+                    e.key === "Enter" && !e.shiftKey && !loading && !wizardActive && handleSend()
                   }
-                  disabled={loading}
+                  disabled={loading || wizardActive}
                   className="flex-1 min-w-0 h-12 border-0 bg-transparent px-4 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
                 />
                 {loading ? (

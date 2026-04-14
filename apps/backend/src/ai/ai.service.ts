@@ -40,6 +40,22 @@ export interface PostMessageResult {
     photographer_name: string;
     photographer_url: string;
   }>;
+  place_suggestions?: Array<{
+    name: string;
+    address?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    rating?: number | null;
+    rating_count?: number | null;
+    place_type?: string | null;
+    place_id?: string | null;
+    photo_url?: string | null;
+    phone_number?: string | null;
+    website?: string | null;
+    weekday_hours?: string[] | null;
+    visit_time?: string | null;
+    ai_note?: string | null;
+  }>;
 }
 
 @Injectable()
@@ -155,11 +171,52 @@ export class AiService {
               }))
             : undefined;
 
+        const placesRaw = c?.place_suggestions;
+        const place_suggestions =
+          Array.isArray(placesRaw) && placesRaw.length > 0
+            ? placesRaw
+                .map((item) => {
+                  if (!item || typeof item !== 'object') return null;
+                  const place = item as Record<string, unknown>;
+                  const nameValue = place.name;
+                  if (typeof nameValue !== 'string' || !nameValue.trim()) return null;
+                  const weekdayHoursValue = place.weekday_hours;
+                  const weekdayHours =
+                    Array.isArray(weekdayHoursValue)
+                      ? weekdayHoursValue
+                          .filter((line) => typeof line === 'string' && line.trim().length > 0)
+                          .map((line) => String(line))
+                      : [];
+                  const numberOrNull = (value: unknown): number | null =>
+                    typeof value === 'number' && Number.isFinite(value) ? value : null;
+                  const stringOrNull = (value: unknown): string | null =>
+                    typeof value === 'string' && value.trim().length > 0 ? value : null;
+                  return {
+                    name: nameValue.trim(),
+                    address: stringOrNull(place.address),
+                    latitude: numberOrNull(place.latitude),
+                    longitude: numberOrNull(place.longitude),
+                    rating: numberOrNull(place.rating),
+                    rating_count: numberOrNull(place.rating_count),
+                    place_type: stringOrNull(place.place_type),
+                    place_id: stringOrNull(place.place_id),
+                    photo_url: stringOrNull(place.photo_url),
+                    phone_number: stringOrNull(place.phone_number),
+                    website: stringOrNull(place.website),
+                    weekday_hours: weekdayHours.length ? weekdayHours : null,
+                    visit_time: stringOrNull(place.visit_time),
+                    ai_note: stringOrNull(place.ai_note),
+                  };
+                })
+                .filter((item) => item != null)
+            : undefined;
+
         return {
           role: m.role as 'user' | 'assistant',
           content: text,
           ...(quick_replies ? { quick_replies } : {}),
           ...(image_suggestions ? { image_suggestions } : {}),
+          ...(place_suggestions ? { place_suggestions } : {}),
         };
       });
     return {
@@ -368,6 +425,24 @@ export class AiService {
           photographer_url: string;
         }>
       | undefined;
+    let placeSuggestions:
+      | Array<{
+          name: string;
+          address?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          rating?: number | null;
+          rating_count?: number | null;
+          place_type?: string | null;
+          place_id?: string | null;
+          photo_url?: string | null;
+          phone_number?: string | null;
+          website?: string | null;
+          weekday_hours?: string[] | null;
+          visit_time?: string | null;
+          ai_note?: string | null;
+        }>
+      | undefined;
 
     type PendingCoverImage = {
       unsplash_photo_id: string;
@@ -532,6 +607,12 @@ export class AiService {
         }
       }
 
+      const placeParsed = this.parsePlaceCardsFromResponse(finalContent);
+      if (placeParsed) {
+        finalContent = placeParsed.content;
+        placeSuggestions = placeParsed.place_suggestions;
+      }
+
       await this.supabaseService.insertAiMessage(sessionId, 'user', {
         text: userDisplayText,
       });
@@ -549,6 +630,7 @@ export class AiService {
         text: finalContent,
         ...(quickReplies ? { quick_replies: quickReplies } : {}),
         ...(imageSuggestions ? { image_suggestions: imageSuggestions } : {}),
+        ...(placeSuggestions ? { place_suggestions: placeSuggestions } : {}),
       });
 
       let usage: { used: number; limit: number | null; percent: number | null } | undefined;
@@ -575,6 +657,7 @@ export class AiService {
         message: finalContent,
         quick_replies: quickReplies,
         image_suggestions: imageSuggestions,
+        place_suggestions: placeSuggestions,
         ...(usage ? { usage } : {}),
       };
     } catch (err) {
@@ -655,6 +738,96 @@ export class AiService {
     }
   }
 
+  private parsePlaceCardsFromResponse(
+    content: string,
+  ): {
+    content: string;
+    place_suggestions: Array<{
+      name: string;
+      address?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
+      rating?: number | null;
+      rating_count?: number | null;
+      place_type?: string | null;
+      place_id?: string | null;
+      photo_url?: string | null;
+      phone_number?: string | null;
+      website?: string | null;
+      weekday_hours?: string[] | null;
+      visit_time?: string | null;
+      ai_note?: string | null;
+    }>;
+  } | null {
+    const lines = content.split('\n');
+    let placesLineIndex = -1;
+    let rawJson = '';
+
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i];
+      const match = line.match(/^PLACE_CARDS:\s*(\[.+\])\s*$/i);
+      if (match) {
+        placesLineIndex = i;
+        rawJson = match[1];
+        break;
+      }
+    }
+
+    if (placesLineIndex < 0 || !rawJson) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(rawJson) as Array<Record<string, unknown>>;
+      const suggestions = parsed
+        .map((item) => {
+          const nameValue = item?.name;
+          if (typeof nameValue !== 'string' || !nameValue.trim()) return null;
+
+          const normalizeNumber = (value: unknown): number | null =>
+            typeof value === 'number' && Number.isFinite(value) ? value : null;
+          const normalizeString = (value: unknown): string | null =>
+            typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+          const hoursValue = item?.weekday_hours;
+          const weekdayHours =
+            Array.isArray(hoursValue)
+              ? hoursValue
+                  .filter((value) => typeof value === 'string' && value.trim().length > 0)
+                  .map((value) => String(value))
+              : [];
+
+          return {
+            name: nameValue.trim(),
+            address: normalizeString(item?.address),
+            latitude: normalizeNumber(item?.latitude),
+            longitude: normalizeNumber(item?.longitude),
+            rating: normalizeNumber(item?.rating),
+            rating_count: normalizeNumber(item?.rating_count),
+            place_type: normalizeString(item?.place_type),
+            place_id: normalizeString(item?.place_id),
+            photo_url: normalizeString(item?.photo_url),
+            phone_number: normalizeString(item?.phone_number),
+            website: normalizeString(item?.website),
+            weekday_hours: weekdayHours.length ? weekdayHours : null,
+            visit_time: normalizeString(item?.visit_time),
+            ai_note: normalizeString(item?.ai_note),
+          };
+        })
+        .filter((item) => item != null);
+
+      if (!suggestions.length) return null;
+
+      const newLines = lines.filter((_, i) => i !== placesLineIndex);
+      return {
+        content: newLines.join('\n').trim(),
+        place_suggestions: suggestions,
+      };
+    } catch (err) {
+      this.logger.warn(`Failed to parse PLACE_CARDS JSON: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
   private buildSystemPrompt(
     scope: string,
     tripId: string | null,
@@ -668,6 +841,7 @@ export class AiService {
     prompt += `\n\nWhen you receive a user message that is exactly "create_trip", treat it as: "User chose: Create a trip. Start the trip creation walkthrough using tools (createTripDraft, updateTrip, addLocation, getRoute, etc.), asking for missing details like title, dates, and route stops, and confirming with the user as you go."\nWhen you receive a user message that is exactly "just_chat", treat it as: "User chose: Just chat. Continue the conversation without creating or modifying any trips."\nWhen you receive "find_images" or "find_images: ...", treat it as: User chose Find images; acknowledge and help them search for photos (they can use the + menu; you can suggest a search query).`;
 
     prompt += `\n\nWhen the user describes a specific new trip in natural language (for example: "I wanna go on a trip to Bali on the 14th of March"), you must:\n- Extract what you can (destination, approximate dates, preferences) from their message.\n- Ask follow-up questions only for missing key information, one at a time (for example: \"How many days do you want to stay?\" if you know the start date but not the duration or end date).\n- Once you know at least a destination and a start and end date (or a start date and duration that implies the end date), use the tools to:\n  - Create or update a real trip via createTripDraft and updateTrip.\n  - Then call searchCoverImage with an appropriate query (for example: \"Bali travel landscape\"), and describe a few of the returned image options in your reply so the user can pick one.\n- When the user clearly chooses an image (for example: \"use the second image\" or \"use the sunset beach photo\"), call selectCoverImage with the corresponding Unsplash photo metadata to set the trip cover. Confirm in your reply after the tool succeeds.`;
+    prompt += `\n\nWhen you suggest a day plan with concrete places, include a machine-readable line at the end of your response: PLACE_CARDS: [ ... ]. This line must be valid JSON on one line and include 2-8 places. Each place object should contain: name (required), address, latitude, longitude, rating, rating_count, place_type, place_id, photo_url, phone_number, website, weekday_hours (array), visit_time (e.g. \"9:00 AM\"), ai_note (short note). Keep your normal human-readable reply above this line. Do not mention the PLACE_CARDS line in visible text.`;
 
     if (scope === 'trip' && tripId) {
       prompt += `\n\nThe user is working on a specific trip (trip_id: ${tripId}).`;

@@ -6,7 +6,7 @@ import { appConfig } from "@/config/appConfig"
 const siteUrl = appConfig.siteUrl || "https://gotrippin.app"
 
 export const metadata: Metadata = {
-  title: "Privacy — gotrippin",
+  title: "Privacy",
   description: "Privacy information for gotrippin. Full policy is in preparation.",
   alternates: { canonical: `${siteUrl}/privacy` },
   robots: { index: false, follow: true },

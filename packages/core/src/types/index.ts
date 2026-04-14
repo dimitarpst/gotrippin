@@ -28,7 +28,8 @@ export type {
 
 export type {
   WeatherData,
-  TomorrowTimelineResponse,
+  OpenMeteoForecastResponse,
+  OpenMeteoGeocodingResponse,
   TripLocationWeather,
   TripWeatherResponse,
 } from './weather';
