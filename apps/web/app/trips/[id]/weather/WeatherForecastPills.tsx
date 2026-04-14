@@ -13,7 +13,7 @@ export default function WeatherForecastPills({ forecast }: WeatherForecastPillsP
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
-      <div className="flex justify-between overflow-x-auto pb-4 scrollbar-hide gap-3 px-1">
+      <div className="flex justify-between overflow-x-auto py-2 pb-4 scrollbar-hide gap-3 px-2">
         {days.map((day, i) => {
           const DayIcon = getWeatherIcon(day?.weatherCode)
           const active = i === 0
@@ -25,7 +25,9 @@ export default function WeatherForecastPills({ forecast }: WeatherForecastPillsP
             <div
               key={i}
               className={`flex flex-col items-center gap-3 min-w-[64px] py-4 rounded-[20px] border backdrop-blur-md transition-all ${
-                active ? "bg-white/20 border-white/20 shadow-lg scale-105" : "bg-white/5 border-white/5 hover:bg-white/10"
+                active
+                  ? "bg-white/20 border-white/20 shadow-lg scale-105 origin-center"
+                  : "bg-white/5 border-white/5 hover:bg-white/10"
               }`}
             >
               <span className="text-xs font-medium text-white/70">{label}</span>

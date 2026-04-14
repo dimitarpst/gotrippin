@@ -1,11 +1,15 @@
 import { Sun, Cloud, CloudRain, CloudSnow, type LucideIcon } from "lucide-react"
 
 export function getWeatherIcon(code?: number | null): LucideIcon {
-  if (code === 1000 || code === 1100) return Sun
-  if (code === 1101 || code === 1102) return Cloud
-  if (code === 1001) return Cloud
-  if (typeof code === "number" && code >= 4000 && code <= 4201) return CloudRain
-  if (typeof code === "number" && code >= 5000 && code <= 5101) return CloudSnow
+  if (typeof code !== "number") return Cloud
+
+  // Open-Meteo / WMO clear codes
+  if (code === 0 || code === 1) return Sun
+  // Open-Meteo / WMO rain and drizzle families
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return CloudRain
+  // Open-Meteo / WMO snow family
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return CloudSnow
+
   return Cloud
 }
 

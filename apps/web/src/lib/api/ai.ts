@@ -15,6 +15,23 @@ export interface AiImageSuggestion {
   photographer_url: string;
 }
 
+export interface AiPlaceSuggestion {
+  name: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  rating?: number | null;
+  rating_count?: number | null;
+  place_type?: string | null;
+  place_id?: string | null;
+  photo_url?: string | null;
+  phone_number?: string | null;
+  website?: string | null;
+  weekday_hours?: string[] | null;
+  visit_time?: string | null;
+  ai_note?: string | null;
+}
+
 export interface CreateSessionBody {
   scope: "global" | "trip";
   trip_id?: string;
@@ -59,6 +76,7 @@ export interface AiSessionWithMessagesResponse {
     content: string;
     quick_replies?: Array<{ label: string; action: string }>;
     image_suggestions?: AiImageSuggestion[];
+    place_suggestions?: AiPlaceSuggestion[];
   }>;
 }
 
@@ -185,6 +203,7 @@ export interface PostMessageResponse {
   message: string;
   quick_replies?: Array<{ label: string; action: string }>;
   image_suggestions?: AiImageSuggestion[];
+  place_suggestions?: AiPlaceSuggestion[];
   tool_calls?: string[];
   usage?: { used: number; limit: number | null; percent: number | null };
 }

@@ -6,7 +6,7 @@ import { appConfig } from "@/config/appConfig"
 const siteUrl = appConfig.siteUrl || "https://gotrippin.app"
 
 export const metadata: Metadata = {
-  title: "Terms — gotrippin",
+  title: "Terms",
   description: "Terms of use for gotrippin. Full terms are in preparation.",
   alternates: { canonical: `${siteUrl}/terms` },
   robots: { index: false, follow: true },
