@@ -18,7 +18,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-  export default function AuthForm() {
+export interface AuthFormProps {
+  /** Safe internal path only (e.g. `/trips/abc/join`); set from server after `sanitizeInternalNextPath`. */
+  redirectAfterLogin?: string;
+}
+
+export default function AuthForm({ redirectAfterLogin }: AuthFormProps) {
     const { t } = useTranslation();
     const [mounted, setMounted] = useState(false);
     const [isLogin, setIsLogin] = useState(true);
@@ -53,7 +58,7 @@ import { supabase } from "@/lib/supabaseClient";
     try {
       if (isLogin) {
         await signIn(email, password);
-        router.push("/trips");
+        router.push(redirectAfterLogin ?? "/trips");
       } else {
         await signUp(email, password, name);
         setPendingConfirmation(true);

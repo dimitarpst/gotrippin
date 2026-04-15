@@ -76,6 +76,15 @@ export interface AiSessionListItem {
   trip_id?: string | null;
 }
 
+/** Persisted on user messages when trip context was attached for that send (global chats). */
+export interface AiAttachedTripPreview {
+  id: string;
+  title: string;
+  destination: string | null;
+  image_url: string | null;
+  blur_hash: string | null;
+}
+
 export interface AiSessionWithMessagesResponse {
   session: {
     id: string;
@@ -83,6 +92,8 @@ export interface AiSessionWithMessagesResponse {
     summary: string | null;
     created_at: string;
     updated_at: string;
+    /** When scope is trip, the trip this chat is bound to. */
+    trip_id?: string | null;
     /** UUID of draft trip when createTripDraft has run (from session slots). */
     current_trip_id?: string;
   };
@@ -90,6 +101,8 @@ export interface AiSessionWithMessagesResponse {
     role: "user" | "assistant";
     content: string;
     linked_trip_id?: string;
+    /** User message: trip attached for this message (global scope). */
+    attached_trip?: AiAttachedTripPreview;
     cover_pick?: AiCoverPick;
     quick_replies?: Array<{ label: string; action: string }>;
     image_suggestions?: AiImageSuggestion[];
@@ -232,6 +245,8 @@ export interface PostMessageResponse {
 export interface PostAiMessageOptions {
   token?: string | null;
   signal?: AbortSignal;
+  /** Global-scope sessions only: attach full trip snapshot for this request (merged into session slots on the server). */
+  attached_trip_id?: string | null;
 }
 
 export type AiStreamProgressLine =
@@ -254,13 +269,18 @@ export async function postAiMessageStream(
     throw new Error("Authentication required");
   }
 
+  const body: { message: string; attached_trip_id?: string } = { message };
+  if (opts.attached_trip_id) {
+    body.attached_trip_id = opts.attached_trip_id;
+  }
+
   const res = await fetch(`${API_BASE}/ai/sessions/${sessionId}/messages/stream`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${authToken}`,
     },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify(body),
     signal: opts.signal,
   });
 

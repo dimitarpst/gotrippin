@@ -199,7 +199,7 @@ export default function AiSessionsListClient({
             </div>
           </div>
 
-          <div className="text-xs font-medium text-white/60 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+          <div className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium leading-tight text-white/55">
             {aiUsage.percent != null
               ? t("profile.ai_usage_value", { percent: aiUsage.percent })
               : t("profile.ai_usage_badge_no_cap", {

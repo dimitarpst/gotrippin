@@ -6,6 +6,7 @@ import PageLoader from "@/components/ui/page-loader"
 import CreateTrip from "@/components/trips/create-trip"
 import { toast } from "sonner"
 import { useState, useSyncExternalStore } from "react"
+import { createAiSession } from "@/lib/api/ai"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
 import { getRandomRouteColor } from "@/lib/route-colors"
@@ -15,6 +16,7 @@ export default function CreateTripPageClient() {
   const router = useRouter()
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
   const [step, setStep] = useState<1 | 2>(1)
+  const [planWithAiLoading, setPlanWithAiLoading] = useState(false)
   const [pendingData, setPendingData] = useState<{
     title: string
     coverPhoto?: import("@gotrippin/core").CoverPhotoInput
@@ -32,6 +34,20 @@ export default function CreateTripPageClient() {
   }) => {
     setPendingData(data)
     setStep(2)
+  }
+
+  async function handlePlanWithAi() {
+    if (planWithAiLoading) return
+    setPlanWithAiLoading(true)
+    try {
+      const res = await createAiSession({ scope: "global" })
+      router.push(`/ai/${res.session_id}`)
+    } catch (err) {
+      console.error(err)
+      toast.error(t("common.error_occurred", { defaultValue: "An error occurred" }))
+    } finally {
+      setPlanWithAiLoading(false)
+    }
   }
 
   const handleOpenRouteEditor = () => {
@@ -87,13 +103,23 @@ export default function CreateTripPageClient() {
                 <span className="text-muted-foreground">/</span>
                 <span className="text-foreground dark:text-white">2</span>
               </span>
-              <button
-                type="button"
-                onClick={handleOpenRouteEditor}
-                className="rounded-full bg-primary px-6 py-2 font-semibold text-primary-foreground transition-colors hover:brightness-[0.96] active:brightness-[0.92]"
-              >
-                {t("trips.route_step_ready_cta", { defaultValue: "Open route editor" })}
-              </button>
+              <div className="flex max-w-[min(100%,24rem)] flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handlePlanWithAi()}
+                  disabled={planWithAiLoading}
+                  className="rounded-full border border-border bg-background/80 px-4 py-2 text-sm font-semibold text-foreground backdrop-blur-md transition-colors hover:bg-muted/90 disabled:opacity-50 dark:border-white/20 dark:bg-background/40"
+                >
+                  {t("trips.plan_with_ai", { defaultValue: "Plan with AI" })}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenRouteEditor}
+                  className="rounded-full bg-primary px-6 py-2 font-semibold text-primary-foreground transition-colors hover:brightness-[0.96] active:brightness-[0.92]"
+                >
+                  {t("trips.route_step_ready_cta", { defaultValue: "Open route editor" })}
+                </button>
+              </div>
             </div>
             {/* Centered content: trip name + short line, same feel as step 1 */}
             <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-32">

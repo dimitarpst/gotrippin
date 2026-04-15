@@ -12,6 +12,7 @@ import type { SelectCoverImageBody } from './dto/select-cover-image.dto';
 import { ToolExecutor } from './tools/tool-executor';
 import { AI_TOOLS } from './tools/tool-definitions';
 import type { OpenRouterMessage } from './openrouter.client';
+import { TripsService } from '../trips/trips.service';
 
 export interface AiSessionRow {
   id: string;
@@ -81,6 +82,7 @@ export class AiService {
     private readonly supabaseService: SupabaseService,
     private readonly openRouter: OpenRouterClient,
     private readonly toolExecutor: ToolExecutor,
+    private readonly tripsService: TripsService,
   ) {}
 
   async listSessions(
@@ -385,6 +387,60 @@ export class AiService {
             ? linkedTripRaw.trim()
             : undefined;
 
+        const attachedTripPreviewRaw = c?.attached_trip_preview;
+        const attachedTripIdUserRaw = c?.attached_trip_id;
+        let attached_trip:
+          | {
+              id: string;
+              title: string;
+              destination: string | null;
+              image_url: string | null;
+              blur_hash: string | null;
+            }
+          | undefined;
+        if (
+          m.role === 'user' &&
+          attachedTripPreviewRaw &&
+          typeof attachedTripPreviewRaw === 'object' &&
+          !Array.isArray(attachedTripPreviewRaw)
+        ) {
+          const p = attachedTripPreviewRaw as Record<string, unknown>;
+          const idFromPreview = typeof p.id === 'string' ? p.id.trim() : '';
+          const idFromContent =
+            typeof attachedTripIdUserRaw === 'string'
+              ? attachedTripIdUserRaw.trim()
+              : '';
+          const id = idFromPreview || idFromContent;
+          const title =
+            typeof p.title === 'string' && p.title.trim().length > 0
+              ? p.title.trim()
+              : 'Trip';
+          const dest =
+            typeof p.destination === 'string' && p.destination.trim().length > 0
+              ? p.destination.trim()
+              : null;
+          const img =
+            typeof p.image_url === 'string' && p.image_url.trim().length > 0
+              ? p.image_url.trim()
+              : null;
+          const bhRaw = p.blur_hash;
+          const blur_hash =
+            bhRaw == null
+              ? null
+              : typeof bhRaw === 'string' && bhRaw.length > 0
+                ? bhRaw
+                : null;
+          if (id) {
+            attached_trip = {
+              id,
+              title,
+              destination: dest,
+              image_url: img,
+              blur_hash,
+            };
+          }
+        }
+
         const coverPickRaw = c?.cover_pick;
         let cover_pick:
           | {
@@ -471,6 +527,7 @@ export class AiService {
           ...(image_suggestions ? { image_suggestions } : {}),
           ...(place_suggestions ? { place_suggestions } : {}),
           ...(linked_trip_id ? { linked_trip_id } : {}),
+          ...(attached_trip ? { attached_trip } : {}),
           ...(cover_pick ? { cover_pick } : {}),
           ...(tool_calls && tool_calls.length > 0 ? { tool_calls } : {}),
           ...(budget_summary ? { budget_summary } : {}),
@@ -492,6 +549,7 @@ export class AiService {
         summary: session.summary,
         created_at: session.created_at,
         updated_at: session.updated_at,
+        trip_id: session.trip_id ?? null,
         ...(currentTripId ? { current_trip_id: currentTripId } : {}),
       },
       messages,
@@ -521,19 +579,44 @@ export class AiService {
       }
     }
 
-    const session = (await this.supabaseService.createAiSession({
+    let session = (await this.supabaseService.createAiSession({
       user_id: userId,
       trip_id: tripId,
       scope,
       model_name: 'z-ai/glm-5',
     })) as AiSessionRow;
 
+    if (scope === 'trip' && tripId) {
+      try {
+        const detail = await this.tripsService.getTripDetailByTripId(
+          tripId,
+          userId,
+        );
+        const updated = await this.supabaseService.updateAiSession(
+          session.id,
+          userId,
+          {
+            slots: {
+              ...((session.slots as Record<string, unknown>) ?? {}),
+              trip_snapshot: detail as unknown,
+            },
+          },
+        );
+        session = updated as AiSessionRow;
+      } catch (err) {
+        this.logger.warn(
+          `Could not hydrate trip_snapshot for new session: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
     // Do not call the model here: it blocked "New chat" on OpenRouter latency for every session.
     // The first real user message still runs the full assistant + JSON pipeline.
+    // Global chats: no canned assistant line — the client shows a calm greeting + composer only.
     const welcome_message =
       scope === 'trip'
         ? "Hi! I'm here to help with this trip — route, dates, stops, or activities. What would you like to work on?"
-        : "Hi! I'm your trip planning assistant. Tell me where you're headed (or what's on your mind) and we'll plan from there.";
+        : '';
 
     if (welcome_message.trim()) {
       await this.supabaseService.insertAiMessage(session.id, 'assistant', {
@@ -544,7 +627,7 @@ export class AiService {
     return {
       session_id: session.id,
       session,
-      welcome_message,
+      ...(welcome_message.trim() ? { welcome_message: welcome_message.trim() } : {}),
     };
   }
 
@@ -581,9 +664,16 @@ export class AiService {
       });
     }
 
-    const slots = (session.slots as Record<string, unknown>) ?? {};
+    let slots = (session.slots as Record<string, unknown>) ?? {};
     const summary = session.summary ?? '';
     const tripId = session.trip_id as string | null;
+
+    slots = await this.hydrateSessionSlotsForPrompt(
+      userId,
+      sessionId,
+      session,
+      dto,
+    );
 
     let systemPrompt = this.buildSystemPrompt(session.scope, tripId, summary, slots);
 
@@ -966,9 +1056,18 @@ export class AiService {
           ? linkedTripIdRaw.trim()
           : undefined;
 
-      await this.supabaseService.insertAiMessage(sessionId, 'user', {
+      const userMessagePayload: Record<string, unknown> = {
         text: userDisplayText,
-      });
+      };
+      if (dto.attached_trip_id) {
+        const preview = this.buildAttachedTripPreviewForMessage(
+          slots as Record<string, unknown>,
+          dto.attached_trip_id,
+        );
+        userMessagePayload.attached_trip_id = dto.attached_trip_id;
+        userMessagePayload.attached_trip_preview = preview;
+      }
+      await this.supabaseService.insertAiMessage(sessionId, 'user', userMessagePayload);
       if (isFirstUserMessage && sessionSummary) {
         await this.supabaseService.updateAiSession(sessionId, userId, {
           summary: sessionSummary,
@@ -1354,6 +1453,155 @@ export class AiService {
     }
   }
 
+  /**
+   * Public URL for R2 object keys (same logic as web `getR2PublicUrl`).
+   */
+  private buildR2PublicUrlForStorageKey(storageKey: string): string {
+    const trimmed = storageKey.trim();
+    if (!trimmed) {
+      return trimmed;
+    }
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    const normalizedKey = trimmed.replace(/^\/+/, '');
+    const base =
+      process.env.R2_PUBLIC_URL?.replace(/\/$/, '') ?? 'https://cdn.gotrippin.app';
+    return `${base}/${normalizedKey}`;
+  }
+
+  /**
+   * Denormalized preview for chat UI from session slots after hydrate (attached_trip_snapshot).
+   */
+  private buildAttachedTripPreviewForMessage(
+    slots: Record<string, unknown>,
+    tripId: string,
+  ): {
+    id: string;
+    title: string;
+    destination: string | null;
+    image_url: string | null;
+    blur_hash: string | null;
+  } {
+    const snap = slots.attached_trip_snapshot;
+    if (!snap || typeof snap !== 'object' || Array.isArray(snap)) {
+      return {
+        id: tripId,
+        title: 'Trip',
+        destination: null,
+        image_url: null,
+        blur_hash: null,
+      };
+    }
+    const trip = (snap as { trip?: unknown }).trip;
+    if (!trip || typeof trip !== 'object' || trip === null) {
+      return {
+        id: tripId,
+        title: 'Trip',
+        destination: null,
+        image_url: null,
+        blur_hash: null,
+      };
+    }
+    const t = trip as Record<string, unknown>;
+    const titleRaw = t.title;
+    const destRaw = t.destination;
+    const title =
+      typeof titleRaw === 'string' && titleRaw.trim().length > 0
+        ? titleRaw.trim()
+        : typeof destRaw === 'string' && destRaw.trim().length > 0
+          ? destRaw.trim()
+          : 'Trip';
+    const destination =
+      typeof destRaw === 'string' && destRaw.trim().length > 0
+        ? destRaw.trim()
+        : null;
+    let imageUrl: string | null =
+      typeof t.image_url === 'string' && t.image_url.trim().length > 0
+        ? t.image_url.trim()
+        : null;
+    let blurHash: string | null = null;
+    const cpRaw = t.cover_photo;
+    const cp = Array.isArray(cpRaw) ? cpRaw[0] : cpRaw;
+    if (cp && typeof cp === 'object' && !Array.isArray(cp)) {
+      const row = cp as Record<string, unknown>;
+      const bh = row.blur_hash;
+      blurHash =
+        bh == null
+          ? null
+          : typeof bh === 'string' && bh.length > 0
+            ? bh
+            : null;
+      if (!imageUrl && typeof row.storage_key === 'string' && row.storage_key.trim()) {
+        imageUrl = this.buildR2PublicUrlForStorageKey(row.storage_key);
+      }
+    }
+    return {
+      id: tripId,
+      title,
+      destination,
+      image_url: imageUrl,
+      blur_hash: blurHash,
+    };
+  }
+
+  /**
+   * Refreshes trip_snapshot for trip-scoped chats; merges attached_trip_snapshot when the client sends attached_trip_id (global only).
+   * Persists merged slots on each message so the model always sees up-to-date route/activities.
+   */
+  private async hydrateSessionSlotsForPrompt(
+    userId: string,
+    sessionId: string,
+    session: { scope: string; trip_id: string | null; slots: unknown },
+    dto: PostMessageDto,
+  ): Promise<Record<string, unknown>> {
+    const base: Record<string, unknown> = {
+      ...(typeof session.slots === 'object' &&
+      session.slots !== null &&
+      !Array.isArray(session.slots)
+        ? (session.slots as Record<string, unknown>)
+        : {}),
+    };
+
+    if (session.scope === 'trip' && session.trip_id) {
+      try {
+        const detail = await this.tripsService.getTripDetailByTripId(
+          session.trip_id,
+          userId,
+        );
+        base.trip_snapshot = detail as unknown;
+      } catch (err) {
+        this.logger.warn(
+          `trip_snapshot refresh failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    if (dto.attached_trip_id) {
+      if (session.scope !== 'global') {
+        throw new BadRequestException(
+          'attached_trip_id is only allowed for global-scope chats.',
+        );
+      }
+      try {
+        const detail = await this.tripsService.getTripDetailByTripId(
+          dto.attached_trip_id,
+          userId,
+        );
+        base.attached_trip_snapshot = detail as unknown;
+        base.attached_trip_id = dto.attached_trip_id;
+      } catch (err) {
+        if (err instanceof BadRequestException) throw err;
+        throw new BadRequestException(
+          'Could not load trip for attachment. Ensure you are a member of that trip.',
+        );
+      }
+    }
+
+    await this.supabaseService.updateAiSession(sessionId, userId, { slots: base });
+    return base;
+  }
+
   private buildSystemPrompt(
     scope: string,
     tripId: string | null,
@@ -1375,10 +1623,15 @@ export class AiService {
     prompt += `\n\nWhen you give a costed itinerary or budget guidance, add a final line after PLACE_CARDS (if any): BUDGET_SUMMARY: {\"currency\":\"EUR\",\"per_person_estimate\":<number>,\"assumptions\":[\"optional short bullet strings\"]}. Use a realistic rough total per person for transport+lodging+food+activities for the trip length; state assumptions in the array. One line only; valid JSON object. Do not mention BUDGET_SUMMARY in the visible prose.`;
 
     prompt += `\n\nTrip route (saved map / itinerary) vs PLACE_CARDS: PLACE_CARDS is only for the in-chat itinerary UI (venues with place_id). It does NOT add stops to the user's saved trip. Once you have a trip_id (from createTripDraft or session context), you must build the real route with tools: call addLocation once per agreed stop (use clear names like "Sofia, Bulgaria", "Plovdiv, Bulgaria"), in visit order, then call getRoute to verify the ordered list. When the user confirms two or more cities or stops, do this in the same turn batch if possible—do not stop after cover images or PLACE_CARDS alone. If they only want ideas without saving, stay in just_chat and skip addLocation.`;
+    prompt += `\n\nMinimum route (matches the app route wizard): do not tell the user their saved route is complete or that they should move on to the trip overview until getRoute shows at least two stops. If only one stop exists, keep helping them add another stop before treating planning as done.`;
     prompt += `\n\nWhen the user sends a short intent to work on the saved route (e.g. "Add stops to my trip") and Current context includes current_trip_id, treat that as a request to use addLocation and getRoute with that trip_id—ask which places if none are named yet.`;
 
     if (scope === 'trip' && tripId) {
       prompt += `\n\nThe user is working on a specific trip (trip_id: ${tripId}).`;
+    }
+
+    if (slots.trip_snapshot || slots.attached_trip_snapshot) {
+      prompt += `\n\nCurrent context may include trip_snapshot (this trip-scoped chat) or attached_trip_snapshot (user attached a trip in a global chat): server-loaded trip details including route_locations, grouped activities, and weather. Treat as ground truth for that trip; use tools when the user wants changes persisted.`;
     }
 
     const pendingCover = slots.pending_cover_images as

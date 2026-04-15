@@ -10,7 +10,10 @@ import {
   UseGuards,
   Req,
   BadRequestException,
+  HttpCode,
+  HttpStatus,
 } from "@nestjs/common";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import {
   ApiTags,
   ApiOperation,
@@ -24,6 +27,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreateTripDto } from "./dto/create-trip.dto";
 import { UpdateTripDto } from "./dto/update-trip.dto";
 import { AddMemberDto } from "./dto/add-member.dto";
+import { InviteTripEmailDto } from "./dto/invite-trip-email.dto";
 import { AddTripGalleryImageBodySchema, CoverPhotoInputSchema } from "@gotrippin/core";
 
 @ApiTags("trips")
@@ -61,6 +65,19 @@ export class TripsController {
   async getTripByShareCode(@Param('shareCode') shareCode: string, @Req() request: any) {
     const userId = request.user.id;
     return this.tripsService.getTripByShareCode(shareCode, userId);
+  }
+
+  @Post('share/:shareCode/join')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Join a trip by share code (authenticated)' })
+  @ApiParam({ name: 'shareCode', description: 'Trip share code from invite link' })
+  @ApiResponse({ status: 200, description: 'Joined or already a member' })
+  @ApiResponse({ status: 404, description: 'Trip not found' })
+  async joinTripByShareCode(@Param('shareCode') shareCode: string, @Req() request: { user: { id: string } }) {
+    const userId = request.user.id;
+    return this.tripsService.joinTripByShareCode(shareCode, userId);
   }
 
   @Get(":id")
@@ -259,6 +276,26 @@ export class TripsController {
   ) {
     const currentUserId = request.user.id;
     return this.tripsService.addMember(id, currentUserId, body.user_id);
+  }
+
+  @Post(':id/invite-email')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Send trip invite email (member only)' })
+  @ApiParam({ name: 'id', description: 'Trip ID' })
+  @ApiBody({ type: InviteTripEmailDto })
+  @ApiResponse({ status: 200, description: 'Invite email sent' })
+  @ApiResponse({ status: 400, description: 'Invalid email' })
+  @ApiResponse({ status: 403, description: 'Access denied' })
+  @ApiResponse({ status: 503, description: 'Email not configured or provider error' })
+  async inviteTripByEmail(
+    @Param('id') id: string,
+    @Body() body: InviteTripEmailDto,
+    @Req() request: { user: { id: string } },
+  ) {
+    const userId = request.user.id;
+    return this.tripsService.sendTripInviteEmail(id, userId, body.email);
   }
 
   @Delete(":id/members/:userId")

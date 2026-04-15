@@ -258,6 +258,36 @@ export class SupabaseService {
     return trip;
   }
 
+  /**
+   * Resolve a trip by share code (or UUID in URL) without membership check — for join-by-link after auth.
+   */
+  async resolveTripForJoinByShareCodeParam(shareCode: string): Promise<{
+    id: string;
+    share_code: string;
+    title: string | null;
+  } | null> {
+    const byShareCode = await this.supabase
+      .from('trips')
+      .select('id, share_code, title')
+      .eq('share_code', shareCode)
+      .single();
+
+    let row = byShareCode.data;
+    const tripError = byShareCode.error;
+
+    if ((tripError || !row) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shareCode)) {
+      const byId = await this.supabase
+        .from('trips')
+        .select('id, share_code, title')
+        .eq('id', shareCode)
+        .single();
+      row = byId.data;
+    }
+
+    if (!row?.id || !row.share_code) return null;
+    return { id: row.id, share_code: row.share_code, title: row.title ?? null };
+  }
+
   // Helper method to update trips
   async updateTrip(tripId: string, updates: any) {
     const { data, error } = await this.supabase

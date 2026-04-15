@@ -1,13 +1,23 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ImagesService } from '../images/images.service';
 import { TripLocationsService } from '../trip-locations/trip-locations.service';
 import { ActivitiesService } from '../activities/activities.service';
 import { WeatherService } from '../weather/weather.service';
+import { MailService } from '../mail/mail.service';
 import type { AddTripGalleryImageBody, CoverPhotoInput, TripGalleryImage, TripWeatherResponse } from '@gotrippin/core';
 
 const MAX_TRIP_GALLERY_IMAGES = 100;
 const GALLERY_KEY_PREFIX = 'trip-images/gallery/';
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 function assertGalleryStorageKeyForTrip(tripId: string, storageKey: string): void {
   const expected = `${GALLERY_KEY_PREFIX}${tripId}/`;
@@ -57,12 +67,14 @@ export class TripsService {
   private readonly logger = new Logger(TripsService.name);
 
   constructor(
-    private supabaseService: SupabaseService,
-    private imagesService: ImagesService,
-    private tripLocationsService: TripLocationsService,
-    private activitiesService: ActivitiesService,
-    private weatherService: WeatherService,
-  ) { }
+    private readonly supabaseService: SupabaseService,
+    private readonly imagesService: ImagesService,
+    private readonly tripLocationsService: TripLocationsService,
+    private readonly activitiesService: ActivitiesService,
+    private readonly weatherService: WeatherService,
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * If the outgoing cover is not already in `trip_gallery_images`, add it (copying to gallery R2 prefix when needed)
@@ -299,6 +311,38 @@ export class TripsService {
    * Full trip detail for detail screen: trip + locations + timeline + weather.
    * Used by web server component and mobile; one request instead of four.
    */
+  /**
+   * Same payload as {@link getTripDetailByShareCode}, keyed by trip UUID (member check).
+   */
+  async getTripDetailByTripId(tripId: string, userId: string): Promise<TripDetailDto> {
+    const trip = await this.getTripById(tripId, userId);
+
+    const [routeResult, activitiesResult, weatherResult] = await Promise.all([
+      this.tripLocationsService.getRoute(tripId, userId).then(
+        (data) => ({ data }),
+        (e: Error) => ({ error: e?.message ?? 'Failed to load locations' }),
+      ),
+      this.activitiesService.getActivitiesGroupedByLocation(tripId, userId).then(
+        (data) => ({ data }),
+        (e: Error) => ({ error: e?.message ?? 'Failed to load activities' }),
+      ),
+      this.weatherService.getTripWeather(tripId, userId, { days: 5 }).then(
+        (data) => ({ data }),
+        (e: Error) => ({ error: e?.message ?? 'Failed to load weather' }),
+      ),
+    ]);
+
+    return {
+      trip,
+      route_locations: 'data' in routeResult ? routeResult.data : null,
+      route_locations_error: 'error' in routeResult ? routeResult.error : undefined,
+      grouped_activities: 'data' in activitiesResult ? activitiesResult.data : null,
+      activities_error: 'error' in activitiesResult ? activitiesResult.error : undefined,
+      weather: 'data' in weatherResult ? weatherResult.data : null,
+      weather_error: 'error' in weatherResult ? weatherResult.error : undefined,
+    };
+  }
+
   async getTripDetailByShareCode(shareCode: string, userId: string): Promise<TripDetailDto> {
     const trip = await this.getTripByShareCode(shareCode, userId);
     const tripId = trip.id;
@@ -340,6 +384,124 @@ export class TripsService {
       throw new BadRequestException('Trip has no cover photo');
     }
     await this.supabaseService.updatePhotoDominantColor(photoId, dominantColor);
+    return { ok: true };
+  }
+
+  private getPublicAppUrl(): string {
+    const trim = (u: string) => u.trim().replace(/\/+$/, '');
+    const explicit = this.configService.get<string>('PUBLIC_APP_URL');
+    if (explicit && explicit.trim()) return trim(explicit);
+    const prod = this.configService.get<string>('FRONTEND_ORIGIN_PROD');
+    if (prod && prod.trim()) return trim(prod);
+    const dev = this.configService.get<string>('FRONTEND_ORIGIN_DEV');
+    if (dev && dev.trim()) return trim(dev);
+    return 'http://localhost:3000';
+  }
+
+  /**
+   * Authenticated user joins a trip by share code (open join for v1).
+   */
+  async joinTripByShareCode(shareCode: string, userId: string): Promise<{
+    ok: true;
+    share_code: string;
+    already_member: boolean;
+  }> {
+    const trip = await this.supabaseService.resolveTripForJoinByShareCodeParam(shareCode);
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    const already = await this.supabaseService.isTripMember(trip.id, userId);
+    if (already) {
+      return { ok: true, share_code: trip.share_code, already_member: true };
+    }
+
+    try {
+      await this.supabaseService.addTripMember(trip.id, userId);
+    } catch (err: unknown) {
+      const code =
+        err !== null &&
+        typeof err === 'object' &&
+        'code' in err &&
+        typeof (err as { code: unknown }).code === 'string'
+          ? (err as { code: string }).code
+          : '';
+      if (code === '23505') {
+        return { ok: true, share_code: trip.share_code, already_member: true };
+      }
+      this.logger.error('joinTripByShareCode: addTripMember failed', err);
+      throw new BadRequestException('Could not join trip');
+    }
+
+    return { ok: true, share_code: trip.share_code, already_member: false };
+  }
+
+  /**
+   * Trip member sends an invite email with a join link (Brevo transactional API).
+   */
+  async sendTripInviteEmail(tripId: string, inviterUserId: string, toEmail: string): Promise<{ ok: true }> {
+    if (!this.mailService.isConfigured()) {
+      throw new ServiceUnavailableException(
+        'Email is not configured. Set BREVO_API_KEY and BREVO_SENDER_EMAIL on the server.',
+      );
+    }
+
+    const trip = await this.supabaseService.getTrip(tripId, inviterUserId);
+    if (!trip) {
+      throw new ForbiddenException('Trip not found or access denied');
+    }
+
+    const shareCode =
+      typeof trip.share_code === 'string' && trip.share_code.length > 0 ? trip.share_code : null;
+    if (!shareCode) {
+      throw new BadRequestException('Trip has no share code');
+    }
+
+    const tripTitle =
+      typeof trip.title === 'string' && trip.title.trim().length > 0 ? trip.title.trim() : 'A trip on gotrippin';
+
+    let inviterLabel = 'Someone';
+    try {
+      const profile = await this.supabaseService.getProfile(inviterUserId);
+      const name = profile && typeof profile === 'object' && 'display_name' in profile
+        ? profile.display_name
+        : null;
+      if (typeof name === 'string' && name.trim().length > 0) {
+        inviterLabel = name.trim();
+      }
+    } catch (err) {
+      this.logger.warn(`sendTripInviteEmail: could not load inviter profile (${inviterUserId})`, err);
+    }
+
+    const base = this.getPublicAppUrl();
+    const joinUrl = `${base}/trips/${encodeURIComponent(shareCode)}/join`;
+
+    const subject = `${inviterLabel} invited you to “${tripTitle}” on gotrippin`;
+    const textContent = [
+      `${inviterLabel} invited you to collaborate on a trip.`,
+      '',
+      `Trip: ${tripTitle}`,
+      '',
+      `Open this link while signed in to join:`,
+      joinUrl,
+      '',
+      'If you do not have an account yet, create one first — you will return to this link after signing in.',
+    ].join('\n');
+
+    const htmlContent = [
+      `<p><strong>${escapeHtml(inviterLabel)}</strong> invited you to collaborate on a trip.</p>`,
+      `<p><strong>Trip:</strong> ${escapeHtml(tripTitle)}</p>`,
+      `<p><a href="${escapeHtml(joinUrl)}">Join this trip on gotrippin</a></p>`,
+      `<p style="color:#666;font-size:14px;">If the button does not work, copy this link:<br/>${escapeHtml(joinUrl)}</p>`,
+    ].join('');
+
+    await this.mailService.sendTransactionalEmail({
+      to: toEmail.trim().toLowerCase(),
+      subject,
+      htmlContent,
+      textContent,
+    });
+
     return { ok: true };
   }
 

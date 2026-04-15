@@ -56,6 +56,7 @@ import {
 } from "@/lib/api/trip-locations";
 import { useGooglePlaces } from "@/hooks";
 import { toast } from "sonner";
+import { createAiSession } from "@/lib/api/ai";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import {
@@ -133,6 +134,7 @@ export default function RouteMapPageClient({
   routeTourOpenRef.current = routeTourOpen;
   const [routeTourStep, setRouteTourStep] = useState(0);
   const [showCongrats, setShowCongrats] = useState(false);
+  const [editWithAiLoading, setEditWithAiLoading] = useState(false);
   const hasMarkedRouteTourRef = useRef(false);
   const hasAutoOpenedRouteTourRef = useRef(false);
   const hasAutoOpenedSearchRef = useRef(false);
@@ -506,6 +508,20 @@ export default function RouteMapPageClient({
     }
   };
 
+  async function handleEditWithAiFromRoute() {
+    if (editWithAiLoading) return;
+    setEditWithAiLoading(true);
+    try {
+      const res = await createAiSession({ scope: "trip", trip_id: trip.id });
+      router.push(`/ai/${res.session_id}`);
+    } catch (err) {
+      console.error(err);
+      toast.error(t("common.error_occurred", { defaultValue: "An error occurred" }));
+    } finally {
+      setEditWithAiLoading(false);
+    }
+  }
+
   const handleFocusOnStop = (loc: TripLocation) => {
     setSelectedLocationId(loc.id);
     if (loc.latitude != null && loc.longitude != null && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) {
@@ -688,13 +704,23 @@ export default function RouteMapPageClient({
             <p className="text-white/70 text-center mb-8 max-w-sm">
               {t("trips.congrats_description", { defaultValue: "You've created your trip. Add more stops anytime from the map or view your itinerary." })}
             </p>
-            <button
-              type="button"
-              onClick={() => router.push(`/trips/${shareCode}`)}
-              className="px-6 py-2 rounded-full bg-white text-black font-semibold hover:bg-white/90 transition-colors"
-            >
-              {t("trips.view_trip", { defaultValue: "View trip" })}
-            </button>
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => void handleEditWithAiFromRoute()}
+                disabled={editWithAiLoading}
+                className="px-6 py-2 rounded-full border border-white/25 bg-white/10 text-white font-semibold hover:bg-white/15 transition-colors disabled:opacity-50"
+              >
+                {t("trips.edit_with_ai", { defaultValue: "Edit with AI" })}
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/trips/${shareCode}`)}
+                className="px-6 py-2 rounded-full bg-white text-black font-semibold hover:bg-white/90 transition-colors"
+              >
+                {t("trips.view_trip", { defaultValue: "View trip" })}
+              </button>
+            </div>
           </div>
         </div>
       )}

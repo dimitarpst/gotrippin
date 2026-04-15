@@ -65,7 +65,7 @@ export const AI_TOOLS: OpenRouterTool[] = [
     function: {
       name: 'getRoute',
       description:
-        'Read the current ordered stops for a trip. Call after addLocation (or reorderLocations) to verify the route matches what the user asked for.',
+        'Read the current ordered stops for a trip. Call after addLocation (or reorderLocations) to verify the route matches what the user asked for. The app expects at least two stops before the route is considered complete (same as the route wizard)—if length is 0 or 1, keep helping the user add stops.',
       parameters: {
         type: 'object',
         properties: {

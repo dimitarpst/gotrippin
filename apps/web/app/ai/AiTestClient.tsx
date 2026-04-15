@@ -5,13 +5,17 @@ import {
   getAiSessionWithMessages,
   postAiMessageStream,
   selectSessionCoverImage,
+  type AiAttachedTripPreview,
   type AiBudgetSummary,
   type AiCoverPick,
   type AiPlaceSuggestion,
   type AiImageSuggestion,
   type AiStreamProgressLine,
+  type PostAiMessageOptions,
   type PostMessageResponse,
 } from "@/lib/api/ai";
+import { fetchTrips } from "@/lib/api/trips";
+import type { Trip } from "@gotrippin/core";
 import { getAuthToken } from "@/lib/api/auth";
 import { searchImages } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -39,6 +43,7 @@ import {
   Route,
   Mic,
   Check,
+  Link2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -49,19 +54,38 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
+import { resolveTripCoverUrl } from "@/lib/r2-public";
+import { tripCoverBlurHash } from "@/lib/trip-cover-key";
 import { Calendar } from "@/components/ui/calendar";
-import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface ChatMessage {
   role: "user" | "assistant";
   /** Wire/API text; user bubble may show a friendlier `formatUserMessageForDisplay(content)`. */
   content: string;
   linked_trip_id?: string;
+  attached_trip?: AiAttachedTripPreview;
   cover_pick?: AiCoverPick;
   quick_replies?: Array<{ label: string; action: string }>;
   image_suggestions?: AiImageSuggestion[];
@@ -92,6 +116,10 @@ type WizardStep =
 
 /** User message sent when choosing “Add stops to my trip” from the composer menu (server maps just_chat:). */
 const ROUTE_HELP_CHAT_PAYLOAD = "just_chat:Add stops to my trip";
+
+/** Legacy global welcome from createSession; removed server-side — hide in thread for old sessions. */
+const LEGACY_GLOBAL_ASSISTANT_WELCOME =
+  "Hi! I'm your trip planning assistant. Tell me where you're headed (or what's on your mind) and we'll plan from there.";
 
 const WIZARD_STEPS: WizardStep[] = [
   {
@@ -351,11 +379,25 @@ export default function AiTestClient({
   const [aiUsage, setAiUsage] = useState(initialAiUsage);
   /** Draft trip UUID from session slots (API) until an assistant message carries linked_trip_id. */
   const [sessionCurrentTripId, setSessionCurrentTripId] = useState<string | null>(null);
+  const [sessionScope, setSessionScope] = useState<"global" | "trip" | null>(null);
+  /** Global chats only: trip context merged server-side on each send. */
+  const [attachedTripId, setAttachedTripId] = useState<string | null>(null);
+  const [attachedTripTitle, setAttachedTripTitle] = useState<string | null>(null);
+  const [attachedTripCoverSrc, setAttachedTripCoverSrc] = useState<string | null>(null);
+  const [attachedTripCoverBlurHash, setAttachedTripCoverBlurHash] = useState<string | null>(null);
+  const [attachTripDrawerOpen, setAttachTripDrawerOpen] = useState(false);
+  const [tripsForAttach, setTripsForAttach] = useState<Trip[]>([]);
+  const [tripsForAttachLoading, setTripsForAttachLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingDraft, setEditingDraft] = useState("");
   const [wizardStep, setWizardStep] = useState(0);
+  /** When true, show the guided questionnaire in the composer (opt-in; not auto-started). */
+  const [wizardFlowActive, setWizardFlowActive] = useState(false);
+  const [wizardEntryModalOpen, setWizardEntryModalOpen] = useState(false);
+  /** User hid the guided-setup CTA; can bring it back via subtle link. */
+  const [guidedSetupDismissed, setGuidedSetupDismissed] = useState(false);
   const [wizardAnswers, setWizardAnswers] = useState<Partial<WizardAnswer>>({});
   const [islandFields, setIslandFields] = useState<IslandField[]>([]);
   const [islandDismissed, setIslandDismissed] = useState(false);
@@ -590,6 +632,39 @@ export default function AiTestClient({
     return first ? `${period}, ${first}` : period;
   }, [t, displayNameProp]);
 
+  const hasUserMessage = useMemo(
+    () => messages.some((m) => m.role === "user"),
+    [messages],
+  );
+
+  useEffect(() => {
+    setWizardFlowActive(false);
+    setWizardStep(0);
+    try {
+      setGuidedSetupDismissed(sessionStorage.getItem(`ai_guided_setup_dismiss_${sessionId}`) === "1");
+    } catch {
+      setGuidedSetupDismissed(false);
+    }
+  }, [sessionId]);
+
+  function dismissGuidedSetupCta() {
+    try {
+      sessionStorage.setItem(`ai_guided_setup_dismiss_${sessionId}`, "1");
+    } catch {
+      /* ignore */
+    }
+    setGuidedSetupDismissed(true);
+  }
+
+  function restoreGuidedSetupCta() {
+    try {
+      sessionStorage.removeItem(`ai_guided_setup_dismiss_${sessionId}`);
+    } catch {
+      /* ignore */
+    }
+    setGuidedSetupDismissed(false);
+  }
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -599,11 +674,13 @@ export default function AiTestClient({
         if (cancelled) return;
         const tid = data.session.current_trip_id?.trim();
         setSessionCurrentTripId(tid && tid.length > 0 ? tid : null);
+        setSessionScope(data.session.scope === "trip" ? "trip" : "global");
         setMessages(
           data.messages.map((m) => ({
             role: m.role,
             content: m.role === "user" ? cleanUserMessage(m.content) : m.content,
             ...(m.linked_trip_id ? { linked_trip_id: m.linked_trip_id } : {}),
+            ...(m.attached_trip ? { attached_trip: m.attached_trip } : {}),
             ...(m.cover_pick ? { cover_pick: m.cover_pick } : {}),
             quick_replies: m.quick_replies,
             image_suggestions: m.image_suggestions,
@@ -628,6 +705,72 @@ export default function AiTestClient({
     };
   }, [sessionId, router, t]);
 
+  useEffect(() => {
+    if (!attachTripDrawerOpen) return;
+    let cancelled = false;
+    setTripsForAttachLoading(true);
+    fetchTrips()
+      .then((list) => {
+        if (!cancelled) setTripsForAttach(list);
+      })
+      .catch((err) => {
+        console.error(err);
+        toast.error(t("ai.attach_trip_load_failed"));
+      })
+      .finally(() => {
+        if (!cancelled) setTripsForAttachLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [attachTripDrawerOpen, t]);
+
+  function formatAttachTripDateRange(tr: Trip): string | null {
+    const locale = i18n.language;
+    const formatOne = (iso: string | null | undefined) => {
+      if (!iso) return null;
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return null;
+      return d.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
+    };
+    const start = formatOne(tr.start_date ?? undefined);
+    const end = formatOne(tr.end_date ?? undefined);
+    if (start && end) return `${start} – ${end}`;
+    return start ?? end ?? null;
+  }
+
+  /**
+   * List trips often omit `image_url` but include `cover_photo.storage_key` (R2).
+   * Prefer explicit URL, then public URL from storage (same as trip cards elsewhere).
+   */
+  function tripCoverForAttachUi(tr: Trip): { src: string | null; blurHash: string | null } {
+    const blurHash = tripCoverBlurHash(tr);
+    const fromUrl = tr.image_url?.trim();
+    if (fromUrl && fromUrl.length > 0) {
+      return { src: fromUrl, blurHash };
+    }
+    const fromStorage = resolveTripCoverUrl(tr);
+    if (fromStorage) {
+      return { src: fromStorage, blurHash };
+    }
+    return { src: null, blurHash };
+  }
+
+  function clearAttachedTrip() {
+    setAttachedTripId(null);
+    setAttachedTripTitle(null);
+    setAttachedTripCoverSrc(null);
+    setAttachedTripCoverBlurHash(null);
+  }
+
+  function postStreamOpts(signal?: AbortSignal): PostAiMessageOptions {
+    const opts: PostAiMessageOptions = { signal };
+    if (sessionScope === "global" && attachedTripId) {
+      opts.attached_trip_id = attachedTripId;
+    }
+    return opts;
+  }
+
   async function sendMessage(text: string, fromIndex: number | null) {
     if (!text.trim() || !sessionId) return;
 
@@ -635,6 +778,16 @@ export default function AiTestClient({
     abortControllerRef.current = controller;
 
     const trimmed = text.trim();
+    const optimisticAttachedTrip: AiAttachedTripPreview | undefined =
+      sessionScope === "global" && attachedTripId && attachedTripTitle
+        ? {
+            id: attachedTripId,
+            title: attachedTripTitle,
+            destination: null,
+            image_url: attachedTripCoverSrc,
+            blur_hash: attachedTripCoverBlurHash,
+          }
+        : undefined;
     if (fromIndex !== null) {
       setMessages((prev) => [
         ...prev.slice(0, fromIndex),
@@ -644,7 +797,14 @@ export default function AiTestClient({
       setEditingDraft("");
     } else {
       setInput("");
-      setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "user",
+          content: trimmed,
+          ...(optimisticAttachedTrip ? { attached_trip: optimisticAttachedTrip } : {}),
+        },
+      ]);
     }
     setLoading(true);
     setError(null);
@@ -653,11 +813,10 @@ export default function AiTestClient({
     setStreamPhase(null);
 
     try {
-      const res = await postAiMessageStream(sessionId, trimmed, applyStreamProgress, {
-        signal: controller.signal,
-      });
+      const res = await postAiMessageStream(sessionId, trimmed, applyStreamProgress, postStreamOpts(controller.signal));
       setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
       if (res.usage) setAiUsage(res.usage);
+      clearAttachedTrip();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         if (fromIndex !== null) {
@@ -681,11 +840,28 @@ export default function AiTestClient({
     }
   }
 
-  const wizardActive = wizardStep < WIZARD_STEPS.length && messages.every((m) => m.role !== "user");
+  const wizardActive =
+    wizardFlowActive &&
+    wizardStep < WIZARD_STEPS.length &&
+    messages.every((m) => m.role !== "user");
   const activeIslandFields = islandPreview?.fields ?? islandFields;
   const islandViewOnly = islandPreview !== null;
   const islandActive = activeIslandFields.length >= 1 && (islandViewOnly || (!islandDismissed && !wizardActive && !loading));
   const islandExpanded = wizardActive || islandActive;
+
+  useEffect(() => {
+    if (loading) return;
+    if (sessionScope !== "global") return;
+    if (messages.some((m) => m.role === "user")) return;
+    if (wizardFlowActive) return;
+    try {
+      if (sessionStorage.getItem(`ai_wizard_intro_${sessionId}`) === "1") return;
+    } catch {
+      /* ignore */
+    }
+    setWizardEntryModalOpen(true);
+  }, [loading, sessionScope, sessionId, messages, wizardFlowActive]);
+
   const currentIslandField =
     islandActive && !islandViewOnly ? activeIslandFields[islandPage] : undefined;
   const hideIslandFreeformRow =
@@ -695,7 +871,9 @@ export default function AiTestClient({
   const showMainComposerRow = !wizardActive || currentWizardStep?.kind !== "dates";
   /** Reserve scroll space so the last messages clear the fixed composer (expanded island or tool chip). */
   const composerScrollReserveResolved =
-    islandExpanded || selectedTool ? "pb-[min(52vh,360px)]" : "pb-[5.75rem]";
+    islandExpanded || selectedTool || attachedTripId
+      ? "pb-[min(52vh,360px)]"
+      : "pb-[5.75rem]";
 
   const canSendFromComposer =
     Boolean(input.trim()) ||
@@ -715,7 +893,7 @@ export default function AiTestClient({
 
   useLayoutEffect(() => {
     syncComposerTextareaHeight();
-  }, [input, islandExpanded, hideIslandFreeformRow, islandViewOnly, loading]);
+  }, [input, islandExpanded, hideIslandFreeformRow, islandViewOnly, loading, attachedTripId]);
 
   async function submitWizardToServer(answers: WizardAnswer) {
     const { heading, vibe, joining, travelDates } = answers;
@@ -736,9 +914,7 @@ export default function AiTestClient({
     setStreamPhase(null);
 
     try {
-      const res = await postAiMessageStream(sessionId, wizardPrompt, applyStreamProgress, {
-        signal: controller.signal,
-      });
+      const res = await postAiMessageStream(sessionId, wizardPrompt, applyStreamProgress, postStreamOpts(controller.signal));
       setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
       if (res.usage) setAiUsage(res.usage);
     } catch (err) {
@@ -789,6 +965,7 @@ export default function AiTestClient({
   }
 
   function handleWizardSkip() {
+    setWizardFlowActive(false);
     setWizardStep(WIZARD_STEPS.length);
     setWizardDateOpen(false);
     setWizardDateRangeDraft(undefined);
@@ -903,9 +1080,7 @@ export default function AiTestClient({
 
     const payload = extraText ? `${action}: ${extraText}` : action;
     try {
-      const res = await postAiMessageStream(sessionId, payload, applyStreamProgress, {
-        signal: controller.signal,
-      });
+      const res = await postAiMessageStream(sessionId, payload, applyStreamProgress, postStreamOpts(controller.signal));
       setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
       if (res.usage) setAiUsage(res.usage);
     } catch (err) {
@@ -1083,7 +1258,7 @@ export default function AiTestClient({
             transition={{ duration: 0.5 }}
             className="flex items-center gap-3"
           >
-            <div className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-medium text-white/60">
+            <div className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium leading-tight text-white/55">
               {aiUsage.percent != null
                 ? t("profile.ai_usage_value", { percent: aiUsage.percent })
                 : t("profile.ai_usage_badge_no_cap", {
@@ -1105,31 +1280,122 @@ export default function AiTestClient({
           className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${composerScrollReserveResolved}`}
         >
           <div className="max-w-3xl mx-auto px-4 py-6 pb-4 space-y-8">
-            {messages.length === 0 && (
+            {sessionScope === "global" && !hasUserMessage && !wizardFlowActive && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-                className="flex min-h-[calc(100dvh-16rem)] flex-col items-center justify-center text-center"
+                className="flex min-h-[calc(100dvh-16rem)] flex-col items-center justify-center px-2 text-center"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: {},
+                  visible: {
+                    transition: { staggerChildren: 0.11, delayChildren: 0.12 },
+                  },
+                }}
               >
-                <p className="mb-6 max-w-md font-serif text-2xl leading-snug tracking-tight text-white/90 sm:text-[1.65rem]">
-                  {composerGreetingLine}
-                </p>
-                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-[var(--color-accent)]/30 to-[var(--color-accent)]/10">
-                  <Sparkles className="h-7 w-7 text-[var(--color-accent)]" />
-                </div>
-                <h2 className="mb-2 text-xl font-semibold text-white/90">
-                  {wizardActive ? "Let's plan your trip" : t("ai.title")}
-                </h2>
-                <p className="max-w-sm text-sm text-white/50">
-                  {wizardActive
-                    ? "Answer a few quick questions below to get started"
-                    : "Ask me anything about travel — I'll help you plan, find places, and build your perfect trip."}
-                </p>
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0, y: 36, filter: "blur(12px)" },
+                    visible: {
+                      opacity: 1,
+                      y: 0,
+                      filter: "blur(0px)",
+                      transition: { duration: 0.85, ease: [0.22, 1, 0.36, 1] },
+                    },
+                  }}
+                  className="mb-5 max-w-lg sm:mb-6"
+                >
+                  <motion.div
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{
+                      duration: 5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  >
+                    <p className="font-serif text-4xl font-light leading-[1.12] tracking-[-0.02em] text-white/[0.96] sm:text-5xl sm:leading-[1.08] md:text-[3.25rem]">
+                      {composerGreetingLine}
+                    </p>
+                  </motion.div>
+                </motion.div>
+                <motion.p
+                  variants={{
+                    hidden: { opacity: 0, y: 18 },
+                    visible: {
+                      opacity: 1,
+                      y: 0,
+                      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+                    },
+                  }}
+                  className="mb-10 max-w-md text-[15px] leading-relaxed text-white/40 sm:text-base"
+                >
+                  {t("ai.empty_state_tagline")}
+                </motion.p>
+                {!guidedSetupDismissed ? (
+                  <motion.div
+                    variants={{
+                      hidden: { opacity: 0, y: 14 },
+                      visible: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
+                      },
+                    }}
+                    className="flex w-full max-w-sm flex-col items-center gap-3"
+                  >
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 24 }}
+                      className="w-full sm:w-auto"
+                    >
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="w-full rounded-full border border-white/12 bg-white/[0.06] px-6 py-3 text-[15px] font-medium text-white/90 shadow-none backdrop-blur-sm hover:bg-white/[0.1] sm:min-w-[14rem]"
+                        onClick={() => {
+                          setWizardFlowActive(true);
+                          setWizardStep(0);
+                        }}
+                      >
+                        {t("ai.guided_trip_setup")}
+                      </Button>
+                    </motion.div>
+                    <button
+                      type="button"
+                      onClick={dismissGuidedSetupCta}
+                      className="text-[14px] font-medium text-white/40 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white/65 hover:decoration-white/35"
+                    >
+                      {t("ai.guided_trip_dismiss")}
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    type="button"
+                    onClick={restoreGuidedSetupCta}
+                    variants={{
+                      hidden: { opacity: 0, y: 12 },
+                      visible: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+                      },
+                    }}
+                    className="text-[14px] font-medium text-white/45 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white/75 hover:decoration-white/40"
+                  >
+                    {t("ai.guided_trip_setup_restore")}
+                  </motion.button>
+                )}
               </motion.div>
             )}
             <AnimatePresence initial={false}>
-              {messages.map((m, i) => (
+              {messages.map((m, i) => {
+                if (
+                  m.role === "assistant" &&
+                  m.content.trim() === LEGACY_GLOBAL_ASSISTANT_WELCOME
+                ) {
+                  return null;
+                }
+                return (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -1289,7 +1555,56 @@ export default function AiTestClient({
                       </div>
                     ) : (
                       <>
-                        {m.cover_pick ? (
+                        {m.attached_trip ? (
+                          <div className="w-full min-w-0 space-y-3">
+                            <Link
+                              href={`/trips/${m.attached_trip.id}`}
+                              prefetch={false}
+                              className="block max-w-full rounded-xl border border-white/25 bg-white/10 shadow-lg sm:max-w-[280px]"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex gap-3 p-2.5 text-left">
+                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-white/15">
+                                  {m.attached_trip.image_url ? (
+                                    <CoverImageWithBlur
+                                      src={m.attached_trip.image_url}
+                                      alt={m.attached_trip.title}
+                                      blurHash={m.attached_trip.blur_hash ?? undefined}
+                                      className="h-full w-full"
+                                      imgClassName="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-white/40">
+                                      <Briefcase className="h-6 w-6" strokeWidth={1.5} aria-hidden />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1 py-0.5">
+                                  <p className="text-[11px] font-medium uppercase tracking-wide text-white/70">
+                                    {t("ai.attached_trip_message_label")}
+                                  </p>
+                                  <p className="mt-0.5 truncate text-[14px] font-semibold leading-snug text-white">
+                                    {m.attached_trip.title}
+                                  </p>
+                                  {m.attached_trip.destination ? (
+                                    <p className="mt-0.5 truncate text-[12px] text-white/75">
+                                      {m.attached_trip.destination}
+                                    </p>
+                                  ) : null}
+                                  <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-white/85">
+                                    {t("ai.open_trip")}
+                                    <ArrowRight className="h-3 w-3 opacity-80" aria-hidden />
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+                            {m.content.trim() ? (
+                              <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium select-none touch-none">
+                                {formatUserMessageForDisplay(m.content)}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : m.cover_pick ? (
                           <div className="space-y-3 w-full min-w-0">
                             {m.content.trim() ? (
                               <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium select-none touch-none">
@@ -1337,7 +1652,8 @@ export default function AiTestClient({
                     )}
                   </div>
                 </motion.div>
-              ))}
+              );
+              })}
               
               {loading && (
                 <motion.div
@@ -1810,47 +2126,46 @@ export default function AiTestClient({
                 ) : null}
               </AnimatePresence>
 
-              {/* Selected tool pill */}
-              <AnimatePresence mode="wait">
-                {selectedTool && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center gap-2 overflow-hidden shrink-0 mb-2"
-                  >
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/40 px-3 py-1.5 text-sm font-medium shrink-0">
-                      {selectedTool.kind === "image_pick" ? (
-                        <ImageIcon className="w-4 h-4" />
-                      ) : selectedTool.kind === "find_images" ? (
-                        <ImageIcon className="w-4 h-4" />
-                      ) : selectedTool.kind === "route_help" ? (
-                        <Route className="w-4 h-4 text-emerald-300/90" />
-                      ) : selectedTool.kind === "quick_reply" && selectedTool.action === "just_chat" ? (
-                        <MessageCircle className="w-4 h-4 text-sky-300/90" />
-                      ) : (
-                        <Sparkles className="w-4 h-4" />
-                      )}
-                      <span>{selectedTool.label}</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTool(null)}
-                        className="rounded-full p-0.5 hover:bg-[var(--color-accent)]/20 -mr-0.5"
-                        aria-label={t("ai.remove_tool")}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Main composer: typing area on top, + / model / voice / send below (Claude-style) */}
+              {/* Main composer: typing area on top, + / tool chips / model / voice / send below (Claude-style) */}
               {showMainComposerRow ? (
                 <div
-                  className={`flex min-w-0 flex-col gap-0 ${islandExpanded ? "mt-0.5 pt-1" : ""}`}
+                  className={`flex min-w-0 flex-col ${
+                    sessionScope === "global" && attachedTripId && attachedTripTitle ? "gap-1.5" : "gap-0"
+                  } ${islandExpanded ? "mt-0.5 pt-1" : ""}`}
                 >
+                  {sessionScope === "global" && attachedTripId && attachedTripTitle ? (
+                    <div className="mx-1.5 flex min-w-0 items-center gap-2.5 rounded-xl border border-white/[0.12] bg-white/[0.05] p-2 pr-1.5">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-white/10">
+                        {attachedTripCoverSrc ? (
+                          <CoverImageWithBlur
+                            src={attachedTripCoverSrc}
+                            alt={attachedTripTitle ?? t("ai.attach_trip")}
+                            blurHash={attachedTripCoverBlurHash ?? undefined}
+                            className="h-full w-full"
+                            imgClassName="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-white/35">
+                            <Briefcase className="h-6 w-6" strokeWidth={1.5} aria-hidden />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14px] font-semibold leading-tight text-white/90">
+                          {attachedTripTitle}
+                        </p>
+                        <p className="mt-0.5 truncate text-[11px] text-white/45">{t("ai.attach_trip_preview_hint")}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={clearAttachedTrip}
+                        className="shrink-0 rounded-full p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white/90"
+                        aria-label={t("ai.remove_attached_trip")}
+                      >
+                        <X className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                    </div>
+                  ) : null}
                   {islandExpanded && hideIslandFreeformRow ? (
                     <div className="min-h-10 px-3" aria-hidden />
                   ) : (
@@ -1894,7 +2209,7 @@ export default function AiTestClient({
                     />
                   )}
                   <div className="flex min-w-0 items-end justify-between gap-1.5 px-1 pb-0.5 pt-1">
-                    <div className="flex shrink-0 items-center">
+                    <div className="flex min-w-0 flex-1 items-center gap-1">
                       {islandExpanded ? (
                         <span className="inline-flex h-10 w-10 shrink-0" aria-hidden />
                       ) : !inputAreaMounted ? (
@@ -1905,82 +2220,125 @@ export default function AiTestClient({
                           <Plus className="h-5 w-5" strokeWidth={1.75} />
                         </span>
                       ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/6 hover:text-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
-                              aria-label={t("ai.composer_attach_menu")}
+                        <>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/6 hover:text-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                                aria-label={t("ai.composer_attach_menu")}
+                              >
+                                <Plus className="h-5 w-5" strokeWidth={1.75} />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="start"
+                              className="w-56 border border-white/15 bg-zinc-950 text-white"
                             >
-                              <Plus className="h-5 w-5" strokeWidth={1.75} />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="start"
-                            className="w-56 border border-white/15 bg-zinc-950 text-white"
-                          >
-                            <DropdownMenuItem
-                              onClick={() => {
-                                if (!loading) {
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (!loading) {
+                                    setSelectedTool({
+                                      kind: "find_images",
+                                      label: t("ai.find_images"),
+                                      messagePrefix: "Find some Unsplash images for ",
+                                    });
+                                    setInput("");
+                                  }
+                                }}
+                              >
+                                <ImageIcon className="mr-2 h-4 w-4 text-amber-200/90" />
+                                <span>{t("ai.find_images")}</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (!loading) {
+                                    setSelectedTool({
+                                      kind: "quick_reply",
+                                      action: "create_trip",
+                                      label: t("ai.create_trip"),
+                                    });
+                                  }
+                                }}
+                              >
+                                <Sparkles className="mr-2 h-4 w-4 text-[var(--color-accent)]" />
+                                <span>{t("ai.create_trip")}</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (loading) return;
+                                  if (!activeTripIdForRoute) {
+                                    toast.info(t("ai.add_stops_need_trip"));
+                                    return;
+                                  }
                                   setSelectedTool({
-                                    kind: "find_images",
-                                    label: t("ai.find_images"),
-                                    messagePrefix: "Find some Unsplash images for ",
+                                    kind: "route_help",
+                                    label: t("ai.add_stops_to_trip"),
                                   });
                                   setInput("");
-                                }
-                              }}
-                            >
-                              <ImageIcon className="mr-2 h-4 w-4 text-amber-200/90" />
-                              <span>{t("ai.find_images")}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                if (!loading) {
-                                  setSelectedTool({
-                                    kind: "quick_reply",
-                                    action: "create_trip",
-                                    label: t("ai.create_trip"),
-                                  });
-                                }
-                              }}
-                            >
-                              <Sparkles className="mr-2 h-4 w-4 text-[var(--color-accent)]" />
-                              <span>{t("ai.create_trip")}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                if (loading) return;
-                                if (!activeTripIdForRoute) {
-                                  toast.info(t("ai.add_stops_need_trip"));
-                                  return;
-                                }
-                                setSelectedTool({
-                                  kind: "route_help",
-                                  label: t("ai.add_stops_to_trip"),
-                                });
-                                setInput("");
-                              }}
-                            >
-                              <Route className="mr-2 h-4 w-4 text-emerald-300/90" />
-                              <span>{t("ai.add_stops_to_trip")}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                if (!loading) {
-                                  setSelectedTool({
-                                    kind: "quick_reply",
-                                    action: "just_chat",
-                                    label: t("ai.just_chat"),
-                                  });
-                                }
-                              }}
-                            >
-                              <MessageCircle className="mr-2 h-4 w-4 text-sky-300/90" />
-                              <span>{t("ai.just_chat")}</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                                }}
+                              >
+                                <Route className="mr-2 h-4 w-4 text-emerald-300/90" />
+                                <span>{t("ai.add_stops_to_trip")}</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (!loading) {
+                                    setSelectedTool({
+                                      kind: "quick_reply",
+                                      action: "just_chat",
+                                      label: t("ai.just_chat"),
+                                    });
+                                  }
+                                }}
+                              >
+                                <MessageCircle className="mr-2 h-4 w-4 text-sky-300/90" />
+                                <span>{t("ai.just_chat")}</span>
+                              </DropdownMenuItem>
+                              {sessionScope === "global" ? (
+                                <>
+                                  <DropdownMenuSeparator className="bg-white/10" />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setAttachTripDrawerOpen(true);
+                                    }}
+                                  >
+                                    <Link2 className="mr-2 h-4 w-4 text-white/70" strokeWidth={1.75} />
+                                    <span>{t("ai.attach_trip")}</span>
+                                  </DropdownMenuItem>
+                                </>
+                              ) : null}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          {selectedTool ? (
+                            <span className="inline-flex max-w-[min(280px,78vw)] min-w-0 shrink-0 items-center gap-1 rounded-full border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/20 px-2.5 py-1.5 text-[12px] font-medium leading-tight text-[var(--color-accent)]">
+                              {selectedTool.kind === "image_pick" ? (
+                                <ImageIcon className="h-4 w-4 shrink-0" />
+                              ) : selectedTool.kind === "find_images" ? (
+                                <ImageIcon className="h-4 w-4 shrink-0" />
+                              ) : selectedTool.kind === "route_help" ? (
+                                <Route className="h-4 w-4 shrink-0 text-emerald-300/90" />
+                              ) : selectedTool.kind === "quick_reply" && selectedTool.action === "just_chat" ? (
+                                <MessageCircle className="h-4 w-4 shrink-0 text-sky-300/90" />
+                              ) : (
+                                <Sparkles className="h-4 w-4 shrink-0" />
+                              )}
+                              <span className="min-w-0 truncate">
+                                {selectedTool.kind === "route_help"
+                                  ? t("ai.add_stops_chip_short")
+                                  : selectedTool.label}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedTool(null)}
+                                className="shrink-0 rounded-full p-0.5 hover:bg-[var(--color-accent)]/20"
+                                aria-label={t("ai.remove_tool")}
+                              >
+                                <X className="h-3.5 w-3.5" strokeWidth={2} />
+                              </button>
+                            </span>
+                          ) : null}
+                        </>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
@@ -2088,6 +2446,141 @@ export default function AiTestClient({
           </div>
         </div>
       </div>
+
+      {sessionScope === "global" ? (
+        <Drawer open={attachTripDrawerOpen} onOpenChange={setAttachTripDrawerOpen}>
+          <DrawerContent className="flex max-h-[min(88dvh,560px)] flex-col">
+            <DrawerHeader className="shrink-0 text-left">
+              <DrawerTitle>{t("ai.attach_trip")}</DrawerTitle>
+              <DrawerDescription className="text-white/50">{t("ai.attach_trip_drawer_hint")}</DrawerDescription>
+            </DrawerHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+              {tripsForAttachLoading ? (
+                <p className="text-[13px] text-white/50">{t("common.loading", { defaultValue: "Loading…" })}</p>
+              ) : tripsForAttach.length === 0 ? (
+                <p className="text-[13px] text-white/50">{t("trips.no_trips")}</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {tripsForAttach.map((tr) => {
+                    const primary =
+                      (tr.title && tr.title.trim()) ||
+                      (tr.destination && tr.destination.trim()) ||
+                      t("trips.untitled_trip");
+                    const destinationLine =
+                      tr.destination?.trim() &&
+                      tr.title?.trim() &&
+                      tr.destination.trim() !== tr.title.trim()
+                        ? tr.destination.trim()
+                        : null;
+                    const dateLine = formatAttachTripDateRange(tr);
+                    const cover = tripCoverForAttachUi(tr);
+                    return (
+                      <li key={tr.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAttachedTripId(tr.id);
+                            setAttachedTripTitle(
+                              (tr.title && tr.title.trim()) ||
+                                (tr.destination && tr.destination.trim()) ||
+                                t("trips.untitled_trip"),
+                            );
+                            setAttachedTripCoverSrc(cover.src);
+                            setAttachedTripCoverBlurHash(cover.blurHash);
+                            setAttachTripDrawerOpen(false);
+                          }}
+                          className="flex w-full gap-3 rounded-xl border border-white/[0.08] bg-white/[0.04] p-2.5 text-left transition-colors hover:bg-white/[0.08]"
+                        >
+                          <div className="relative h-[4.5rem] w-[5.75rem] shrink-0 overflow-hidden rounded-lg bg-white/10">
+                            {cover.src ? (
+                              <CoverImageWithBlur
+                                src={cover.src}
+                                alt={primary}
+                                blurHash={cover.blurHash ?? undefined}
+                                className="h-full w-full"
+                                imgClassName="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-white/30">
+                                <Briefcase className="h-8 w-8" strokeWidth={1.25} aria-hidden />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-0.5">
+                            <span className="text-[14px] font-semibold leading-snug text-white/95">{primary}</span>
+                            {destinationLine ? (
+                              <span className="text-[12px] leading-snug text-white/55">{destinationLine}</span>
+                            ) : null}
+                            {dateLine ? (
+                              <span className="text-[11px] leading-snug text-white/40">{dateLine}</span>
+                            ) : null}
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : null}
+
+      {sessionScope === "global" ? (
+        <Dialog
+          open={wizardEntryModalOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              try {
+                sessionStorage.setItem(`ai_wizard_intro_${sessionId}`, "1");
+              } catch {
+                /* ignore */
+              }
+            }
+            setWizardEntryModalOpen(open);
+          }}
+        >
+          <DialogContent className="border-white/15 bg-zinc-950 text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t("ai.wizard_intro_title")}</DialogTitle>
+              <DialogDescription className="text-white/55">{t("ai.wizard_intro_body")}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-white/70 hover:bg-white/10 hover:text-white"
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem(`ai_wizard_intro_${sessionId}`, "1");
+                  } catch {
+                    /* ignore */
+                  }
+                  setWizardEntryModalOpen(false);
+                }}
+              >
+                {t("ai.wizard_intro_not_now")}
+              </Button>
+              <Button
+                type="button"
+                className="bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90"
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem(`ai_wizard_intro_${sessionId}`, "1");
+                  } catch {
+                    /* ignore */
+                  }
+                  setWizardEntryModalOpen(false);
+                  setWizardFlowActive(true);
+                  setWizardStep(0);
+                }}
+              >
+                {t("ai.wizard_intro_start")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </main>
   );
 }

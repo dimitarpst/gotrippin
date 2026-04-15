@@ -141,7 +141,14 @@ export class AiController {
   @ApiBody({
     schema: {
       type: 'object',
-      properties: { message: { type: 'string' } },
+      properties: {
+        message: { type: 'string' },
+        attached_trip_id: {
+          type: 'string',
+          format: 'uuid',
+          description: 'Optional; global sessions only — merge full trip snapshot into session slots',
+        },
+      },
       required: ['message'],
     },
   })

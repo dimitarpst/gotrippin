@@ -21,6 +21,17 @@ import { shiftTripRelatedDatesByCalendarDays } from "@/lib/shift-trip-related-da
 import { getGroupedActivities, normalizeTimelineData, type GroupedActivitiesResponse } from "@/lib/api/activities";
 import { getLocations } from "@/lib/api/trip-locations";
 import { findTripScheduleViolations } from "@/lib/trip-schedule-bounds";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { inviteTripByEmail, ApiError } from "@/lib/api/trips";
 
 type ScheduleRepairState = {
   tripStart: Date;
@@ -66,6 +77,10 @@ export default function TripDetailPageClient({
   const router = useRouter();
 
   const [itineraryDrawerOpen, setItineraryDrawerOpen] = useState(initialItineraryOpen);
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteSending, setInviteSending] = useState(false);
 
   const [scheduleRepair, setScheduleRepair] = useState<ScheduleRepairState | null>(null);
   const [repairDrawerOpen, setRepairDrawerOpen] = useState(false);
@@ -318,6 +333,28 @@ export default function TripDetailPageClient({
     setRepairDrawerOpen(false);
   }, []);
 
+  const handleInviteSend = useCallback(async () => {
+    if (!trip?.id) return;
+    const trimmed = inviteEmail.trim();
+    if (!trimmed) {
+      toast.error(t("trips.invite_email_empty"));
+      return;
+    }
+    setInviteSending(true);
+    try {
+      await inviteTripByEmail(trip.id, trimmed);
+      toast.success(t("trips.invite_sent"));
+      setInviteOpen(false);
+      setInviteEmail("");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : t("trips.invite_failed");
+      console.error("TripDetailPageClient: inviteTripByEmail failed", err);
+      toast.error(t("trips.invite_failed"), { description: msg });
+    } finally {
+      setInviteSending(false);
+    }
+  }, [trip?.id, inviteEmail, t]);
+
   const actions: TripOverviewActions = useMemo(
     () => ({
       onNavigate: (screen) => {
@@ -361,7 +398,20 @@ export default function TripDetailPageClient({
         }
       },
       onShare: () => {
-        // TODO: Implement share functionality
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const url = `${origin}/trips/${shareCode}/join`;
+        void navigator.clipboard.writeText(url).then(
+          () => {
+            toast.success(t("trips.share_link_copied"));
+          },
+          (err: unknown) => {
+            console.error("TripDetailPageClient: clipboard write failed", err);
+            toast.error(t("trips.invite_failed"), { description: String(err) });
+          }
+        );
+      },
+      onInviteByEmail: () => {
+        setInviteOpen(true);
       },
       onManageGuests: () => {
         // TODO: Implement manage guests functionality
@@ -505,6 +555,42 @@ export default function TripDetailPageClient({
           onRepaired={handleScheduleRepaired}
         />
       ) : null}
+
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("trip_overview.invite_dialog_title")}</DialogTitle>
+            <DialogDescription>{t("trip_overview.invite_dialog_description")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label className="text-sm font-medium" htmlFor="trip-invite-email">
+              {t("trip_overview.invite_email_label")}
+            </label>
+            <Input
+              id="trip-invite-email"
+              type="email"
+              autoComplete="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder={t("trip_overview.invite_email_placeholder")}
+              disabled={inviteSending}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setInviteOpen(false)}
+              disabled={inviteSending}
+            >
+              {t("trips.cancel")}
+            </Button>
+            <Button type="button" onClick={() => void handleInviteSend()} disabled={inviteSending}>
+              {t("trip_overview.invite_email_send")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

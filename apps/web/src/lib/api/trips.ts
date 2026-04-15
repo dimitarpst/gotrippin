@@ -115,6 +115,44 @@ export async function fetchTripByShareCode(shareCode: string, token?: string | n
   );
 }
 
+export interface JoinTripResponse {
+  ok: true;
+  share_code: string;
+  already_member: boolean;
+}
+
+/**
+ * Join the current user to a trip using its share code (authenticated).
+ */
+export async function joinTripByShareCode(
+  shareCode: string,
+  token?: string | null
+): Promise<JoinTripResponse> {
+  return apiRequest<JoinTripResponse>(
+    `/trips/share/${encodeURIComponent(shareCode)}/join`,
+    { method: "POST" },
+    token
+  );
+}
+
+/**
+ * Send a trip invite email with a join link (caller must be a trip member).
+ */
+export async function inviteTripByEmail(
+  tripId: string,
+  email: string,
+  token?: string | null
+): Promise<{ ok: true }> {
+  return apiRequest<{ ok: true }>(
+    `/trips/${tripId}/invite-email`,
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    },
+    token
+  );
+}
+
 /** Response from GET /trips/share/:shareCode/detail (one request for detail screen; web + mobile) */
 export interface TripDetailResponse {
   trip: Trip;

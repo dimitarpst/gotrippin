@@ -89,6 +89,8 @@ export interface TripOverviewActions {
   onEdit?: () => void
   onDelete?: () => void
   onShare?: () => void
+  /** Open invite-by-email flow (parent owns dialog / API). */
+  onInviteByEmail?: () => void
   onManageGuests?: () => void
   onEditName?: () => void
   onChangeDates?: (dateRange: DateRange | undefined) => void | Promise<void>
@@ -187,6 +189,7 @@ export default function TripOverview({
     onEdit,
     onDelete,
     onShare,
+    onInviteByEmail,
     onManageGuests,
     onEditName,
     onOpenLocation,
@@ -623,6 +626,15 @@ export default function TripOverview({
                 >
                   <Share2 className="w-4 h-4" />
                   <span className="text-sm font-medium">{t('trip_overview.menu_share_trip')}</span>
+                </DropdownMenuItem>
+              )}
+              {onInviteByEmail && (
+                <DropdownMenuItem
+                  onClick={onInviteByEmail}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-accent focus:bg-accent dark:hover:bg-[#ff7670]/20 dark:focus:bg-[#ff7670]/20"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span className="text-sm font-medium">{t('trip_overview.menu_invite_email')}</span>
                 </DropdownMenuItem>
               )}
               {onManageGuests && (
