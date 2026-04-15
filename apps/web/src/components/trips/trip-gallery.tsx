@@ -17,9 +17,12 @@ import {
   registerTripGalleryImage,
   setTripCoverFromGalleryImage,
 } from "@/lib/api/trips";
-import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  PhotoSwipeGalleryTile,
+  usePhotoSwipeLightbox,
+} from "@/components/trips/photo-swipe-gallery";
 import { getR2PublicUrl } from "@/lib/r2-public";
 import {
   galleryImageStorageKey,
@@ -121,7 +124,6 @@ export function TripGallery({
   const [settingCoverId, setSettingCoverId] = useState<string | null>(null);
 
   const galleryRef = useRef<HTMLDivElement>(null);
-  const lightboxRef = useRef<{ destroy: () => void } | null>(null);
   const imageCountRef = useRef(initialImages.length);
 
   const coverStorageKey = tripCoverStorageKey(trip);
@@ -159,46 +161,7 @@ export function TripGallery({
     imageCountRef.current = images.length;
   }, [images.length]);
 
-  useEffect(() => {
-    lightboxRef.current?.destroy();
-    lightboxRef.current = null;
-
-    if (!hasGalleryGrid) {
-      return;
-    }
-
-    const root = galleryRef.current;
-    if (!root) {
-      return;
-    }
-
-    let disposed = false;
-
-    void (async () => {
-      await import("photoswipe/style.css");
-      const { default: PhotoSwipeLightbox } = await import("photoswipe/lightbox");
-      if (disposed) {
-        return;
-      }
-      const lb = new PhotoSwipeLightbox({
-        gallery: root,
-        children: "a[data-pswp-src]",
-        pswpModule: () => import("photoswipe"),
-      });
-      lb.init();
-      if (disposed) {
-        lb.destroy();
-        return;
-      }
-      lightboxRef.current = lb;
-    })();
-
-    return () => {
-      disposed = true;
-      lightboxRef.current?.destroy();
-      lightboxRef.current = null;
-    };
-  }, [hasGalleryGrid, idsKey]);
+  usePhotoSwipeLightbox(galleryRef, idsKey, hasGalleryGrid);
 
   const uploadOne = useCallback(
     async (file: File): Promise<boolean> => {
@@ -561,37 +524,25 @@ export function TripGallery({
           className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 sm:gap-3"
         >
           {showEmbeddedCoverTile && resolvedCoverSrc ? (
-            <div
+            <PhotoSwipeGalleryTile
               key={EMBEDDED_COVER_GRID_KEY}
-              className="group relative aspect-square overflow-hidden rounded-xl border border-border/70 bg-muted/20 ring-2 ring-[#ff7670] dark:border-white/[0.08]"
-            >
-              <span className="absolute left-2 top-2 z-30 rounded-md bg-[#ff7670] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
-                {t("trip_gallery.background_badge", {
-                  defaultValue: "Background",
-                })}
-              </span>
-              <a
-                href={resolvedCoverSrc}
-                data-pswp-src={resolvedCoverSrc}
-                data-pswp-width={1600}
-                data-pswp-height={1200}
-                target="_blank"
-                rel="noreferrer"
-                className="block h-full w-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                aria-label={t("trip_gallery.open_lightbox", {
-                  defaultValue: "Open photo",
-                })}
-              >
-                <CoverImageWithBlur
-                  src={resolvedCoverSrc}
-                  alt={t("trip_gallery.photo_alt", {
-                    defaultValue: "Trip gallery photo",
+              className="ring-2 ring-[#ff7670]"
+              url={resolvedCoverSrc}
+              blurHash={coverBlurHash}
+              photoAlt={t("trip_gallery.photo_alt", {
+                defaultValue: "Trip gallery photo",
+              })}
+              openLabel={t("trip_gallery.open_lightbox", {
+                defaultValue: "Open photo",
+              })}
+              topLeftBadge={
+                <span className="absolute left-2 top-2 z-30 rounded-md bg-[#ff7670] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
+                  {t("trip_gallery.background_badge", {
+                    defaultValue: "Background",
                   })}
-                  blurHash={coverBlurHash ?? undefined}
-                  className="h-full w-full"
-                />
-              </a>
-            </div>
+                </span>
+              }
+            />
           ) : null}
           {images.map((img) => {
             const src = getR2PublicUrl(img.storage_key);
@@ -602,84 +553,75 @@ export function TripGallery({
                 coverStorageKey === galleryImageStorageKey(img.storage_key),
             );
             return (
-              <div
+              <PhotoSwipeGalleryTile
                 key={img.id}
-                className={cn(
-                  "group relative aspect-square overflow-hidden rounded-xl border border-border/70 bg-muted/20 dark:border-white/[0.08]",
-                  isTripCover && "ring-2 ring-[#ff7670]",
-                )}
-              >
-                {isTripCover ? (
-                  <span className="absolute left-2 top-2 z-30 rounded-md bg-[#ff7670] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
-                    {t("trip_gallery.background_badge", {
-                      defaultValue: "Background",
-                    })}
-                  </span>
-                ) : null}
-                <a
-                  href={src}
-                  data-pswp-src={src}
-                  data-pswp-width={w}
-                  data-pswp-height={h}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block h-full w-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  aria-label={t("trip_gallery.open_lightbox", {
-                    defaultValue: "Open photo",
-                  })}
-                >
-                  <CoverImageWithBlur
-                    src={src}
-                    alt={t("trip_gallery.photo_alt", {
-                      defaultValue: "Trip gallery photo",
-                    })}
-                    blurHash={img.blur_hash ?? undefined}
-                    className="h-full w-full"
-                  />
-                </a>
-                {!isTripCover ? (
-                  <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/75 via-black/35 to-transparent p-2 pt-10 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/95 py-2 text-xs font-semibold text-foreground shadow-md backdrop-blur-sm hover:bg-white dark:bg-zinc-900/95 dark:text-white dark:hover:bg-zinc-900"
-                      disabled={settingCoverId === img.id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        void handleSetCover(img.id);
-                      }}
-                    >
-                      {settingCoverId === img.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Wallpaper className="h-3.5 w-3.5" />
-                      )}
-                      {t("trip_gallery.set_background", {
-                        defaultValue: "Use as background",
+                className={cn(isTripCover && "ring-2 ring-[#ff7670]")}
+                url={src}
+                blurHash={img.blur_hash}
+                width={w}
+                height={h}
+                photoAlt={t("trip_gallery.photo_alt", {
+                  defaultValue: "Trip gallery photo",
+                })}
+                openLabel={t("trip_gallery.open_lightbox", {
+                  defaultValue: "Open photo",
+                })}
+                topLeftBadge={
+                  isTripCover ? (
+                    <span className="absolute left-2 top-2 z-30 rounded-md bg-[#ff7670] px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg">
+                      {t("trip_gallery.background_badge", {
+                        defaultValue: "Background",
                       })}
-                    </button>
-                  </div>
-                ) : null}
-                <button
-                  type="button"
-                  className="absolute right-1.5 top-1.5 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow-md backdrop-blur-sm transition-opacity hover:bg-destructive/15 hover:text-destructive dark:border-white/20 dark:bg-black/50"
-                  aria-label={t("trip_gallery.remove_photo", {
-                    defaultValue: "Remove photo",
-                  })}
-                  disabled={deletingId === img.id}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    void handleDelete(img.id);
-                  }}
-                >
-                  {deletingId === img.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
+                    </span>
+                  ) : null
+                }
+                bottomOverlay={
+                  !isTripCover ? (
+                    <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/75 via-black/35 to-transparent p-2 pt-10 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/95 py-2 text-xs font-semibold text-foreground shadow-md backdrop-blur-sm hover:bg-white dark:bg-zinc-900/95 dark:text-white dark:hover:bg-zinc-900"
+                        disabled={settingCoverId === img.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void handleSetCover(img.id);
+                        }}
+                      >
+                        {settingCoverId === img.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Wallpaper className="h-3.5 w-3.5" />
+                        )}
+                        {t("trip_gallery.set_background", {
+                          defaultValue: "Use as background",
+                        })}
+                      </button>
+                    </div>
+                  ) : null
+                }
+                topRightControl={
+                  <button
+                    type="button"
+                    className="absolute right-1.5 top-1.5 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-border/80 bg-background/90 text-foreground shadow-md backdrop-blur-sm transition-opacity hover:bg-destructive/15 hover:text-destructive dark:border-white/20 dark:bg-black/50"
+                    aria-label={t("trip_gallery.remove_photo", {
+                      defaultValue: "Remove photo",
+                    })}
+                    disabled={deletingId === img.id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void handleDelete(img.id);
+                    }}
+                  >
+                    {deletingId === img.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </button>
+                }
+              />
             );
           })}
         </div>

@@ -42,12 +42,15 @@ export const AI_TOOLS: OpenRouterTool[] = [
     function: {
       name: 'addLocation',
       description:
-        'Add a location/stop to a trip route. Use for each destination the user wants to visit.',
+        'Add a location/stop to a trip route. The server resolves coordinates from the name (Open-Meteo geocoding). Prefer specific names like "Plovdiv, Bulgaria" so the map and weather work.',
       parameters: {
         type: 'object',
         properties: {
           trip_id: { type: 'string', description: 'Trip UUID' },
-          location_name: { type: 'string', description: 'Location name (e.g. "Madrid, Spain")' },
+          location_name: {
+            type: 'string',
+            description: 'Human-readable place (e.g. "Plovdiv, Bulgaria"). Avoid bare city-only names when ambiguous.',
+          },
           order_index: { type: 'number', description: 'Position in route (1-based)' },
           arrival_date: { type: 'string', description: 'Arrival date ISO 8601' },
           departure_date: { type: 'string', description: 'Departure date ISO 8601' },

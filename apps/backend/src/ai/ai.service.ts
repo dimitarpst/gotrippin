@@ -31,6 +31,11 @@ export interface CreateSessionResult {
   welcome_message?: string;
 }
 
+/** NDJSON stream events for live progress (optional on postMessage). */
+export type AiMessageProgressEvent =
+  | { type: 'phase'; phase: string }
+  | { type: 'tool'; phase: 'start' | 'done'; name: string };
+
 export interface PostMessageResult {
   message: string;
   /** Trip created or linked in this turn (from session slots); client can link to /trips/:id */
@@ -59,6 +64,13 @@ export interface PostMessageResult {
     visit_time?: string | null;
     ai_note?: string | null;
   }>;
+  /** Tool function names executed during this turn, in order */
+  tool_calls?: string[];
+  budget_summary?: {
+    currency: string;
+    per_person_estimate: number;
+    assumptions?: string[];
+  };
 }
 
 @Injectable()
@@ -409,6 +421,49 @@ export class AiService {
           }
         }
 
+        const toolCallsRaw = c?.tool_calls;
+        const tool_calls =
+          m.role === 'assistant' &&
+          Array.isArray(toolCallsRaw) &&
+          toolCallsRaw.length > 0
+            ? toolCallsRaw
+                .filter((t) => typeof t === 'string' && t.trim().length > 0)
+                .map((t) => String(t).trim())
+            : undefined;
+
+        const budgetRaw = c?.budget_summary;
+        let budget_summary:
+          | {
+              currency: string;
+              per_person_estimate: number;
+              assumptions?: string[];
+            }
+          | undefined;
+        if (
+          m.role === 'assistant' &&
+          budgetRaw &&
+          typeof budgetRaw === 'object' &&
+          !Array.isArray(budgetRaw)
+        ) {
+          const b = budgetRaw as Record<string, unknown>;
+          const cur = b.currency;
+          const est = b.per_person_estimate;
+          const asm = b.assumptions;
+          if (typeof cur === 'string' && cur.trim() && typeof est === 'number' && Number.isFinite(est)) {
+            const assumptionsList =
+              Array.isArray(asm)
+                ? asm
+                    .filter((a) => typeof a === 'string' && a.trim().length > 0)
+                    .map((a) => String(a).trim())
+                : [];
+            budget_summary = {
+              currency: cur.trim().toUpperCase(),
+              per_person_estimate: est,
+              ...(assumptionsList.length > 0 ? { assumptions: assumptionsList } : {}),
+            };
+          }
+        }
+
         return {
           role: m.role as 'user' | 'assistant',
           content: text,
@@ -417,6 +472,8 @@ export class AiService {
           ...(place_suggestions ? { place_suggestions } : {}),
           ...(linked_trip_id ? { linked_trip_id } : {}),
           ...(cover_pick ? { cover_pick } : {}),
+          ...(tool_calls && tool_calls.length > 0 ? { tool_calls } : {}),
+          ...(budget_summary ? { budget_summary } : {}),
         };
       });
     return {
@@ -485,6 +542,7 @@ export class AiService {
     userId: string,
     sessionId: string,
     dto: PostMessageDto,
+    onProgress?: (event: AiMessageProgressEvent) => void,
   ): Promise<PostMessageResult> {
     const startTime = Date.now();
     this.logger.log(`Handling message for session ${sessionId} from user ${userId}`);
@@ -592,6 +650,8 @@ export class AiService {
 
     messages.push({ role: 'user', content: userContent });
 
+    onProgress?.({ type: 'phase', phase: 'thinking' });
+
     const MAX_TOOL_LOOPS = 5;
     let finalContent = '';
     let quickReplies: Array<{ label: string; action: string }> | undefined;
@@ -634,6 +694,14 @@ export class AiService {
       dominant_color: string | null;
     };
     let pendingCoverImagesForSlots: PendingCoverImage[] | undefined;
+    const executedToolNames: string[] = [];
+    let budgetSummary:
+      | {
+          currency: string;
+          per_person_estimate: number;
+          assumptions?: string[];
+        }
+      | undefined;
 
     try {
       let currentMessages = messages;
@@ -641,6 +709,7 @@ export class AiService {
       let totalTokensUsed = 0;
 
       for (let i = 0; i < MAX_TOOL_LOOPS; i += 1) {
+        onProgress?.({ type: 'phase', phase: 'model' });
         const response = await this.openRouter.chat({
           messages: currentMessages,
           tools: AI_TOOLS,
@@ -656,6 +725,8 @@ export class AiService {
           break;
         }
 
+        onProgress?.({ type: 'phase', phase: 'tools' });
+
         for (const toolCall of toolCalls) {
           const { name, arguments: argsJson } = toolCall.function;
           let parsedArgs: unknown;
@@ -667,6 +738,9 @@ export class AiService {
             );
             continue;
           }
+
+          onProgress?.({ type: 'tool', phase: 'start', name });
+          executedToolNames.push(name);
 
           let result: unknown;
           try {
@@ -680,6 +754,8 @@ export class AiService {
               error: (err as Error).message ?? 'Tool execution failed',
             };
           }
+
+          onProgress?.({ type: 'tool', phase: 'done', name });
 
           if (name === 'createTripDraft' && result && typeof result === 'object') {
             const r = result as {
@@ -774,6 +850,8 @@ export class AiService {
         );
       }
 
+      onProgress?.({ type: 'phase', phase: 'reply' });
+
       const MAX_JSON_CORRECTIONS = 2;
       if (finalContent.trim().length > 0) {
         for (let c = 0; c < MAX_JSON_CORRECTIONS; c += 1) {
@@ -784,6 +862,7 @@ export class AiService {
           this.logger.warn(
             `Assistant reply is not a valid JSON envelope (session ${sessionId}, correction ${c + 1}/${MAX_JSON_CORRECTIONS}); re-prompting model.`,
           );
+          onProgress?.({ type: 'phase', phase: 'formatting' });
           currentMessages.push({
             role: 'assistant',
             content: candidate,
@@ -865,6 +944,12 @@ export class AiService {
         placeSuggestions = placeParsed.place_suggestions;
       }
 
+      const budgetParsed = this.parseBudgetSummaryFromResponse(finalContent);
+      if (budgetParsed) {
+        finalContent = budgetParsed.content;
+        budgetSummary = budgetParsed.budget_summary;
+      }
+
       const linkedTripIdRaw = (slots as Record<string, unknown>).current_trip_id;
       const linkedTripId =
         typeof linkedTripIdRaw === 'string' && linkedTripIdRaw.trim().length > 0
@@ -890,6 +975,10 @@ export class AiService {
         ...(imageSuggestions ? { image_suggestions: imageSuggestions } : {}),
         ...(placeSuggestions ? { place_suggestions: placeSuggestions } : {}),
         ...(linkedTripId ? { linked_trip_id: linkedTripId } : {}),
+        ...(executedToolNames.length > 0
+          ? { tool_calls: executedToolNames }
+          : {}),
+        ...(budgetSummary ? { budget_summary: budgetSummary } : {}),
       });
 
       let usage: { used: number; limit: number | null; percent: number | null } | undefined;
@@ -918,6 +1007,10 @@ export class AiService {
         quick_replies: quickReplies,
         image_suggestions: imageSuggestions,
         place_suggestions: placeSuggestions,
+        ...(executedToolNames.length > 0
+          ? { tool_calls: executedToolNames }
+          : {}),
+        ...(budgetSummary ? { budget_summary: budgetSummary } : {}),
         ...(usage ? { usage } : {}),
       };
     } catch (err) {
@@ -941,7 +1034,7 @@ export class AiService {
       'Schema: {"message":"<string, markdown allowed inside>","quick_replies":[{"label":"<string>","action":"<string>"}],"chat_title":"<optional 3-4 words; first reply in a new chat only>"}. ' +
       '"message" is required and must be non-empty. ' +
       'quick_replies is optional; put tappable choices there, not only as numbered lists inside message. ' +
-      'Inside message you may end with a line PLACE_CARDS: [...] for place cards. ' +
+      'Inside message you may end with a line PLACE_CARDS: [...] for place cards (prefer real venues with accurate place_id and coordinates when known) and/or BUDGET_SUMMARY: {...} for per-person budget. ' +
       'Keep the same meaning and itinerary as before, but output only valid JSON in that shape. ' +
       'Previous invalid output:\n' +
       clipped
@@ -1179,6 +1272,78 @@ export class AiService {
     }
   }
 
+  private parseBudgetSummaryFromResponse(
+    content: string,
+  ):
+    | {
+        content: string;
+        budget_summary: {
+          currency: string;
+          per_person_estimate: number;
+          assumptions?: string[];
+        };
+      }
+    | null {
+    const lines = content.split('\n');
+    let budgetLineIndex = -1;
+    let rawJson = '';
+
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i];
+      const match = line.match(/^BUDGET_SUMMARY:\s*(\{.+\})\s*$/i);
+      if (match) {
+        budgetLineIndex = i;
+        rawJson = match[1];
+        break;
+      }
+    }
+
+    if (budgetLineIndex < 0 || !rawJson) {
+      return null;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(rawJson);
+      if (!this.isPlainRecord(parsed)) {
+        return null;
+      }
+      const rec = parsed;
+      const currencyRaw = rec.currency;
+      const estimateRaw = rec.per_person_estimate;
+      const assumptionsRaw = rec.assumptions;
+
+      if (typeof currencyRaw !== 'string' || !currencyRaw.trim()) {
+        return null;
+      }
+      if (typeof estimateRaw !== 'number' || !Number.isFinite(estimateRaw)) {
+        return null;
+      }
+
+      let assumptions: string[] | undefined;
+      if (Array.isArray(assumptionsRaw)) {
+        const linesOut = assumptionsRaw
+          .filter((a) => typeof a === 'string' && a.trim().length > 0)
+          .map((a) => String(a).trim());
+        if (linesOut.length > 0) assumptions = linesOut;
+      }
+
+      const newLines = lines.filter((_, i) => i !== budgetLineIndex);
+      return {
+        content: newLines.join('\n').trim(),
+        budget_summary: {
+          currency: currencyRaw.trim().toUpperCase(),
+          per_person_estimate: estimateRaw,
+          ...(assumptions ? { assumptions } : {}),
+        },
+      };
+    } catch (err) {
+      this.logger.warn(
+        `Failed to parse BUDGET_SUMMARY JSON: ${(err as Error).message}`,
+      );
+      return null;
+    }
+  }
+
   private buildSystemPrompt(
     scope: string,
     tripId: string | null,
@@ -1191,12 +1356,13 @@ export class AiService {
     prompt += `\n\nOnce the user has already chosen "Just chat", do NOT keep offering both "Create a trip" and "Just chat" in quick_replies. Instead, offer only context-relevant options. When they are asking for inspiration, destinations to visit, or photos/pictures, include Find images in quick_replies: {\"label\":\"Find images\",\"action\":\"find_images\"}. When in "just chat" and they want inspiration or locations, prefer quick_replies such as Find images and Create a trip rather than repeating "Just chat".`;
     prompt += `\n\nWhen you receive a user message that is exactly "create_trip", treat it as: "User chose: Create a trip. Start the trip creation walkthrough using tools (createTripDraft, updateTrip, addLocation, getRoute, etc.), asking for missing details like title, dates, and route stops, and confirming with the user as you go."\nWhen you receive a user message that is exactly "just_chat", treat it as: "User chose: Just chat. Continue the conversation without creating or modifying any trips."\nWhen you receive "find_images" or "find_images: ...", treat it as: User chose Find images; acknowledge and help them search for photos (they can use the + menu; you can suggest a search query).`;
 
-    prompt += `\n\nOUTPUT FORMAT (required for every visible assistant reply after tools finish): respond with a single JSON object only — no text before or after the JSON, no markdown code fences around the whole reply. The object must include:\n- "message" (string, required): markdown for the user (headings, bold, lists, emojis allowed inside the string).\n- "quick_replies" (optional array): when you offer follow-up choices, use objects {"label":"<short UI label>","action":"<string>"}. Use actions: "create_trip", "find_images", "just_chat", or "just_chat:<concise intent>" so the app forwards the user intent (e.g. "just_chat:Adjust the route order or swap cities"). Include quick_replies whenever you list options the user can tap — do not rely only on numbered lists in message for tap targets.\n- "chat_title" (optional string, 3–4 words): include only on the first assistant message in a brand-new chat to name the thread; omit on later turns.\nInside "message", you may still end with a line PLACE_CARDS: [...] on its own line when you output place cards (valid JSON array on one line), same rules as before. Do not duplicate QUICK_REPLIES: or TITLE: lines inside message when you already use JSON keys.`;
+    prompt += `\n\nOUTPUT FORMAT (required for every visible assistant reply after tools finish): respond with a single JSON object only — no text before or after the JSON, no markdown code fences around the whole reply. The object must include:\n- "message" (string, required): markdown for the user (headings, bold, lists, emojis allowed inside the string).\n- "quick_replies" (optional array): when you offer follow-up choices, use objects {"label":"<short UI label>","action":"<string>"}. Use actions: "create_trip", "find_images", "just_chat", or "just_chat:<concise intent>" so the app forwards the user intent (e.g. "just_chat:Adjust the route order or swap cities"). Include quick_replies whenever you list options the user can tap — do not rely only on numbered lists in message for tap targets.\n- "chat_title" (optional string, 3–4 words): include only on the first assistant message in a brand-new chat to name the thread; omit on later turns.\nInside "message", you may still end with optional machine-readable lines on their own lines: PLACE_CARDS: [...] (valid JSON array) and/or BUDGET_SUMMARY: {...} (valid JSON object), same rules as below. Do not duplicate QUICK_REPLIES: or TITLE: lines inside message when you already use JSON keys.`;
 
     prompt += `\n\nWhen asking follow-up questions inside "message", you may still use numbered lists for readability, but the tappable choices must appear in quick_replies.`;
 
     prompt += `\n\nWhen the user describes a specific new trip in natural language (for example: "I wanna go on a trip to Bali on the 14th of March"), you must:\n- Extract what you can (destination, approximate dates, preferences) from their message.\n- Ask follow-up questions only for missing key information, one at a time (for example: \"How many days do you want to stay?\" if you know the start date but not the duration or end date).\n- Once you know at least a destination and a start and end date (or a start date and duration that implies the end date), use the tools to:\n  - Create or update a real trip via createTripDraft and updateTrip.\n  - Then call searchCoverImage with an appropriate query (for example: \"Bali travel landscape\"), and describe a few of the returned image options in your reply so the user can pick one.\n- Cover selection: the app shows images in a tappable gallery. When the user taps there, the client saves the cover and posts the choice to the chat — you must NOT ask them to type \"use image 6\" or similar, and do NOT add quick_replies that only repeat that. If they instead describe a choice only in text (e.g. \"the sunset one\", \"number 3\"), call selectCoverImage with the matching object from pending_cover_images.`;
-    prompt += `\n\nWhen you suggest a day plan with concrete places, include a machine-readable line at the end of your response: PLACE_CARDS: [ ... ]. This line must be valid JSON on one line and include 2-8 places. Each place object should contain: name (required), address, latitude, longitude, rating, rating_count, place_type, place_id, photo_url, phone_number, website, weekday_hours (array), visit_time (e.g. \"9:00 AM\"), ai_note (short note). Keep your normal human-readable reply above this line. Do not mention the PLACE_CARDS line in visible text.`;
+    prompt += `\n\nWhen you suggest a day plan with concrete places, include a machine-readable line at the end of your response: PLACE_CARDS: [ ... ]. This line must be valid JSON on one line and include 2-8 places. Each entry must be a real Google Maps **Place** (a venue users can open in Google Maps with reviews, photos, and contact info)—not a made-up label with random latitude/longitude dropped on the map (that only shows a bare coordinate pin and breaks the in-app experience). Therefore every object in PLACE_CARDS **must** include a truthful **place_id** (Google Places id, e.g. ChIJ… or the canonical places/… id) that corresponds to that exact venue name. **latitude** and **longitude** must be the official coordinates for that same place_id (same source of truth); never invent coordinates. If you cannot confidently supply a correct place_id for a stop, omit that stop or replace it with a different well-known venue you can verify—do not emit PLACE_CARDS rows without place_id. Also include when known: name (required), address, rating, rating_count, place_type, photo_url, phone_number, website, weekday_hours (array), visit_time (e.g. \"9:00 AM\"), ai_note (2–4 sentences per stop: practical, specific—vibe, typical price band or value, opening days or best time, one budget tip when useful; like a concise travel tip, not generic filler); set rating, rating_count, and photo_url to null if unknown so the client may enrich from Google when place_id is present. Keep your normal human-readable reply above this line. Do not mention the PLACE_CARDS line in visible text.`;
+    prompt += `\n\nWhen you give a costed itinerary or budget guidance, add a final line after PLACE_CARDS (if any): BUDGET_SUMMARY: {\"currency\":\"EUR\",\"per_person_estimate\":<number>,\"assumptions\":[\"optional short bullet strings\"]}. Use a realistic rough total per person for transport+lodging+food+activities for the trip length; state assumptions in the array. One line only; valid JSON object. Do not mention BUDGET_SUMMARY in the visible prose.`;
 
     if (scope === 'trip' && tripId) {
       prompt += `\n\nThe user is working on a specific trip (trip_id: ${tripId}).`;

@@ -39,6 +39,12 @@ export interface AiPlaceSuggestion {
   ai_note?: string | null;
 }
 
+export interface AiBudgetSummary {
+  currency: string;
+  per_person_estimate: number;
+  assumptions?: string[];
+}
+
 export interface CreateSessionBody {
   scope: "global" | "trip";
   trip_id?: string;
@@ -86,6 +92,8 @@ export interface AiSessionWithMessagesResponse {
     quick_replies?: Array<{ label: string; action: string }>;
     image_suggestions?: AiImageSuggestion[];
     place_suggestions?: AiPlaceSuggestion[];
+    tool_calls?: string[];
+    budget_summary?: AiBudgetSummary;
   }>;
 }
 
@@ -215,6 +223,7 @@ export interface PostMessageResponse {
   image_suggestions?: AiImageSuggestion[];
   place_suggestions?: AiPlaceSuggestion[];
   tool_calls?: string[];
+  budget_summary?: AiBudgetSummary;
   usage?: { used: number; limit: number | null; percent: number | null };
 }
 
@@ -223,10 +232,18 @@ export interface PostAiMessageOptions {
   signal?: AbortSignal;
 }
 
-export async function postAiMessage(
+export type AiStreamProgressLine =
+  | { type: "phase"; phase: string }
+  | { type: "tool"; phase: "start" | "done"; name: string };
+
+/**
+ * POST message with NDJSON progress (one JSON object per line), last line `{ type: "done", payload }`.
+ */
+export async function postAiMessageStream(
   sessionId: string,
   message: string,
-  options?: PostAiMessageOptions | string | null
+  onProgress: (line: AiStreamProgressLine) => void,
+  options?: PostAiMessageOptions | string | null,
 ): Promise<PostMessageResponse> {
   const opts: PostAiMessageOptions =
     options != null && typeof options === "object" ? options : { token: options ?? undefined };
@@ -235,7 +252,7 @@ export async function postAiMessage(
     throw new Error("Authentication required");
   }
 
-  const res = await fetch(`${API_BASE}/ai/sessions/${sessionId}/messages`, {
+  const res = await fetch(`${API_BASE}/ai/sessions/${sessionId}/messages/stream`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -253,7 +270,63 @@ export async function postAiMessage(
     throw errWithStatus;
   }
 
-  return res.json();
+  const reader = res.body?.getReader();
+  if (!reader) {
+    throw new Error("No response body");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalPayload: PostMessageResponse | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n");
+    buffer = parts.pop() ?? "";
+    for (const part of parts) {
+      const line = part.trim();
+      if (!line) continue;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(line);
+      } catch {
+        throw new Error("Invalid stream line from AI");
+      }
+      if (!parsed || typeof parsed !== "object") continue;
+      const rec = parsed as Record<string, unknown>;
+      if (rec.type === "done" && rec.payload && typeof rec.payload === "object") {
+        finalPayload = rec.payload as PostMessageResponse;
+        continue;
+      }
+      if (rec.type === "error" && typeof rec.message === "string") {
+        throw new Error(rec.message);
+      }
+      if (rec.type === "phase" && typeof rec.phase === "string") {
+        onProgress({ type: "phase", phase: rec.phase });
+      } else if (
+        rec.type === "tool" &&
+        (rec.phase === "start" || rec.phase === "done") &&
+        typeof rec.name === "string"
+      ) {
+        onProgress({ type: "tool", phase: rec.phase, name: rec.name });
+      }
+    }
+  }
+
+  if (!finalPayload) {
+    throw new Error("AI stream ended without a result");
+  }
+  return finalPayload;
+}
+
+export async function postAiMessage(
+  sessionId: string,
+  message: string,
+  options?: PostAiMessageOptions | string | null
+): Promise<PostMessageResponse> {
+  return postAiMessageStream(sessionId, message, () => {}, options);
 }
 
 export interface SelectCoverImageBody {

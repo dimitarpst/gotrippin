@@ -112,6 +112,8 @@ export class ToolExecutor {
             location_id: loc.id,
             location_name: loc.location_name,
             order_index: loc.order_index,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
           };
         }
         case 'getRoute': {

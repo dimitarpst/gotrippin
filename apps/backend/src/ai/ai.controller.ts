@@ -9,10 +9,12 @@ import {
   Query,
   UseGuards,
   Req,
+  Res,
   BadRequestException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import {
   ApiTags,
@@ -159,6 +161,53 @@ export class AiController {
     }
     const userId = request.user.id;
     return this.aiService.postMessage(userId, sessionId, result.data);
+  }
+
+  @Post('sessions/:sessionId/messages/stream')
+  @ApiOperation({
+    summary:
+      'Send a message; NDJSON stream of progress events, last line {type:"done",payload:PostMessageResult}',
+  })
+  @ApiParam({ name: 'sessionId', description: 'Session UUID' })
+  async postMessageStream(
+    @Req() request: { user: { id: string } },
+    @Param('sessionId') sessionId: string,
+    @Body() body: PostMessageDto,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const parsed = PostMessageDto.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException({
+        message: 'Invalid message data',
+        errors: parsed.error.flatten(),
+      });
+    }
+    const userId = request.user.id;
+    res.status(200);
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    const writeLine = (obj: unknown) => {
+      res.write(`${JSON.stringify(obj)}\n`);
+    };
+
+    try {
+      const payload = await this.aiService.postMessage(
+        userId,
+        sessionId,
+        parsed.data,
+        (ev) => writeLine(ev),
+      );
+      writeLine({ type: 'done', payload });
+      res.end();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'AI message stream failed';
+      writeLine({ type: 'error', message });
+      res.end();
+    }
   }
 
   @Post('sessions/:sessionId/select-cover-image')

@@ -3,22 +3,26 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   getAiSessionWithMessages,
-  postAiMessage,
+  postAiMessageStream,
   selectSessionCoverImage,
+  type AiBudgetSummary,
   type AiCoverPick,
   type AiPlaceSuggestion,
   type AiImageSuggestion,
+  type AiStreamProgressLine,
   type PostMessageResponse,
 } from "@/lib/api/ai";
+import { getAuthToken } from "@/lib/api/auth";
+import { searchImages } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AuroraBackground from "@/components/effects/aurora-background";
 import MarkdownMessage from "@/components/ai/MarkdownMessage";
-import ThinkingDots from "@/components/ai/ThinkingDots";
-import AssistantAvatar from "@/components/ai/AssistantAvatar";
-import AiSessionLoader from "@/components/ai/AiSessionLoader";
+import AiPlaceSuggestions from "@/components/ai/AiPlaceSuggestions";
+import AiBudgetCard from "@/components/ai/AiBudgetCard";
 import { GoAiWordmark } from "@/components/ai/go-ai-wordmark";
-import { Send, Sparkles, Pencil, X, Square, Plus, Image as ImageIcon, CalendarDays, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import AiSessionLoader from "@/components/ai/AiSessionLoader";
+import { Send, Sparkles, Pencil, X, Square, Plus, Image as ImageIcon, CalendarDays, ChevronLeft, ChevronRight, ArrowRight, Briefcase } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
@@ -36,12 +40,15 @@ import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@
 
 interface ChatMessage {
   role: "user" | "assistant";
+  /** Wire/API text; user bubble may show a friendlier `formatUserMessageForDisplay(content)`. */
   content: string;
   linked_trip_id?: string;
   cover_pick?: AiCoverPick;
   quick_replies?: Array<{ label: string; action: string }>;
   image_suggestions?: AiImageSuggestion[];
   place_suggestions?: AiPlaceSuggestion[];
+  tool_calls?: string[];
+  budget_summary?: AiBudgetSummary;
 }
 
 interface WizardAnswer {
@@ -93,40 +100,6 @@ const WIZARD_STEPS: WizardStep[] = [
 function formatWizardDateRangeLabel(from: Date, to: Date): string {
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
   return `${from.toLocaleDateString("en-US", opts)} - ${to.toLocaleDateString("en-US", opts)}`;
-}
-
-const WORKING_STATUSES = [
-  "Thinking",
-  "Searching for places",
-  "Building your route",
-  "Checking availability",
-  "Planning your trip",
-];
-
-function WorkingStatus() {
-  const [idx, setIdx] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setIdx((prev) => (prev + 1) % WORKING_STATUSES.length);
-    }, 2400);
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <AnimatePresence mode="wait">
-      <motion.p
-        key={idx}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -6 }}
-        transition={{ duration: 0.25 }}
-        className="text-sm text-white/50 font-medium"
-      >
-        {WORKING_STATUSES[idx]}
-      </motion.p>
-    </AnimatePresence>
-  );
 }
 
 const SYSTEM_PROMPT_PATTERNS = [
@@ -187,11 +160,78 @@ interface IslandField {
   imageOptions?: ImageOption[];
   value: string;
   kind: "text" | "date" | "image";
+  /** When options came from quick_replies, send this (e.g. just_chat:Rome) instead of plain value */
+  valueAction?: string;
+  /** Parallel to options — API actions for each chip when merged from quick_replies */
+  optionActions?: string[];
 }
 
 interface IslandHistory {
   messageIndex: number;
   fields: IslandField[];
+}
+
+function normalizeQuickReplyAction(q: { label: string; action: string }): string {
+  const a = q.action.trim();
+  if (a === "just_chat") return `just_chat:${q.label.trim()}`;
+  return a;
+}
+
+/** Merges assistant `quick_replies` into island fields only (no duplicate chip row). */
+function mergeAssistantQuickRepliesIntoIslandFields(
+  fields: IslandField[],
+  qrs: Array<{ label: string; action: string }>,
+  syntheticQuestion: string,
+): void {
+  if (qrs.length === 0) return;
+  const labels = qrs.map((qr) => qr.label.trim()).filter((l) => l.length > 0);
+  if (labels.length === 0) return;
+  const optionActions = qrs.map(normalizeQuickReplyAction);
+
+  const emptyTextIndices = fields
+    .map((f, i) => (f.kind === "text" && f.options.length === 0 ? i : -1))
+    .filter((i) => i >= 0);
+  if (emptyTextIndices.length === 1) {
+    const emptyIdx = emptyTextIndices[0];
+    if (emptyIdx !== undefined) {
+      const target = fields[emptyIdx];
+      if (target) {
+        fields[emptyIdx] = { ...target, options: labels, optionActions };
+      }
+    }
+    return;
+  }
+
+  const matchIdx = fields.findIndex(
+    (f) =>
+      f.kind === "text" &&
+      f.options.length === labels.length &&
+      f.options.every((o, i) => o.trim().toLowerCase() === (labels[i] ?? "").toLowerCase()),
+  );
+  if (matchIdx >= 0) {
+    const target = fields[matchIdx];
+    if (target) {
+      fields[matchIdx] = { ...target, optionActions };
+    }
+    return;
+  }
+
+  const firstTextIdx = fields.findIndex((f) => f.kind === "text");
+  if (firstTextIdx >= 0) {
+    const target = fields[firstTextIdx];
+    if (target) {
+      fields[firstTextIdx] = { ...target, options: labels, optionActions };
+    }
+    return;
+  }
+
+  fields.unshift({
+    question: syntheticQuestion,
+    options: labels,
+    optionActions,
+    value: "",
+    kind: "text",
+  });
 }
 
 const DATE_KEYWORDS = /\b(when|date|dates|planning to travel|time to travel|travel date|depart|arrive|schedule|how long|duration)\b/i;
@@ -214,6 +254,8 @@ function parseNumberedQuestions(text: string): IslandField[] {
     const isDate = DATE_KEYWORDS.test(question);
     if (isDate || options.length > 0) {
       fields.push({ question, options: isDate ? [] : options, value: "", kind: isDate ? "date" : "text" });
+    } else {
+      fields.push({ question, options: [], value: "", kind: "text" });
     }
   }
 
@@ -284,16 +326,119 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
   const [islandPage, setIslandPage] = useState(0);
   const [islandHistory, setIslandHistory] = useState<IslandHistory[]>([]);
   const [islandPreview, setIslandPreview] = useState<IslandHistory | null>(null);
+  const [streamActiveTool, setStreamActiveTool] = useState<string | null>(null);
+  const [streamRecentTool, setStreamRecentTool] = useState<string | null>(null);
+  const [streamPhase, setStreamPhase] = useState<string | null>(null);
+  const [islandOptionPreviews, setIslandOptionPreviews] = useState<
+    Record<string, { url: string; blurHash: string | null }>
+  >({});
   const [islandDateOpen, setIslandDateOpen] = useState(false);
   const [islandDateRangeDraft, setIslandDateRangeDraft] = useState<DateRange | undefined>(undefined);
   const [wizardDateOpen, setWizardDateOpen] = useState(false);
   const [wizardDateRangeDraft, setWizardDateRangeDraft] = useState<DateRange | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const islandOptionPreviewsRef = useRef<Record<string, { url: string; blurHash: string | null }>>({});
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const editingInputRef = useRef<HTMLTextAreaElement | null>(null);
   const { t, i18n } = useTranslation();
   const router = useRouter();
+
+  function applyStreamProgress(ev: AiStreamProgressLine) {
+    if (ev.type === "tool") {
+      if (ev.phase === "start") {
+        setStreamActiveTool(ev.name);
+        setStreamRecentTool(ev.name);
+      } else {
+        setStreamActiveTool(null);
+        setStreamRecentTool(ev.name);
+      }
+      return;
+    }
+    if (ev.type === "phase") {
+      setStreamPhase(ev.phase);
+      if (ev.phase === "thinking" || ev.phase === "reply" || ev.phase === "formatting") {
+        setStreamActiveTool(null);
+        setStreamRecentTool(null);
+      }
+    }
+  }
+
+  function streamActivityKey(): string {
+    if (streamActiveTool) return `run:${streamActiveTool}`;
+    if (streamPhase === "formatting") return "fmt";
+    if (streamPhase === "reply") return "reply";
+    if (streamPhase === "tools") {
+      return streamRecentTool
+        ? `tools:${streamRecentTool}:${streamActiveTool ?? ""}`
+        : "tools";
+    }
+    if (streamPhase === "model") {
+      return streamRecentTool ? `model:${streamRecentTool}` : "model";
+    }
+    if (streamPhase === "thinking") return "think";
+    return "idle";
+  }
+
+  function streamActivityLabel(): string {
+    if (streamActiveTool) {
+      const toolLabel = t(`ai.tool.${streamActiveTool}`, { defaultValue: streamActiveTool });
+      return t("ai.stream.active_tool", {
+        tool: toolLabel,
+        defaultValue: `Using ${toolLabel}…`,
+      });
+    }
+    if (streamPhase === "formatting") {
+      return t("ai.stream.phase_formatting", { defaultValue: "Preparing the message…" });
+    }
+    if (streamPhase === "reply") {
+      return t("ai.stream.phase_reply", { defaultValue: "Writing your reply…" });
+    }
+    if (streamPhase === "tools" && streamRecentTool && !streamActiveTool) {
+      const toolLabel = t(`ai.tool.${streamRecentTool}`, { defaultValue: streamRecentTool });
+      return t("ai.stream.after_tool_batch", {
+        tool: toolLabel,
+        defaultValue: `Finished ${toolLabel} · continuing…`,
+      });
+    }
+    if (streamPhase === "tools") {
+      return t("ai.stream.phase_tools", { defaultValue: "Running tools…" });
+    }
+    if (streamPhase === "model" && streamRecentTool) {
+      const toolLabel = t(`ai.tool.${streamRecentTool}`, { defaultValue: streamRecentTool });
+      return t("ai.stream.phase_model_followup", {
+        tool: toolLabel,
+        defaultValue: `After ${toolLabel} · planning next step…`,
+      });
+    }
+    if (streamPhase === "model") {
+      return t("ai.stream.phase_model", { defaultValue: "Reasoning…" });
+    }
+    if (streamPhase === "thinking") {
+      return t("ai.stream.phase_thinking", { defaultValue: "Planning…" });
+    }
+    return t("ai.working_neutral");
+  }
+
+  function formatUserMessageForDisplay(content: string): string {
+    const s = content.trim();
+    if (s.startsWith("just_chat:")) {
+      const rest = s.slice("just_chat:".length).trim();
+      return rest.length > 0 ? rest : t("ai.just_chat");
+    }
+    if (s === "just_chat") return t("ai.just_chat");
+    if (s.startsWith("create_trip:")) {
+      const rest = s.slice("create_trip:".length).trim();
+      return rest.length > 0 ? rest : t("ai.create_trip");
+    }
+    if (s === "create_trip") return t("ai.create_trip");
+    if (s.startsWith("find_images:")) {
+      const rest = s.slice("find_images:".length).trim();
+      return rest.length > 0 ? rest : t("ai.find_images");
+    }
+    if (s === "find_images") return t("ai.find_images");
+    return content;
+  }
 
   function assistantMessageFromPostResponse(res: PostMessageResponse): ChatMessage {
     const trimmed = res.message?.trim() ?? "";
@@ -303,6 +448,8 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
       quick_replies: res.quick_replies,
       image_suggestions: res.image_suggestions,
       place_suggestions: res.place_suggestions,
+      tool_calls: res.tool_calls,
+      budget_summary: res.budget_summary,
       ...(res.linked_trip_id ? { linked_trip_id: res.linked_trip_id } : {}),
     };
   }
@@ -370,6 +517,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
   function handleStartEdit(content: string, index: number) {
     abortControllerRef.current?.abort();
     setLoading(false);
+    setStreamActiveTool(null);
+    setStreamRecentTool(null);
+    setStreamPhase(null);
     setEditingIndex(index);
     setEditingDraft(content);
     setError(null);
@@ -400,6 +550,8 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
             quick_replies: m.quick_replies,
             image_suggestions: m.image_suggestions,
             place_suggestions: m.place_suggestions,
+            tool_calls: m.tool_calls,
+            budget_summary: m.budget_summary,
           })),
         );
       })
@@ -416,7 +568,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     return () => {
       cancelled = true;
     };
-  }, [sessionId, router]);
+  }, [sessionId, router, t]);
 
   async function sendMessage(text: string, fromIndex: number | null) {
     if (!text.trim() || !sessionId) return;
@@ -438,9 +590,12 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     }
     setLoading(true);
     setError(null);
+    setStreamActiveTool(null);
+    setStreamRecentTool(null);
+    setStreamPhase(null);
 
     try {
-      const res = await postAiMessage(sessionId, trimmed, {
+      const res = await postAiMessageStream(sessionId, trimmed, applyStreamProgress, {
         signal: controller.signal,
       });
       setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
@@ -461,6 +616,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
       if (fromIndex === null) setInput(trimmed);
     } finally {
       abortControllerRef.current = null;
+      setStreamActiveTool(null);
+      setStreamRecentTool(null);
+      setStreamPhase(null);
       setLoading(false);
     }
   }
@@ -470,6 +628,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
   const islandViewOnly = islandPreview !== null;
   const islandActive = activeIslandFields.length >= 1 && (islandViewOnly || (!islandDismissed && !wizardActive && !loading));
   const islandExpanded = wizardActive || islandActive;
+  /** Reserve scroll space so the last messages clear the fixed composer (expanded island or tool chip). */
+  const composerScrollReserve =
+    islandExpanded || selectedTool ? "pb-[min(52vh,360px)]" : "pb-[5.75rem]";
   const currentIslandField =
     islandActive && !islandViewOnly ? activeIslandFields[islandPage] : undefined;
   const hideIslandFreeformRow =
@@ -492,9 +653,14 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     setMessages((prev) => [...prev, { role: "user", content: displayText }]);
     setLoading(true);
     setError(null);
+    setStreamActiveTool(null);
+    setStreamRecentTool(null);
+    setStreamPhase(null);
 
     try {
-      const res = await postAiMessage(sessionId, wizardPrompt, { signal: controller.signal });
+      const res = await postAiMessageStream(sessionId, wizardPrompt, applyStreamProgress, {
+        signal: controller.signal,
+      });
       setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
       if (res.usage) setAiUsage(res.usage);
     } catch (err) {
@@ -503,6 +669,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       abortControllerRef.current = null;
+      setStreamActiveTool(null);
+      setStreamRecentTool(null);
+      setStreamPhase(null);
       setLoading(false);
     }
   }
@@ -550,12 +719,27 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     setIslandPage(0);
     setIslandPreview(null);
     setIslandHistory([]);
+    setIslandOptionPreviews({});
+    islandOptionPreviewsRef.current = {};
   }
 
-  function updateIslandField(fieldIdx: number, value: string) {
+  function updateIslandField(
+    fieldIdx: number,
+    value: string,
+    opts?: { valueAction?: string | null },
+  ) {
     if (islandViewOnly) return;
     setIslandFields((prev) =>
-      prev.map((f, i) => (i === fieldIdx ? { ...f, value } : f)),
+      prev.map((f, i) => {
+        if (i !== fieldIdx) return f;
+        const next: IslandField = { ...f, value };
+        if (opts && "valueAction" in opts && opts.valueAction === null) {
+          delete next.valueAction;
+        } else if (opts?.valueAction !== undefined && opts.valueAction !== null) {
+          next.valueAction = opts.valueAction;
+        }
+        return next;
+      }),
     );
   }
 
@@ -564,7 +748,15 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     if (islandActive && !islandViewOnly) {
       const filled = islandFields.filter((f) => f.value.trim());
       if (filled.length === 0) return;
-      const composed = filled.map((f) => f.value.trim()).join(". ") + ".";
+      const composed =
+        filled
+          .map((f) => {
+            const action = f.valueAction?.trim();
+            if (action) return action;
+            return f.value.trim();
+          })
+          .filter(Boolean)
+          .join(". ") + ".";
       const msgIdx = messages.length - 1;
       setIslandHistory((prev) => [...prev.filter((h) => h.messageIndex !== msgIdx), { messageIndex: msgIdx, fields: islandFields.map((f) => ({ ...f })) }]);
       setIslandFields([]);
@@ -623,10 +815,13 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     ]);
     setLoading(true);
     setError(null);
+    setStreamActiveTool(null);
+    setStreamRecentTool(null);
+    setStreamPhase(null);
 
     const payload = extraText ? `${action}: ${extraText}` : action;
     try {
-      const res = await postAiMessage(sessionId, payload, {
+      const res = await postAiMessageStream(sessionId, payload, applyStreamProgress, {
         signal: controller.signal,
       });
       setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
@@ -638,6 +833,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
       setError(err instanceof Error ? err.message : t("ai.failed_request"));
     } finally {
       abortControllerRef.current = null;
+      setStreamActiveTool(null);
+      setStreamRecentTool(null);
+      setStreamPhase(null);
       setLoading(false);
     }
   }
@@ -648,17 +846,27 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
   }
 
   useEffect(() => {
+    islandOptionPreviewsRef.current = islandOptionPreviews;
+  }, [islandOptionPreviews]);
+
+  useEffect(() => {
     if (loading) return;
     if (messages.length === 0) {
       setIslandFields([]);
       setIslandDismissed(false);
       setIslandPage(0);
       setIslandPreview(null);
+      setIslandOptionPreviews({});
+      islandOptionPreviewsRef.current = {};
       return;
     }
     const last = messages[messages.length - 1];
     if (last.role !== "assistant") return;
     const fields = parseNumberedQuestions(last.content);
+    const qrs = last.quick_replies ?? [];
+    if (qrs.length >= 1) {
+      mergeAssistantQuickRepliesIntoIslandFields(fields, qrs, t("ai.island_pick_reply"));
+    }
     if (last.image_suggestions && last.image_suggestions.length > 0) {
       const imgField: IslandField = {
         question: "Pick a cover image",
@@ -679,10 +887,54 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
       setIslandDismissed(false);
       setIslandPage(0);
       setIslandPreview(null);
+      setIslandOptionPreviews({});
+      islandOptionPreviewsRef.current = {};
     } else {
       setIslandFields([]);
     }
-  }, [messages, loading]);
+  }, [messages, loading, t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const token = await getAuthToken();
+      if (!token || cancelled) return;
+      for (let fi = 0; fi < islandFields.length; fi += 1) {
+        const f = islandFields[fi];
+        if (f.kind !== "text" || !f.optionActions?.length) continue;
+        for (let oi = 0; oi < f.options.length; oi += 1) {
+          const key = `${fi}-${oi}`;
+          if (islandOptionPreviewsRef.current[key]) continue;
+          const label = f.options[oi];
+          if (!label) continue;
+          try {
+            const query = `${label} city travel landmark`;
+            const res = await searchImages(query, 1, 1, token);
+            const first = res.results[0];
+            if (cancelled || !first) continue;
+            const url = first.urls?.small ?? first.urls?.thumb ?? "";
+            if (!url) continue;
+            setIslandOptionPreviews((prev) => {
+              if (prev[key]) return prev;
+              return {
+                ...prev,
+                [key]: { url, blurHash: first.blur_hash },
+              };
+            });
+            islandOptionPreviewsRef.current = {
+              ...islandOptionPreviewsRef.current,
+              [key]: { url, blurHash: first.blur_hash },
+            };
+          } catch (err) {
+            console.error("[AiTestClient] Unsplash preview for island option failed", err);
+          }
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [islandFields]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -740,13 +992,6 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
               <h1 className="m-0 shrink-0 leading-none">
                 <GoAiWordmark alt={t("ai.title")} />
               </h1>
-              <p className="text-xs text-white/50 font-medium flex items-center gap-1.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                </span>
-                {t("ai.online_ready")}
-              </p>
             </div>
           </motion.div>
 
@@ -758,8 +1003,8 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
           >
             <div className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-medium text-white/60">
               {aiUsage.percent != null
-                ? t("ai_usage_value", { percent: aiUsage.percent })
-                : t("ai_usage_badge_no_cap", {
+                ? t("profile.ai_usage_value", { percent: aiUsage.percent })
+                : t("profile.ai_usage_badge_no_cap", {
                     used: new Intl.NumberFormat(i18n.language).format(aiUsage.used),
                   })}
             </div>
@@ -774,7 +1019,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
         </header>
 
         {/* Chat Area — only this scrolls */}
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+        <div
+          className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${composerScrollReserve}`}
+        >
           <div className="max-w-3xl mx-auto px-4 py-6 pb-4 space-y-8">
             {messages.length === 0 && (
               <motion.div
@@ -826,6 +1073,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                           <div className="flex justify-start pb-1">
                             <Link
                               href={`/trips/${m.linked_trip_id}`}
+                              prefetch={false}
                               className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-gradient-to-r from-[var(--color-accent)]/20 via-white/6 to-white/4 px-4 py-2.5 text-[13px] font-semibold tracking-wide text-white/95 shadow-[0_0_28px_-6px_rgba(255,118,112,0.5)] backdrop-blur-md transition hover:border-[var(--color-accent)]/35 hover:shadow-[0_0_32px_-4px_rgba(255,118,112,0.55)]"
                             >
                               <Sparkles className="w-4 h-4 shrink-0 text-[var(--color-accent)]" />
@@ -842,6 +1090,24 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                             return fieldsForStrip.length > 0 ? stripParsedQuestions(m.content, fieldsForStrip) : m.content;
                           })()} />
                         </div>
+                        {m.tool_calls && m.tool_calls.length > 0 ? (
+                          <div className="flex flex-col gap-1.5 pt-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                              {t("ai.tools_used")}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {m.tool_calls.map((name, ti) => (
+                                <span
+                                  key={`${i}-${name}-${ti}`}
+                                  className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/85"
+                                >
+                                  {t(`ai.tool.${name}`, { defaultValue: name })}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                        {m.budget_summary ? <AiBudgetCard budget={m.budget_summary} /> : null}
                         {(() => {
                           const hist = islandHistory.find((h) => h.messageIndex === i);
                           if (!hist) return null;
@@ -861,25 +1127,13 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                             </div>
                           );
                         })()}
-                        
-                        {m.quick_replies && m.quick_replies.length > 0 && (
-                          <div className="flex flex-wrap gap-2 pt-1">
-                            {m.quick_replies.map((qr, qrIdx) => (
-                              <Button
-                                key={`${qr.action}-${qr.label}-${qrIdx}`}
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  handleQuickReplyClick(qr.action, qr.label)
-                                }
-                                className="rounded-full border-white/20 bg-white/5 text-white/90 hover:bg-white/10 hover:text-white"
-                              >
-                                {qr.label}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
+
+                        {m.place_suggestions && m.place_suggestions.length > 0 ? (
+                          <AiPlaceSuggestions
+                            key={m.place_suggestions.map((p) => p.name).join("|")}
+                            places={m.place_suggestions}
+                          />
+                        ) : null}
                         {i === messages.length - 1 && islandDismissed && islandFields.length >= 1 && (
                           <motion.button
                             type="button"
@@ -954,7 +1208,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                           <div className="space-y-3 w-full min-w-0">
                             {m.content.trim() ? (
                               <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium select-none touch-none">
-                                {m.content}
+                                {formatUserMessageForDisplay(m.content)}
                               </p>
                             ) : null}
                             <div className="rounded-xl overflow-hidden border border-white/25 shadow-lg max-w-full sm:max-w-[280px]">
@@ -977,7 +1231,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                           </div>
                         ) : (
                           <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium select-none touch-none">
-                            {m.content}
+                            {formatUserMessageForDisplay(m.content)}
                           </p>
                         )}
                         <button
@@ -1005,13 +1259,40 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                  className="flex items-center gap-3 pl-1"
+                  className="flex max-w-3xl flex-col gap-2 py-2 pl-1"
                 >
-                  <div className="shrink-0">
-                    <AssistantAvatar />
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center self-center">
+                      {streamActiveTool ||
+                      streamRecentTool ||
+                      streamPhase === "tools" ||
+                      streamPhase === "model" ? (
+                        <Briefcase className="h-4 w-4 text-white/45" aria-hidden />
+                      ) : (
+                        <span className="block h-2.5 w-2.5 rounded-full border border-white/35" aria-hidden />
+                      )}
+                    </div>
+                    <div className="flex min-w-0 flex-1 items-center">
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={streamActivityKey()}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                          className="min-w-0 flex items-center"
+                        >
+                          <motion.p
+                            animate={{ opacity: [0.62, 1, 0.62] }}
+                            transition={{ duration: 2.35, repeat: Infinity, ease: "easeInOut" }}
+                            className="text-[15px] font-medium leading-[1.25] tracking-tight text-white/72"
+                          >
+                            {streamActivityLabel()}
+                          </motion.p>
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
                   </div>
-                  <ThinkingDots />
-                  <WorkingStatus />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1036,15 +1317,14 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
           </div>
         )}
 
-        {/* Input Area — dynamic island */}
-        <div className="shrink-0 px-4 py-4 pb-6 pt-2">
-          <div className="max-w-3xl mx-auto">
+        {/* Composer fixed over the scroll area — avoids a full-width flex “footer” slab of page background */}
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pt-1">
+          <div className="pointer-events-auto mx-auto max-w-3xl">
             <motion.div
-              layout
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ layout: { type: "spring", stiffness: 400, damping: 30 }, delay: 0.1, duration: 0.4, type: "spring" }}
-              className={`relative rounded-[2rem] bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col gap-0 min-w-0 overflow-hidden ${islandExpanded || selectedTool ? "p-2 pb-2 pt-3" : "p-2"}`}
+              transition={{ delay: 0.1, duration: 0.4, type: "spring" }}
+              className={`relative flex min-w-0 flex-col gap-0 overflow-hidden rounded-[2rem] border border-white/10 bg-background/60 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-3xl ${islandExpanded || selectedTool ? "p-2 pb-2 pt-3" : "p-2"}`}
             >
               {/* === Wizard — one question per page, Claude-style === */}
               <AnimatePresence mode="wait">
@@ -1340,6 +1620,66 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                             </motion.button>
                           ))}
                         </div>
+                      ) : activeIslandFields[islandPage].optionActions &&
+                        activeIslandFields[islandPage].optionActions.length > 0 ? (
+                        <div className="flex gap-2.5 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 pt-0.5 -mx-0.5 px-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                          {activeIslandFields[islandPage].options.map((opt, oIdx) => {
+                            const previewKey = `${islandPage}-${oIdx}`;
+                            const pv = islandOptionPreviews[previewKey];
+                            const selected = activeIslandFields[islandPage].value === opt;
+                            return (
+                              <motion.button
+                                key={`${opt}-${oIdx}`}
+                                type="button"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{
+                                  delay: 0.04 * oIdx + 0.06,
+                                  type: "spring",
+                                  stiffness: 480,
+                                  damping: 28,
+                                }}
+                                onClick={() => {
+                                  if (islandViewOnly) return;
+                                  const action = activeIslandFields[islandPage].optionActions?.[oIdx];
+                                  updateIslandField(islandPage, opt, {
+                                    valueAction: action,
+                                  });
+                                  if (islandPage < activeIslandFields.length - 1) {
+                                    setTimeout(() => setIslandPage((p) => p + 1), 200);
+                                  }
+                                }}
+                                disabled={islandViewOnly}
+                                className={`w-[7.25rem] shrink-0 overflow-hidden rounded-2xl border text-left transition-all active:scale-[0.98] ${
+                                  selected
+                                    ? "border-[var(--color-accent)]/50 ring-1 ring-[var(--color-accent)]/35 shadow-[0_0_20px_-4px_rgba(255,118,112,0.35)]"
+                                    : "border-white/15 hover:border-white/25"
+                                }`}
+                              >
+                                <div className="relative h-24 w-full bg-white/5">
+                                  {pv ? (
+                                    <CoverImageWithBlur
+                                      src={pv.url}
+                                      alt={opt}
+                                      blurHash={pv.blurHash ?? undefined}
+                                      className="h-full w-full"
+                                      imgClassName="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center px-2 text-center text-[11px] font-semibold leading-tight text-white/55">
+                                      {formatChoiceLabelMarkdown(opt)}
+                                    </div>
+                                  )}
+                                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-8">
+                                    <p className="line-clamp-2 text-[11px] font-semibold leading-snug text-white">
+                                      {formatChoiceLabelMarkdown(opt)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </motion.button>
+                            );
+                          })}
+                        </div>
                       ) : (
                         <div className="space-y-1">
                           {activeIslandFields[islandPage].options.map((opt, oIdx) => (
@@ -1364,11 +1704,13 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                               }`}
                             >
                               <div className="flex items-center gap-3">
-                                <span className={`w-6 h-6 rounded-lg text-[12px] font-semibold flex items-center justify-center shrink-0 ${
-                                  activeIslandFields[islandPage].value === opt
-                                    ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)]"
-                                    : "bg-white/10 text-white/50"
-                                }`}>
+                                <span
+                                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[12px] font-semibold ${
+                                    activeIslandFields[islandPage].value === opt
+                                      ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)]"
+                                      : "bg-white/10 text-white/50"
+                                  }`}
+                                >
                                   {oIdx + 1}
                                 </span>
                                 <span>{formatChoiceLabelMarkdown(opt)}</span>

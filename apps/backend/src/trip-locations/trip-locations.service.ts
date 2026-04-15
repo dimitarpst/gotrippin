@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateTripLocationDto, UpdateTripLocationDto, ReorderLocationsDto } from './dto';
+import { geocodePlaceNameOrThrow, GeocodePlaceError } from './open-meteo-geocode';
 
 /** Staging values for two-phase reorder; must stay positive (DB check on `order_index`). */
 const REORDER_TEMP_ORDER_BASE = 1_000_000;
@@ -86,11 +87,27 @@ export class TripLocationsService {
       }
     }
 
+    let latitude = dto.latitude ?? null;
+    let longitude = dto.longitude ?? null;
+    if (latitude == null || longitude == null) {
+      try {
+        const resolved = await geocodePlaceNameOrThrow(dto.location_name);
+        latitude = resolved.latitude;
+        longitude = resolved.longitude;
+      } catch (err) {
+        const msg =
+          err instanceof GeocodePlaceError
+            ? err.message
+            : 'Could not resolve coordinates for this place.';
+        throw new BadRequestException(msg);
+      }
+    }
+
     const locationData = {
       trip_id: tripId,
       location_name: dto.location_name,
-      latitude: dto.latitude ?? null,
-      longitude: dto.longitude ?? null,
+      latitude,
+      longitude,
       order_index: orderIndex,
       arrival_date: dto.arrival_date ?? null,
       departure_date: dto.departure_date ?? null,

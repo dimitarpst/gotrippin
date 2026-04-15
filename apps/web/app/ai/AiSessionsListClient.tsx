@@ -199,14 +199,10 @@ export default function AiSessionsListClient({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-medium text-white/60 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
+          <div className="text-xs font-medium text-white/60 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
             {aiUsage.percent != null
-              ? t("ai_usage_value", { percent: aiUsage.percent })
-              : t("ai_usage_badge_no_cap", {
+              ? t("profile.ai_usage_value", { percent: aiUsage.percent })
+              : t("profile.ai_usage_badge_no_cap", {
                   used: new Intl.NumberFormat(i18n.language).format(aiUsage.used),
                 })}
           </div>
