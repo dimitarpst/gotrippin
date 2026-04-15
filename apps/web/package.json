@@ -6,6 +6,7 @@
     "dev": "next dev --webpack",
     "dev:turbo": "next dev --turbopack",
     "dev:webpack": "next dev --webpack",
+    "prebuild": "npm --prefix ../.. run build:core",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
