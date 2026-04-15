@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, type ReactNode } from "react";
 import {
   getAiSessionWithMessages,
   postAiMessageStream,
@@ -15,14 +15,31 @@ import {
 import { getAuthToken } from "@/lib/api/auth";
 import { searchImages } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import AuroraBackground from "@/components/effects/aurora-background";
 import MarkdownMessage from "@/components/ai/MarkdownMessage";
 import AiPlaceSuggestions from "@/components/ai/AiPlaceSuggestions";
 import AiBudgetCard from "@/components/ai/AiBudgetCard";
 import { GoAiWordmark } from "@/components/ai/go-ai-wordmark";
 import AiSessionLoader from "@/components/ai/AiSessionLoader";
-import { Send, Sparkles, Pencil, X, Square, Plus, Image as ImageIcon, CalendarDays, ChevronLeft, ChevronRight, ArrowRight, Briefcase } from "lucide-react";
+import {
+  Send,
+  Sparkles,
+  Pencil,
+  X,
+  Square,
+  Plus,
+  Image as ImageIcon,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ArrowRight,
+  Briefcase,
+  MessageCircle,
+  Route,
+  Mic,
+  Check,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
@@ -34,6 +51,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "sonner";
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
 import { Calendar } from "@/components/ui/calendar";
 import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -70,6 +89,9 @@ type WizardStep =
       key: "travelDates";
       question: string;
     };
+
+/** User message sent when choosing “Add stops to my trip” from the composer menu (server maps just_chat:). */
+const ROUTE_HELP_CHAT_PAYLOAD = "just_chat:Add stops to my trip";
 
 const WIZARD_STEPS: WizardStep[] = [
   {
@@ -301,20 +323,34 @@ function stripParsedQuestions(text: string, fields: IslandField[]): string {
 type SelectedTool =
   | { kind: "image_pick"; label: string; message: string }
   | { kind: "quick_reply"; action: string; label: string }
-  | { kind: "find_images"; label: string; messagePrefix: string };
+  | { kind: "find_images"; label: string; messagePrefix: string }
+  | { kind: "route_help"; label: string };
 
 interface AiTestClientProps {
   sessionId: string;
   aiUsage: { used: number; limit: number | null; percent: number | null };
+  displayName?: string | null;
 }
 
-export default function AiTestClient({ sessionId: initialSessionId, aiUsage: initialAiUsage }: AiTestClientProps) {
+function greetingBucket(hour: number): "morning" | "afternoon" | "evening" {
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
+}
+
+export default function AiTestClient({
+  sessionId: initialSessionId,
+  aiUsage: initialAiUsage,
+  displayName: displayNameProp,
+}: AiTestClientProps) {
   const sessionId = initialSessionId;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [selectedTool, setSelectedTool] = useState<SelectedTool | null>(null);
   const [inputAreaMounted, setInputAreaMounted] = useState(false);
   const [aiUsage, setAiUsage] = useState(initialAiUsage);
+  /** Draft trip UUID from session slots (API) until an assistant message carries linked_trip_id. */
+  const [sessionCurrentTripId, setSessionCurrentTripId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -341,6 +377,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const editingInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const composerGrowRef = useRef<HTMLTextAreaElement | null>(null);
   const { t, i18n } = useTranslation();
   const router = useRouter();
 
@@ -424,6 +461,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     const s = content.trim();
     if (s.startsWith("just_chat:")) {
       const rest = s.slice("just_chat:".length).trim();
+      if (rest === "Add stops to my trip") return t("ai.add_stops_to_trip");
       return rest.length > 0 ? rest : t("ai.just_chat");
     }
     if (s === "just_chat") return t("ai.just_chat");
@@ -534,6 +572,24 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     setInputAreaMounted(true);
   }, []);
 
+  const activeTripIdForRoute = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (m?.role === "assistant" && m.linked_trip_id) return m.linked_trip_id;
+    }
+    return sessionCurrentTripId;
+  }, [messages, sessionCurrentTripId]);
+
+  const composerGreetingLine = useMemo(() => {
+    const hour = new Date().getHours();
+    const bucket = greetingBucket(hour);
+    const period = t(`ai.greeting.${bucket}`);
+    const raw = displayNameProp?.trim();
+    if (!raw) return period;
+    const first = raw.split(/\s+/)[0];
+    return first ? `${period}, ${first}` : period;
+  }, [t, displayNameProp]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -541,6 +597,8 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     getAiSessionWithMessages(sessionId)
       .then((data) => {
         if (cancelled) return;
+        const tid = data.session.current_trip_id?.trim();
+        setSessionCurrentTripId(tid && tid.length > 0 ? tid : null);
         setMessages(
           data.messages.map((m) => ({
             role: m.role,
@@ -628,9 +686,6 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
   const islandViewOnly = islandPreview !== null;
   const islandActive = activeIslandFields.length >= 1 && (islandViewOnly || (!islandDismissed && !wizardActive && !loading));
   const islandExpanded = wizardActive || islandActive;
-  /** Reserve scroll space so the last messages clear the fixed composer (expanded island or tool chip). */
-  const composerScrollReserve =
-    islandExpanded || selectedTool ? "pb-[min(52vh,360px)]" : "pb-[5.75rem]";
   const currentIslandField =
     islandActive && !islandViewOnly ? activeIslandFields[islandPage] : undefined;
   const hideIslandFreeformRow =
@@ -638,6 +693,29 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     (currentIslandField?.kind === "date" || currentIslandField?.kind === "image");
   const currentWizardStep = wizardActive ? WIZARD_STEPS[wizardStep] : undefined;
   const showMainComposerRow = !wizardActive || currentWizardStep?.kind !== "dates";
+  /** Reserve scroll space so the last messages clear the fixed composer (expanded island or tool chip). */
+  const composerScrollReserveResolved =
+    islandExpanded || selectedTool ? "pb-[min(52vh,360px)]" : "pb-[5.75rem]";
+
+  const canSendFromComposer =
+    Boolean(input.trim()) ||
+    Boolean(selectedTool) ||
+    (islandActive && !islandViewOnly && islandFields.some((f) => f.value.trim()));
+
+  const showModelPickerInBar =
+    !wizardActive && (!islandExpanded || !hideIslandFreeformRow);
+
+  function syncComposerTextareaHeight() {
+    const el = composerGrowRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const next = Math.min(el.scrollHeight, 168);
+    el.style.height = `${Math.max(next, 44)}px`;
+  }
+
+  useLayoutEffect(() => {
+    syncComposerTextareaHeight();
+  }, [input, islandExpanded, hideIslandFreeformRow, islandViewOnly, loading]);
 
   async function submitWizardToServer(answers: WizardAnswer) {
     const { heading, vibe, joining, travelDates } = answers;
@@ -771,6 +849,10 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
         setSelectedTool(null);
         setInput("");
         await handleQuickReplyClick(selectedTool.action, selectedTool.label, extra);
+      } else if (selectedTool.kind === "route_help") {
+        setSelectedTool(null);
+        setInput("");
+        await sendMessage(ROUTE_HELP_CHAT_PAYLOAD, null);
       } else if (selectedTool.kind === "find_images") {
         const text = (selectedTool.messagePrefix + input.trim()).trim();
         setSelectedTool(null);
@@ -1020,7 +1102,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
 
         {/* Chat Area — only this scrolls */}
         <div
-          className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${composerScrollReserve}`}
+          className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${composerScrollReserveResolved}`}
         >
           <div className="max-w-3xl mx-auto px-4 py-6 pb-4 space-y-8">
             {messages.length === 0 && (
@@ -1028,15 +1110,18 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.6 }}
-                className="flex flex-col items-center justify-center min-h-[calc(100dvh-16rem)] text-center"
+                className="flex min-h-[calc(100dvh-16rem)] flex-col items-center justify-center text-center"
               >
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--color-accent)]/30 to-[var(--color-accent)]/10 border border-white/10 flex items-center justify-center mb-5">
-                  <Sparkles className="w-7 h-7 text-[var(--color-accent)]" />
+                <p className="mb-6 max-w-md font-serif text-2xl leading-snug tracking-tight text-white/90 sm:text-[1.65rem]">
+                  {composerGreetingLine}
+                </p>
+                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-[var(--color-accent)]/30 to-[var(--color-accent)]/10">
+                  <Sparkles className="h-7 w-7 text-[var(--color-accent)]" />
                 </div>
-                <h2 className="text-xl font-semibold text-white/90 mb-2">
+                <h2 className="mb-2 text-xl font-semibold text-white/90">
                   {wizardActive ? "Let's plan your trip" : t("ai.title")}
                 </h2>
-                <p className="text-sm text-white/50 max-w-sm">
+                <p className="max-w-sm text-sm text-white/50">
                   {wizardActive
                     ? "Answer a few quick questions below to get started"
                     : "Ask me anything about travel — I'll help you plan, find places, and build your perfect trip."}
@@ -1740,6 +1825,10 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                         <ImageIcon className="w-4 h-4" />
                       ) : selectedTool.kind === "find_images" ? (
                         <ImageIcon className="w-4 h-4" />
+                      ) : selectedTool.kind === "route_help" ? (
+                        <Route className="w-4 h-4 text-emerald-300/90" />
+                      ) : selectedTool.kind === "quick_reply" && selectedTool.action === "just_chat" ? (
+                        <MessageCircle className="w-4 h-4 text-sky-300/90" />
                       ) : (
                         <Sparkles className="w-4 h-4" />
                       )}
@@ -1757,136 +1846,243 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                 )}
               </AnimatePresence>
 
-              {/* Main input row — hidden on wizard date step (dates only via drawer) */}
+              {/* Main composer: typing area on top, + / model / voice / send below (Claude-style) */}
               {showMainComposerRow ? (
-              <div className={`flex gap-2 items-center min-w-0 ${islandExpanded ? "border-t border-white/5 pt-1 mt-1" : ""}`}>
-                {islandExpanded ? null : !inputAreaMounted ? (
-                  <Button
-                    type="button"
-                    size="icon"
-                    className="w-10 h-10 rounded-full bg-card/70 text-white/80 border border-white/10 shrink-0"
-                    aria-hidden
-                    tabIndex={-1}
-                  >
-                    <Plus className="w-5 h-5" />
-                  </Button>
-                ) : (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        size="icon"
-                        className="w-10 h-10 rounded-full bg-card/70 text-white/80 hover:bg-card hover:text-white border border-white/10 shrink-0"
-                      >
-                        <Plus className="w-5 h-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          if (!loading) {
-                            setSelectedTool({
-                              kind: "find_images",
-                              label: t("ai.find_images"),
-                              messagePrefix: "Find some Unsplash images for ",
-                            });
-                            setInput("");
-                          }
-                        }}
-                      >
-                        <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
-                        <span>{t("ai.find_images")}</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          if (!loading) {
-                            setSelectedTool({
-                              kind: "quick_reply",
-                              action: "create_trip",
-                              label: t("ai.create_trip"),
-                            });
-                          }
-                        }}
-                      >
-                        <Sparkles className="w-4 h-4 mr-2 text-[var(--color-accent)]" />
-                        <span>{t("ai.create_trip")}</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          if (!loading) {
-                            setSelectedTool({
-                              kind: "quick_reply",
-                              action: "just_chat",
-                              label: t("ai.just_chat"),
-                            });
-                          }
-                        }}
-                      >
-                        <Send className="w-4 h-4 mr-2" />
-                        <span>{t("ai.just_chat")}</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                {islandExpanded && hideIslandFreeformRow ? (
-                  <div className="flex-1 min-w-0 h-12" aria-hidden />
-                ) : (
-                  <Input
-                    placeholder={islandViewOnly ? "Viewing previous answers" : islandExpanded ? "Something else..." : t("ai.placeholder")}
-                    value={input}
-                    onChange={(e) => {
-                      setInput(e.target.value);
-                      if (islandActive && !islandViewOnly && activeIslandFields[islandPage]) {
-                        updateIslandField(islandPage, e.target.value);
+                <div
+                  className={`flex min-w-0 flex-col gap-0 ${islandExpanded ? "mt-0.5 pt-1" : ""}`}
+                >
+                  {islandExpanded && hideIslandFreeformRow ? (
+                    <div className="min-h-10 px-3" aria-hidden />
+                  ) : (
+                    <textarea
+                      ref={composerGrowRef}
+                      placeholder={
+                        islandViewOnly
+                          ? "Viewing previous answers"
+                          : islandExpanded
+                            ? "Something else..."
+                            : t("ai.placeholder")
                       }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter" || e.shiftKey || loading) return;
-                      e.preventDefault();
-                      if (wizardActive && input.trim()) {
-                        handleWizardCustom();
-                      } else if (islandActive && !islandViewOnly && input.trim()) {
-                        if (islandPage < activeIslandFields.length - 1) {
-                          setIslandPage((p) => p + 1);
-                          setInput("");
-                        } else {
+                      value={input}
+                      onChange={(e) => {
+                        setInput(e.target.value);
+                        if (islandActive && !islandViewOnly && activeIslandFields[islandPage]) {
+                          updateIslandField(islandPage, e.target.value);
+                        }
+                        requestAnimationFrame(syncComposerTextareaHeight);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && e.shiftKey) return;
+                        if (e.key !== "Enter" || loading) return;
+                        e.preventDefault();
+                        if (wizardActive && input.trim()) {
+                          handleWizardCustom();
+                        } else if (islandActive && !islandViewOnly && input.trim()) {
+                          if (islandPage < activeIslandFields.length - 1) {
+                            setIslandPage((p) => p + 1);
+                            setInput("");
+                          } else {
+                            void handleSend();
+                          }
+                        } else if (!islandExpanded) {
                           void handleSend();
                         }
-                      } else if (!islandExpanded) {
-                        void handleSend();
-                      }
-                    }}
-                    disabled={loading || islandViewOnly}
-                    className="flex-1 min-w-0 h-12 border-0 bg-transparent px-4 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
-                  />
-                )}
-                {loading ? (
-                  <Button
-                    type="button"
-                    onClick={stopGeneration}
-                    size="icon"
-                    aria-label={t("ai.stop_generating")}
-                    className="w-12 h-12 shrink-0 rounded-full bg-destructive/90 text-destructive-foreground hover:bg-destructive transition-all flex items-center justify-center"
-                  >
-                    <Square className="w-5 h-5 fill-current" />
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      if (wizardActive && input.trim()) {
-                        handleWizardCustom();
-                      } else {
-                        void handleSend();
-                      }
-                    }}
-                    disabled={!input.trim() && !selectedTool && !wizardActive && !(islandActive && !islandViewOnly && islandFields.some((f) => f.value.trim()))}
-                    size="icon"
-                    className="w-12 h-12 shrink-0 rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 hover:scale-105 transition-all shadow-[0_0_15px_rgba(255,118,112,0.4)] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center"
-                  >
-                    <Send className="w-5 h-5 -ml-0.5 mt-0.5" />
-                  </Button>
-                )}
-              </div>
+                      }}
+                      disabled={loading || islandViewOnly}
+                      rows={1}
+                      className="mx-1 max-h-[10.5rem] min-h-[44px] w-[calc(100%-0.5rem)] resize-none overflow-hidden border-0 bg-transparent px-3 py-2 text-[15px] text-white/95 shadow-none outline-none ring-0 placeholder:text-white/40 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                    />
+                  )}
+                  <div className="flex min-w-0 items-end justify-between gap-1.5 px-1 pb-0.5 pt-1">
+                    <div className="flex shrink-0 items-center">
+                      {islandExpanded ? (
+                        <span className="inline-flex h-10 w-10 shrink-0" aria-hidden />
+                      ) : !inputAreaMounted ? (
+                        <span
+                          className="inline-flex h-10 w-10 items-center justify-center text-white/35"
+                          aria-hidden
+                        >
+                          <Plus className="h-5 w-5" strokeWidth={1.75} />
+                        </span>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/6 hover:text-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                              aria-label={t("ai.composer_attach_menu")}
+                            >
+                              <Plus className="h-5 w-5" strokeWidth={1.75} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="start"
+                            className="w-56 border border-white/15 bg-zinc-950 text-white"
+                          >
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (!loading) {
+                                  setSelectedTool({
+                                    kind: "find_images",
+                                    label: t("ai.find_images"),
+                                    messagePrefix: "Find some Unsplash images for ",
+                                  });
+                                  setInput("");
+                                }
+                              }}
+                            >
+                              <ImageIcon className="mr-2 h-4 w-4 text-amber-200/90" />
+                              <span>{t("ai.find_images")}</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (!loading) {
+                                  setSelectedTool({
+                                    kind: "quick_reply",
+                                    action: "create_trip",
+                                    label: t("ai.create_trip"),
+                                  });
+                                }
+                              }}
+                            >
+                              <Sparkles className="mr-2 h-4 w-4 text-[var(--color-accent)]" />
+                              <span>{t("ai.create_trip")}</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (loading) return;
+                                if (!activeTripIdForRoute) {
+                                  toast.info(t("ai.add_stops_need_trip"));
+                                  return;
+                                }
+                                setSelectedTool({
+                                  kind: "route_help",
+                                  label: t("ai.add_stops_to_trip"),
+                                });
+                                setInput("");
+                              }}
+                            >
+                              <Route className="mr-2 h-4 w-4 text-emerald-300/90" />
+                              <span>{t("ai.add_stops_to_trip")}</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (!loading) {
+                                  setSelectedTool({
+                                    kind: "quick_reply",
+                                    action: "just_chat",
+                                    label: t("ai.just_chat"),
+                                  });
+                                }
+                              }}
+                            >
+                              <MessageCircle className="mr-2 h-4 w-4 text-sky-300/90" />
+                              <span>{t("ai.just_chat")}</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {showModelPickerInBar ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex min-h-9 min-w-[4.75rem] shrink-0 items-center justify-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[12px] font-medium text-white/75 shadow-none transition-colors hover:bg-white/[0.08] hover:text-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+                            >
+                              <span>{t("ai.model_glm5")}</span>
+                              <ChevronDown className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            align="end"
+                            side="top"
+                            sideOffset={10}
+                            className="w-[min(calc(100vw-2rem),20rem)] max-w-[20rem] overflow-hidden rounded-2xl border border-white/12 bg-zinc-950 p-0 text-white shadow-[0_16px_48px_rgba(0,0,0,0.55)]"
+                          >
+                            <div className="bg-white/[0.06] px-4 py-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold leading-tight text-white">
+                                    {t("ai.model_glm5")}
+                                  </p>
+                                  <p className="mt-1 text-[13px] leading-snug text-white/50">
+                                    {t("ai.model_glm5_subtitle")}
+                                  </p>
+                                </div>
+                                <Check
+                                  className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-accent)]"
+                                  strokeWidth={2.5}
+                                  aria-hidden
+                                />
+                              </div>
+                            </div>
+                            <div className="h-px bg-white/10" />
+                            <div className="px-4 py-3">
+                              <p className="text-[11px] font-medium uppercase tracking-wide text-white/40">
+                                {t("ai.model_more_models_heading")}
+                              </p>
+                              <div className="mt-2 flex items-start justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
+                                <p className="min-w-0 text-[13px] leading-snug text-white/55">
+                                  {t("ai.model_more_soon_body")}
+                                </p>
+                                <span className="shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-medium text-white/45">
+                                  {t("ai.model_catalog_soon")}
+                                </span>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      ) : null}
+                      {loading ? (
+                        <Button
+                          type="button"
+                          onClick={stopGeneration}
+                          size="icon"
+                          aria-label={t("ai.stop_generating")}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground transition-all hover:bg-destructive"
+                        >
+                          <Square className="h-4 w-4 fill-current" />
+                        </Button>
+                      ) : canSendFromComposer ? (
+                        <Button
+                          onClick={() => {
+                            if (wizardActive && input.trim()) {
+                              handleWizardCustom();
+                            } else {
+                              void handleSend();
+                            }
+                          }}
+                          size="icon"
+                          aria-label={t("ai.send_message")}
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)] shadow-[0_0_15px_rgba(255,118,112,0.4)] transition-all hover:scale-105 hover:opacity-90"
+                        >
+                          <Send className="mt-0.5 h-[18px] w-[18px] -ml-0.5" />
+                        </Button>
+                      ) : !islandExpanded ? (
+                        <button
+                          type="button"
+                          onClick={() => toast.info(t("ai.voice_coming_soon"))}
+                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/55 transition-colors hover:bg-white/6 hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+                          aria-label={t("ai.voice_coming_soon")}
+                        >
+                          <Mic className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                        </button>
+                      ) : (
+                        <Button
+                          type="button"
+                          disabled
+                          size="icon"
+                          aria-label={t("ai.send_message")}
+                          className="flex h-10 w-10 shrink-0 cursor-not-allowed items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)] opacity-45 shadow-none"
+                        >
+                          <Send className="mt-0.5 h-[18px] w-[18px] -ml-0.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               ) : null}
             </motion.div>
           </div>

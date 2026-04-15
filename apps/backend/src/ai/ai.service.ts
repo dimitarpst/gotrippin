@@ -476,6 +476,15 @@ export class AiService {
           ...(budget_summary ? { budget_summary } : {}),
         };
       });
+    const slotsRaw = session.slots;
+    let currentTripId: string | undefined;
+    if (slotsRaw && typeof slotsRaw === 'object' && !Array.isArray(slotsRaw)) {
+      const id = (slotsRaw as Record<string, unknown>).current_trip_id;
+      if (typeof id === 'string' && id.trim().length > 0) {
+        currentTripId = id.trim();
+      }
+    }
+
     return {
       session: {
         id: session.id,
@@ -483,6 +492,7 @@ export class AiService {
         summary: session.summary,
         created_at: session.created_at,
         updated_at: session.updated_at,
+        ...(currentTripId ? { current_trip_id: currentTripId } : {}),
       },
       messages,
     };
@@ -1363,6 +1373,9 @@ export class AiService {
     prompt += `\n\nWhen the user describes a specific new trip in natural language (for example: "I wanna go on a trip to Bali on the 14th of March"), you must:\n- Extract what you can (destination, approximate dates, preferences) from their message.\n- Ask follow-up questions only for missing key information, one at a time (for example: \"How many days do you want to stay?\" if you know the start date but not the duration or end date).\n- Once you know at least a destination and a start and end date (or a start date and duration that implies the end date), use the tools to:\n  - Create or update a real trip via createTripDraft and updateTrip.\n  - Then call searchCoverImage with an appropriate query (for example: \"Bali travel landscape\"), and describe a few of the returned image options in your reply so the user can pick one.\n- Cover selection: the app shows images in a tappable gallery. When the user taps there, the client saves the cover and posts the choice to the chat — you must NOT ask them to type \"use image 6\" or similar, and do NOT add quick_replies that only repeat that. If they instead describe a choice only in text (e.g. \"the sunset one\", \"number 3\"), call selectCoverImage with the matching object from pending_cover_images.`;
     prompt += `\n\nWhen you suggest a day plan with concrete places, include a machine-readable line at the end of your response: PLACE_CARDS: [ ... ]. This line must be valid JSON on one line and include 2-8 places. Each entry must be a real Google Maps **Place** (a venue users can open in Google Maps with reviews, photos, and contact info)—not a made-up label with random latitude/longitude dropped on the map (that only shows a bare coordinate pin and breaks the in-app experience). Therefore every object in PLACE_CARDS **must** include a truthful **place_id** (Google Places id, e.g. ChIJ… or the canonical places/… id) that corresponds to that exact venue name. **latitude** and **longitude** must be the official coordinates for that same place_id (same source of truth); never invent coordinates. If you cannot confidently supply a correct place_id for a stop, omit that stop or replace it with a different well-known venue you can verify—do not emit PLACE_CARDS rows without place_id. Also include when known: name (required), address, rating, rating_count, place_type, photo_url, phone_number, website, weekday_hours (array), visit_time (e.g. \"9:00 AM\"), ai_note (2–4 sentences per stop: practical, specific—vibe, typical price band or value, opening days or best time, one budget tip when useful; like a concise travel tip, not generic filler); set rating, rating_count, and photo_url to null if unknown so the client may enrich from Google when place_id is present. Keep your normal human-readable reply above this line. Do not mention the PLACE_CARDS line in visible text.`;
     prompt += `\n\nWhen you give a costed itinerary or budget guidance, add a final line after PLACE_CARDS (if any): BUDGET_SUMMARY: {\"currency\":\"EUR\",\"per_person_estimate\":<number>,\"assumptions\":[\"optional short bullet strings\"]}. Use a realistic rough total per person for transport+lodging+food+activities for the trip length; state assumptions in the array. One line only; valid JSON object. Do not mention BUDGET_SUMMARY in the visible prose.`;
+
+    prompt += `\n\nTrip route (saved map / itinerary) vs PLACE_CARDS: PLACE_CARDS is only for the in-chat itinerary UI (venues with place_id). It does NOT add stops to the user's saved trip. Once you have a trip_id (from createTripDraft or session context), you must build the real route with tools: call addLocation once per agreed stop (use clear names like "Sofia, Bulgaria", "Plovdiv, Bulgaria"), in visit order, then call getRoute to verify the ordered list. When the user confirms two or more cities or stops, do this in the same turn batch if possible—do not stop after cover images or PLACE_CARDS alone. If they only want ideas without saving, stay in just_chat and skip addLocation.`;
+    prompt += `\n\nWhen the user sends a short intent to work on the saved route (e.g. "Add stops to my trip") and Current context includes current_trip_id, treat that as a request to use addLocation and getRoute with that trip_id—ask which places if none are named yet.`;
 
     if (scope === 'trip' && tripId) {
       prompt += `\n\nThe user is working on a specific trip (trip_id: ${tripId}).`;

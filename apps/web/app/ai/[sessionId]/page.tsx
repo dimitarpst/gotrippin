@@ -20,7 +20,7 @@ export default async function AiChatPage({ params }: PageProps) {
   
   const { data: profile } = await supabase
     .from("profiles")
-    .select("ai_tokens_used_month, ai_token_monthly_limit")
+    .select("ai_tokens_used_month, ai_token_monthly_limit, display_name")
     .eq("id", user.id)
     .single();
 
@@ -40,5 +40,12 @@ export default async function AiChatPage({ params }: PageProps) {
         : null,
   };
 
-  return <AiTestClient key={sessionId} sessionId={sessionId} aiUsage={aiUsage} />;
+  return (
+    <AiTestClient
+      key={sessionId}
+      sessionId={sessionId}
+      aiUsage={aiUsage}
+      displayName={profile?.display_name?.trim() || null}
+    />
+  );
 }

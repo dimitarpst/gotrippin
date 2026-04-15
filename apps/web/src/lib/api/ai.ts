@@ -83,6 +83,8 @@ export interface AiSessionWithMessagesResponse {
     summary: string | null;
     created_at: string;
     updated_at: string;
+    /** UUID of draft trip when createTripDraft has run (from session slots). */
+    current_trip_id?: string;
   };
   messages: Array<{
     role: "user" | "assistant";

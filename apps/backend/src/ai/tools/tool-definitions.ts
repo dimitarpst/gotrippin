@@ -6,7 +6,7 @@ export const AI_TOOLS: OpenRouterTool[] = [
     function: {
       name: 'createTripDraft',
       description:
-        'Create a new trip draft. Use when the user wants to start planning a trip. Returns trip_id and share_code.',
+        'Create a new trip draft. Use when the user wants to start planning a trip. Returns trip_id and share_code—then use addLocation (and getRoute) in sequence to build the route on that trip.',
       parameters: {
         type: 'object',
         properties: {
@@ -42,7 +42,7 @@ export const AI_TOOLS: OpenRouterTool[] = [
     function: {
       name: 'addLocation',
       description:
-        'Add a location/stop to a trip route. The server resolves coordinates from the name (Open-Meteo geocoding). Prefer specific names like "Plovdiv, Bulgaria" so the map and weather work.',
+        'Add one stop to the saved trip route (call once per stop in order). The server resolves coordinates (Open-Meteo geocoding). Use trip_id from createTripDraft or context; prefer names like "Plovdiv, Bulgaria". After adding stops, call getRoute to confirm order.',
       parameters: {
         type: 'object',
         properties: {
@@ -64,7 +64,8 @@ export const AI_TOOLS: OpenRouterTool[] = [
     type: 'function',
     function: {
       name: 'getRoute',
-      description: 'Get the current route (ordered locations) for a trip.',
+      description:
+        'Read the current ordered stops for a trip. Call after addLocation (or reorderLocations) to verify the route matches what the user asked for.',
       parameters: {
         type: 'object',
         properties: {

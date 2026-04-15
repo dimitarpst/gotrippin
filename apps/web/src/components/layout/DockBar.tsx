@@ -3,11 +3,12 @@
 import { motion } from "framer-motion";
 import { Dock } from "@/components/ui/dock";
 
-import { Home, Compass, Plus, Bot } from "lucide-react";
+import { Home, Compass, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { resolveAvatarUrl } from "@/lib/avatar";
+import { GoAiWordmark } from "@/components/ai/go-ai-wordmark";
 
 const baseClass =
   "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:text-white/80 dark:hover:text-white dark:hover:bg-white/10 transition-all duration-300";
@@ -24,31 +25,39 @@ export default function DockBar({ onCreateTrip }: DockBarProps = {}) {
   const router = useRouter();
   const { user } = useAuth();
 
-  // Main dock icons
-  const icons = [
+  const navIcons = [
     { key: "home", icon: Home },
     { key: "explore", icon: Compass },
     { key: "add_trip", icon: Plus },
-    { key: "ai", icon: Bot },
-  ];
+  ] as const;
 
-  // Map standard icons
-  const items = icons.map(({ key, icon: Icon }) => ({
-    icon: (
-      <Icon className={`h-6 w-6 ${key === "add_trip" ? "text-white" : ""}`} />
-    ),
-    label: t(`dock.${key}`),
-    onClick: () => {
-      if (key === "add_trip" && onCreateTrip) {
-        onCreateTrip();
-      } else if (key === "explore") {
-        router.push("/explore");
-      } else if (key === "ai") {
-        router.push("/ai");
-      }
+  const items = [
+    ...navIcons.map(({ key, icon: Icon }) => ({
+      icon: (
+        <Icon className={`h-6 w-6 ${key === "add_trip" ? "text-white" : ""}`} />
+      ),
+      label: t(`dock.${key}`),
+      onClick: () => {
+        if (key === "add_trip" && onCreateTrip) {
+          onCreateTrip();
+        } else if (key === "explore") {
+          router.push("/explore");
+        }
+      },
+      className: key === "add_trip" ? accentClass : baseClass,
+    })),
+    {
+      icon: (
+        <GoAiWordmark
+          alt={t("dock.ai")}
+          className="h-6 w-auto max-h-6 max-w-[2.85rem] shrink-0 object-contain object-center"
+        />
+      ),
+      label: t("dock.ai"),
+      onClick: () => router.push("/ai"),
+      className: baseClass,
     },
-    className: key === "add_trip" ? accentClass : baseClass,
-  }));
+  ];
 
   // Avatar - always show, but style changes based on login
   const avatarLetter = user
