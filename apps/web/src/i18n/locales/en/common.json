@@ -64,7 +64,8 @@
     "last_signin": "Last sign in",
     "ai_usage": "AI usage",
     "ai_usage_value": "{{percent}}% this month",
-    "ai_usage_unlimited": "Tracking only",
+    "ai_usage_unlimited": "No monthly cap",
+    "ai_usage_badge_no_cap": "{{used}} tokens this month · no cap",
     "ai_usage_tokens": "{{used}} / {{limit}} tokens this month",
     "ai_usage_tokens_used": "{{used}} tokens used so far",
     "traveler": "Traveler",
@@ -199,7 +200,9 @@
     "failed_delete_chat": "Failed to delete chat",
     "session_not_found": "Session not found",
     "online_ready": "Online & ready",
-    "remove_tool": "Remove"
+    "remove_tool": "Remove",
+    "open_trip": "Open trip",
+    "cover_answer_questions_first": "Answer the questions above before choosing a cover."
   },
   "trips": {
     "my_trips": "My Trips",

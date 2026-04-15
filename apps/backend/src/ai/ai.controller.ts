@@ -26,6 +26,7 @@ import { AiService } from './ai.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { PostMessageDto } from './dto/post-message.dto';
+import { SelectCoverImageBodyDto } from './dto/select-cover-image.dto';
 
 @ApiTags('ai')
 @Controller('ai')
@@ -158,5 +159,30 @@ export class AiController {
     }
     const userId = request.user.id;
     return this.aiService.postMessage(userId, sessionId, result.data);
+  }
+
+  @Post('sessions/:sessionId/select-cover-image')
+  @ApiOperation({
+    summary:
+      'Pick a trip cover from the pending gallery (direct save; no "Use image N" message)',
+  })
+  @ApiParam({ name: 'sessionId', description: 'Session UUID' })
+  @ApiResponse({ status: 200, description: 'User + assistant messages appended' })
+  @ApiResponse({ status: 400, description: 'Invalid index or no pending images' })
+  @ApiResponse({ status: 404, description: 'Session not found' })
+  async selectCoverImage(
+    @Req() request: { user: { id: string } },
+    @Param('sessionId') sessionId: string,
+    @Body() body: unknown,
+  ) {
+    const result = SelectCoverImageBodyDto.safeParse(body);
+    if (!result.success) {
+      throw new BadRequestException({
+        message: 'Invalid cover selection',
+        errors: result.error.flatten(),
+      });
+    }
+    const userId = request.user.id;
+    return this.aiService.selectCoverFromGallery(userId, sessionId, result.data);
   }
 }

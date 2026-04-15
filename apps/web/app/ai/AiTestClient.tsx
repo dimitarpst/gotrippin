@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   getAiSessionWithMessages,
   postAiMessage,
+  selectSessionCoverImage,
+  type AiCoverPick,
   type AiPlaceSuggestion,
   type AiImageSuggestion,
+  type PostMessageResponse,
 } from "@/lib/api/ai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +18,12 @@ import ThinkingDots from "@/components/ai/ThinkingDots";
 import AssistantAvatar from "@/components/ai/AssistantAvatar";
 import AiSessionLoader from "@/components/ai/AiSessionLoader";
 import { GoAiWordmark } from "@/components/ai/go-ai-wordmark";
-import { Send, Sparkles, Pencil, X, Square, Plus, Image as ImageIcon } from "lucide-react";
+import { Send, Sparkles, Pencil, X, Square, Plus, Image as ImageIcon, CalendarDays, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { DateRange } from "react-day-picker";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,11 +31,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
-import AiPlaceSuggestions from "@/components/ai/AiPlaceSuggestions";
+import { Calendar } from "@/components/ui/calendar";
+import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  linked_trip_id?: string;
+  cover_pick?: AiCoverPick;
   quick_replies?: Array<{ label: string; action: string }>;
   image_suggestions?: AiImageSuggestion[];
   place_suggestions?: AiPlaceSuggestion[];
@@ -40,36 +48,59 @@ interface WizardAnswer {
   heading: string;
   vibe: string;
   joining: string;
+  travelDates: string;
 }
 
-const WIZARD_STEPS: Array<{
-  key: keyof WizardAnswer;
-  question: string;
-  options: string[];
-}> = [
+type WizardStep =
+  | {
+      kind: "options";
+      key: "heading" | "vibe" | "joining";
+      question: string;
+      options: string[];
+    }
+  | {
+      kind: "dates";
+      key: "travelDates";
+      question: string;
+    };
+
+const WIZARD_STEPS: WizardStep[] = [
   {
+    kind: "options",
     key: "heading",
     question: "Where are you heading?",
     options: ["Staying in Bulgaria", "Somewhere in Europe", "Further abroad", "Still deciding"],
   },
   {
+    kind: "options",
     key: "vibe",
     question: "What's the vibe you're going for?",
     options: ["Nature & outdoors", "City exploration", "Food & culture", "Chill & relaxed"],
   },
   {
+    kind: "options",
     key: "joining",
     question: "Who's joining you?",
     options: ["Solo", "With my partner", "Friends group", "Family"],
   },
+  {
+    kind: "dates",
+    key: "travelDates",
+    question: "When are you traveling?",
+  },
 ];
 
+function formatWizardDateRangeLabel(from: Date, to: Date): string {
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" };
+  return `${from.toLocaleDateString("en-US", opts)} - ${to.toLocaleDateString("en-US", opts)}`;
+}
+
 const WORKING_STATUSES = [
-  "Thinking...",
-  "Searching for places...",
-  "Building your route...",
-  "Checking availability...",
-  "Planning your trip...",
+  "Thinking",
+  "Searching for places",
+  "Building your route",
+  "Checking availability",
+  "Planning your trip",
 ];
 
 function WorkingStatus() {
@@ -90,12 +121,139 @@ function WorkingStatus() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -6 }}
         transition={{ duration: 0.25 }}
-        className="text-xs text-white/60"
+        className="text-sm text-white/50 font-medium"
       >
         {WORKING_STATUSES[idx]}
       </motion.p>
     </AnimatePresence>
   );
+}
+
+const SYSTEM_PROMPT_PATTERNS = [
+  /^create_trip:\s*/i,
+  /Ask \d+-?\d* follow-up questions?.*/i,
+  /When possible,?\s*include structured PLACE_CARDS output\.?/i,
+  /then suggest a concrete itinerary with places\.?/i,
+];
+
+function cleanUserMessage(content: string): string {
+  let cleaned = content;
+  for (const pattern of SYSTEM_PROMPT_PATTERNS) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  cleaned = cleaned.replace(/\n{2,}/g, "\n").trim();
+  if (!cleaned || cleaned.length < 3) return content.split("\n")[0].replace(/^create_trip:\s*/i, "").trim() || content;
+  return cleaned;
+}
+
+/** Island / wizard rows use plain text; AI often sends **bold** from markdown — render it. */
+function formatChoiceLabelMarkdown(text: string): ReactNode {
+  const re = /\*\*([^*]+)\*\*/g;
+  const segments: ReactNode[] = [];
+  let last = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) {
+      segments.push(<span key={key++}>{text.slice(last, match.index)}</span>);
+    }
+    segments.push(
+      <strong key={key++} className="font-semibold text-white/95">
+        {match[1]}
+      </strong>,
+    );
+    last = match.index + match[0].length;
+  }
+  if (segments.length === 0) {
+    return text;
+  }
+  if (last < text.length) {
+    segments.push(<span key={key++}>{text.slice(last)}</span>);
+  }
+  return <>{segments}</>;
+}
+
+interface ImageOption {
+  label: string;
+  thumbnailUrl: string;
+  blurHash?: string;
+  /** 1-based index sent to select-cover-image API */
+  oneBasedIndex: number;
+}
+
+interface IslandField {
+  question: string;
+  options: string[];
+  imageOptions?: ImageOption[];
+  value: string;
+  kind: "text" | "date" | "image";
+}
+
+interface IslandHistory {
+  messageIndex: number;
+  fields: IslandField[];
+}
+
+const DATE_KEYWORDS = /\b(when|date|dates|planning to travel|time to travel|travel date|depart|arrive|schedule|how long|duration)\b/i;
+
+const OPTION_LINE = /(?:^|\n)\s*[-–•]\s+([^\n]+)/g;
+
+function parseNumberedQuestions(text: string): IslandField[] {
+  const regex = /(?:^|\n)\s*(\d+)\.\s+\*{0,2}([^*\n?]+\??)\*{0,2}\s*/g;
+  const fields: IslandField[] = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const question = match[2].trim();
+    const afterQ = text.slice(match.index + match[0].length);
+    const lineEnd = afterQ.indexOf("\n\n");
+    const block = lineEnd > -1 ? afterQ.slice(0, lineEnd) : afterQ.slice(0, 400);
+    const options: string[] = [];
+    let om;
+    const dashRegex = new RegExp(OPTION_LINE.source, "g");
+    while ((om = dashRegex.exec(block)) !== null) options.push(om[1].trim());
+    const isDate = DATE_KEYWORDS.test(question);
+    if (isDate || options.length > 0) {
+      fields.push({ question, options: isDate ? [] : options, value: "", kind: isDate ? "date" : "text" });
+    }
+  }
+
+  if (fields.length === 0) {
+    const standaloneQ = text.match(/(?:which one|pick one|choose|reply with|select)[^?\n]*\?/i);
+    if (standaloneQ) {
+      const qIdx = text.indexOf(standaloneQ[0]);
+      const before = text.slice(0, qIdx);
+      const options: string[] = [];
+      let om;
+      const dashRegex = new RegExp(OPTION_LINE.source, "g");
+      while ((om = dashRegex.exec(before)) !== null) options.push(om[1].trim());
+      if (options.length >= 2) {
+        fields.push({ question: standaloneQ[0].trim(), options, value: "", kind: "text" });
+      }
+    }
+  }
+  // Intentionally no broad "any line with ?" fallback: generic assistant greetings
+  // (e.g. "…dates in mind?") were parsed as a date island and broke dismiss / strip UX.
+  return fields;
+}
+
+function stripParsedQuestions(text: string, fields: IslandField[]): string {
+  if (fields.length === 0) return text;
+  let stripped = text;
+  for (const field of fields) {
+    const qEscaped = field.question.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const qPattern = new RegExp(`\\n?\\s*\\d+\\.\\s+\\*{0,2}${qEscaped}\\*{0,2}[\\s\\S]*?(?=\\n\\s*\\d+\\.|$)`, "g");
+    stripped = stripped.replace(qPattern, "");
+    stripped = stripped.replace(new RegExp(`\\n?\\s*${qEscaped}\\s*`, "g"), "");
+
+    for (const opt of field.options) {
+      const optEscaped = opt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      stripped = stripped.replace(new RegExp(`\\n?\\s*[-–•]\\s+${optEscaped}\\s*`, "g"), "");
+    }
+  }
+  stripped = stripped.replace(/(?:which one|pick one|choose|reply with|select)[^?\n]*\?/i, "");
+  stripped = stripped.replace(/\(Reply with[^)]*\)/gi, "");
+  stripped = stripped.replace(/\n{3,}/g, "\n\n").trim();
+  return stripped;
 }
 
 type SelectedTool =
@@ -109,7 +267,7 @@ interface AiTestClientProps {
 }
 
 export default function AiTestClient({ sessionId: initialSessionId, aiUsage: initialAiUsage }: AiTestClientProps) {
-  const [sessionId] = useState<string>(initialSessionId);
+  const sessionId = initialSessionId;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [selectedTool, setSelectedTool] = useState<SelectedTool | null>(null);
@@ -121,12 +279,73 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
   const [editingDraft, setEditingDraft] = useState("");
   const [wizardStep, setWizardStep] = useState(0);
   const [wizardAnswers, setWizardAnswers] = useState<Partial<WizardAnswer>>({});
+  const [islandFields, setIslandFields] = useState<IslandField[]>([]);
+  const [islandDismissed, setIslandDismissed] = useState(false);
+  const [islandPage, setIslandPage] = useState(0);
+  const [islandHistory, setIslandHistory] = useState<IslandHistory[]>([]);
+  const [islandPreview, setIslandPreview] = useState<IslandHistory | null>(null);
+  const [islandDateOpen, setIslandDateOpen] = useState(false);
+  const [islandDateRangeDraft, setIslandDateRangeDraft] = useState<DateRange | undefined>(undefined);
+  const [wizardDateOpen, setWizardDateOpen] = useState(false);
+  const [wizardDateRangeDraft, setWizardDateRangeDraft] = useState<DateRange | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const editingInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
+
+  function assistantMessageFromPostResponse(res: PostMessageResponse): ChatMessage {
+    const trimmed = res.message?.trim() ?? "";
+    return {
+      role: "assistant",
+      content: trimmed.length > 0 ? trimmed : t("ai.empty_reply"),
+      quick_replies: res.quick_replies,
+      image_suggestions: res.image_suggestions,
+      place_suggestions: res.place_suggestions,
+      ...(res.linked_trip_id ? { linked_trip_id: res.linked_trip_id } : {}),
+    };
+  }
+
+  async function handleSelectCoverFromIsland(oneBasedIndex: number) {
+    if (!sessionId || loading || islandViewOnly) return;
+    const nonImage = islandFields.filter((f) => f.kind !== "image");
+    if (nonImage.some((f) => !f.value.trim())) {
+      setError(t("ai.cover_answer_questions_first"));
+      return;
+    }
+    const answers_summary =
+      nonImage.length > 0
+        ? nonImage.map((f) => f.value.trim()).filter(Boolean).join(". ")
+        : undefined;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await selectSessionCoverImage(sessionId, {
+        index: oneBasedIndex,
+        answers_summary,
+      });
+      setMessages((prev) => [
+        ...prev,
+        ...data.messages.map((m) => ({
+          role: m.role,
+          content: m.role === "user" ? cleanUserMessage(m.content) : m.content,
+          ...(m.cover_pick ? { cover_pick: m.cover_pick } : {}),
+          ...(m.linked_trip_id ? { linked_trip_id: m.linked_trip_id } : {}),
+        })),
+      ]);
+      setIslandFields([]);
+      setIslandDismissed(false);
+      setIslandPage(0);
+      setIslandPreview(null);
+      setInput("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("ai.failed_request"));
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const LONG_PRESS_MS = 500;
 
@@ -175,7 +394,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
         setMessages(
           data.messages.map((m) => ({
             role: m.role,
-            content: m.content,
+            content: m.role === "user" ? cleanUserMessage(m.content) : m.content,
+            ...(m.linked_trip_id ? { linked_trip_id: m.linked_trip_id } : {}),
+            ...(m.cover_pick ? { cover_pick: m.cover_pick } : {}),
             quick_replies: m.quick_replies,
             image_suggestions: m.image_suggestions,
             place_suggestions: m.place_suggestions,
@@ -222,20 +443,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
       const res = await postAiMessage(sessionId, trimmed, {
         signal: controller.signal,
       });
-      const safeMessage =
-        res.message && res.message.trim().length > 0
-          ? res.message
-          : t("ai.empty_reply");
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: safeMessage,
-          quick_replies: res.quick_replies,
-          image_suggestions: res.image_suggestions,
-          place_suggestions: res.place_suggestions,
-        },
-      ]);
+      setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
       if (res.usage) setAiUsage(res.usage);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
@@ -258,27 +466,23 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
   }
 
   const wizardActive = wizardStep < WIZARD_STEPS.length && messages.every((m) => m.role !== "user");
+  const activeIslandFields = islandPreview?.fields ?? islandFields;
+  const islandViewOnly = islandPreview !== null;
+  const islandActive = activeIslandFields.length >= 1 && (islandViewOnly || (!islandDismissed && !wizardActive && !loading));
+  const islandExpanded = wizardActive || islandActive;
+  const currentIslandField =
+    islandActive && !islandViewOnly ? activeIslandFields[islandPage] : undefined;
+  const hideIslandFreeformRow =
+    !wizardActive &&
+    (currentIslandField?.kind === "date" || currentIslandField?.kind === "image");
+  const currentWizardStep = wizardActive ? WIZARD_STEPS[wizardStep] : undefined;
+  const showMainComposerRow = !wizardActive || currentWizardStep?.kind !== "dates";
 
-  async function handleWizardSelect(value: string) {
-    const currentStep = WIZARD_STEPS[wizardStep];
-    if (!currentStep || loading) return;
-    const nextAnswers = { ...wizardAnswers, [currentStep.key]: value };
-    setWizardAnswers(nextAnswers);
-
-    if (wizardStep < WIZARD_STEPS.length - 1) {
-      setWizardStep((prev) => prev + 1);
-      return;
-    }
-
-    setWizardStep(WIZARD_STEPS.length);
-
-    const heading = nextAnswers.heading ?? "Still deciding";
-    const vibe = nextAnswers.vibe ?? "City exploration";
-    const joining = nextAnswers.joining ?? "Solo";
-
-    const displayText = `${heading} · ${vibe} · ${joining}`;
+  async function submitWizardToServer(answers: WizardAnswer) {
+    const { heading, vibe, joining, travelDates } = answers;
+    const displayText = `${heading} · ${vibe} · ${joining} · ${travelDates}`;
     const wizardPrompt = [
-      `create_trip: Plan a trip with these preferences: destination region: ${heading}, vibe: ${vibe}, group: ${joining}.`,
+      `create_trip: Plan a trip with these preferences: destination region: ${heading}, vibe: ${vibe}, group: ${joining}, travel dates: ${travelDates}.`,
       "Ask 1-2 follow-up questions if needed, then suggest a concrete itinerary with places.",
       "When possible, include structured PLACE_CARDS output.",
     ].join("\n");
@@ -291,17 +495,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
 
     try {
       const res = await postAiMessage(sessionId, wizardPrompt, { signal: controller.signal });
-      const safeMessage = res.message?.trim() || t("ai.empty_reply");
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: safeMessage,
-          quick_replies: res.quick_replies,
-          image_suggestions: res.image_suggestions,
-          place_suggestions: res.place_suggestions,
-        },
-      ]);
+      setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
       if (res.usage) setAiUsage(res.usage);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
@@ -313,12 +507,72 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     }
   }
 
+  function handleWizardSelect(value: string) {
+    const currentStep = WIZARD_STEPS[wizardStep];
+    if (!currentStep || loading || currentStep.kind !== "options") return;
+    const nextAnswers = { ...wizardAnswers, [currentStep.key]: value };
+    setWizardAnswers(nextAnswers);
+
+    if (wizardStep < WIZARD_STEPS.length - 1) {
+      setWizardStep((prev) => prev + 1);
+    }
+  }
+
+  async function handleWizardDateDrawerDone() {
+    if (!wizardDateRangeDraft?.from || !wizardDateRangeDraft?.to || loading) return;
+    const travelDates = formatWizardDateRangeLabel(wizardDateRangeDraft.from, wizardDateRangeDraft.to);
+    const nextAnswers: WizardAnswer = {
+      heading: wizardAnswers.heading ?? "Still deciding",
+      vibe: wizardAnswers.vibe ?? "City exploration",
+      joining: wizardAnswers.joining ?? "Solo",
+      travelDates,
+    };
+    setWizardAnswers(nextAnswers);
+    setWizardDateOpen(false);
+    setWizardDateRangeDraft(undefined);
+    setWizardStep(WIZARD_STEPS.length);
+    await submitWizardToServer(nextAnswers);
+  }
+
+  function handleWizardCustom() {
+    const currentStep = WIZARD_STEPS[wizardStep];
+    if (!currentStep || loading || !input.trim() || currentStep.kind !== "options") return;
+    void handleWizardSelect(input.trim());
+    setInput("");
+  }
+
   function handleWizardSkip() {
     setWizardStep(WIZARD_STEPS.length);
+    setWizardDateOpen(false);
+    setWizardDateRangeDraft(undefined);
+    setIslandFields([]);
+    setIslandDismissed(false);
+    setIslandPage(0);
+    setIslandPreview(null);
+    setIslandHistory([]);
+  }
+
+  function updateIslandField(fieldIdx: number, value: string) {
+    if (islandViewOnly) return;
+    setIslandFields((prev) =>
+      prev.map((f, i) => (i === fieldIdx ? { ...f, value } : f)),
+    );
   }
 
   async function handleSend() {
     if (!sessionId || loading) return;
+    if (islandActive && !islandViewOnly) {
+      const filled = islandFields.filter((f) => f.value.trim());
+      if (filled.length === 0) return;
+      const composed = filled.map((f) => f.value.trim()).join(". ") + ".";
+      const msgIdx = messages.length - 1;
+      setIslandHistory((prev) => [...prev.filter((h) => h.messageIndex !== msgIdx), { messageIndex: msgIdx, fields: islandFields.map((f) => ({ ...f })) }]);
+      setIslandFields([]);
+      setIslandDismissed(true);
+      setInput("");
+      await sendMessage(composed, null);
+      return;
+    }
     if (selectedTool) {
       if (selectedTool.kind === "quick_reply") {
         const extra = input.trim();
@@ -375,20 +629,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
       const res = await postAiMessage(sessionId, payload, {
         signal: controller.signal,
       });
-      const safeMessage =
-        res.message && res.message.trim().length > 0
-          ? res.message
-          : t("ai.empty_reply");
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: safeMessage,
-          quick_replies: res.quick_replies,
-          image_suggestions: res.image_suggestions,
-          place_suggestions: res.place_suggestions,
-        },
-      ]);
+      setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
       if (res.usage) setAiUsage(res.usage);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
@@ -405,6 +646,43 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
     if (!editingDraft.trim() || sessionId === null || editingIndex === null || loading) return;
     await sendMessage(editingDraft, editingIndex);
   }
+
+  useEffect(() => {
+    if (loading) return;
+    if (messages.length === 0) {
+      setIslandFields([]);
+      setIslandDismissed(false);
+      setIslandPage(0);
+      setIslandPreview(null);
+      return;
+    }
+    const last = messages[messages.length - 1];
+    if (last.role !== "assistant") return;
+    const fields = parseNumberedQuestions(last.content);
+    if (last.image_suggestions && last.image_suggestions.length > 0) {
+      const imgField: IslandField = {
+        question: "Pick a cover image",
+        options: [],
+        imageOptions: last.image_suggestions.map((img, idx) => ({
+          label: img.photographer_name || `Image ${idx + 1}`,
+          thumbnailUrl: img.thumbnail_url,
+          blurHash: img.blur_hash ?? undefined,
+          oneBasedIndex: idx + 1,
+        })),
+        value: "",
+        kind: "image",
+      };
+      fields.push(imgField);
+    }
+    if (fields.length >= 1) {
+      setIslandFields(fields);
+      setIslandDismissed(false);
+      setIslandPage(0);
+      setIslandPreview(null);
+    } else {
+      setIslandFields([]);
+    }
+  }, [messages, loading]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -479,7 +757,11 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
             className="flex items-center gap-3"
           >
             <div className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-medium text-white/60">
-              {aiUsage.percent != null ? `${aiUsage.percent}% used` : "Tracking"}
+              {aiUsage.percent != null
+                ? t("ai_usage_value", { percent: aiUsage.percent })
+                : t("ai_usage_badge_no_cap", {
+                    used: new Intl.NumberFormat(i18n.language).format(aiUsage.used),
+                  })}
             </div>
             <button
               onClick={() => router.push("/ai")}
@@ -499,7 +781,7 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.6 }}
-                className="flex flex-col items-center justify-center pt-[15vh] text-center"
+                className="flex flex-col items-center justify-center min-h-[calc(100dvh-16rem)] text-center"
               >
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--color-accent)]/30 to-[var(--color-accent)]/10 border border-white/10 flex items-center justify-center mb-5">
                   <Sparkles className="w-7 h-7 text-[var(--color-accent)]" />
@@ -523,17 +805,11 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                   transition={{ duration: 0.4, type: "spring", bounce: 0.3 }}
                   className={`flex gap-4 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {m.role === "assistant" && (
-                    <div className="shrink-0 pt-1">
-                      <AssistantAvatar />
-                    </div>
-                  )}
-                  
                   <div
-                    className={`relative group max-w-[85%] sm:max-w-[75%] rounded-[1.5rem] px-5 py-4 ${
+                    className={`relative group ${
                       m.role === "user"
-                        ? "bg-gradient-to-br from-[var(--color-accent)] to-[#ff8f8f] text-white shadow-[0_8px_24px_-6px_rgba(255, 118, 112,0.4)] order-first rounded-tr-sm"
-                        : "bg-card/40 backdrop-blur-2xl border border-white/10 text-card-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_8px_24px_-6px_rgba(0,0,0,0.2)] rounded-tl-sm"
+                        ? "max-w-[85%] sm:max-w-[75%] rounded-[1.5rem] rounded-tr-sm px-5 py-4 bg-gradient-to-br from-[var(--color-accent)] to-[#ff8f8f] text-white shadow-[0_8px_24px_-6px_rgba(255,118,112,0.4)]"
+                        : "w-full text-card-foreground"
                     }`}
                     {...(m.role === "user"
                       ? {
@@ -546,48 +822,51 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                   >
                     {m.role === "assistant" ? (
                       <div className="space-y-3">
-                        <div className="text-[15px] leading-relaxed">
-                          <MarkdownMessage content={m.content} />
-                        </div>
-                        {m.image_suggestions && m.image_suggestions.length > 0 && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
-                            {m.image_suggestions.map((img, idx) => (
-                              <button
-                                key={img.id || idx}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedTool({
-                                    kind: "image_pick",
-                                    label: `Image ${idx + 1}`,
-                                    message: `Use image ${idx + 1}`,
-                                  });
-                                }}
-                                className="relative aspect-[3/4] rounded-xl overflow-hidden group border border-white/10 bg-black/40"
-                              >
-                                <CoverImageWithBlur
-                                  src={img.thumbnail_url}
-                                  alt={img.photographer_name || t("trips.trip_cover_option_alt")}
-                                  blurHash={img.blur_hash ?? undefined}
-                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-xs text-white/90">
-                                  <span className="font-medium truncate">
-                                    {img.photographer_name || `Image ${idx + 1}`}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full bg-black/60 text-[10px]">
-                                    {idx + 1}
-                                  </span>
-                                </div>
-                              </button>
-                            ))}
+                        {m.linked_trip_id ? (
+                          <div className="flex justify-start pb-1">
+                            <Link
+                              href={`/trips/${m.linked_trip_id}`}
+                              className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-gradient-to-r from-[var(--color-accent)]/20 via-white/6 to-white/4 px-4 py-2.5 text-[13px] font-semibold tracking-wide text-white/95 shadow-[0_0_28px_-6px_rgba(255,118,112,0.5)] backdrop-blur-md transition hover:border-[var(--color-accent)]/35 hover:shadow-[0_0_32px_-4px_rgba(255,118,112,0.55)]"
+                            >
+                              <Sparkles className="w-4 h-4 shrink-0 text-[var(--color-accent)]" />
+                              <span>{t("ai.open_trip")}</span>
+                              <ArrowRight className="w-4 h-4 shrink-0 opacity-55 transition group-hover:translate-x-0.5 group-hover:opacity-90" />
+                            </Link>
                           </div>
-                        )}
+                        ) : null}
+                        <div className="text-[15px] leading-relaxed">
+                          <MarkdownMessage content={(() => {
+                            const hist = islandHistory.find((h) => h.messageIndex === i);
+                            const isCurrentIsland = i === messages.length - 1 && islandFields.length >= 1;
+                            const fieldsForStrip = hist?.fields ?? (isCurrentIsland ? islandFields : []);
+                            return fieldsForStrip.length > 0 ? stripParsedQuestions(m.content, fieldsForStrip) : m.content;
+                          })()} />
+                        </div>
+                        {(() => {
+                          const hist = islandHistory.find((h) => h.messageIndex === i);
+                          if (!hist) return null;
+                          const answered = hist.fields.filter((f) => f.value.trim());
+                          if (answered.length === 0) return null;
+                          return (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {answered.map((f, fIdx) => (
+                                <span
+                                  key={fIdx}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--color-accent)]/10 text-[11px] font-medium text-[var(--color-accent)]"
+                                >
+                                  <Sparkles className="w-3 h-3 opacity-60" />
+                                  {f.value}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                        
                         {m.quick_replies && m.quick_replies.length > 0 && (
                           <div className="flex flex-wrap gap-2 pt-1">
-                            {m.quick_replies.map((qr) => (
+                            {m.quick_replies.map((qr, qrIdx) => (
                               <Button
-                                key={`${qr.action}-${qr.label}`}
+                                key={`${qr.action}-${qr.label}-${qrIdx}`}
                                 type="button"
                                 size="sm"
                                 variant="outline"
@@ -601,9 +880,34 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                             ))}
                           </div>
                         )}
-                        {m.place_suggestions && m.place_suggestions.length > 0 ? (
-                          <AiPlaceSuggestions places={m.place_suggestions} />
-                        ) : null}
+                        {i === messages.length - 1 && islandDismissed && islandFields.length >= 1 && (
+                          <motion.button
+                            type="button"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            onClick={() => setIslandDismissed(false)}
+                            className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-[12px] font-medium hover:bg-[var(--color-accent)]/20 transition-colors"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Answer questions
+                          </motion.button>
+                        )}
+                        {(() => {
+                          const hist = islandHistory.find((h) => h.messageIndex === i);
+                          if (!hist || hist.fields.length === 0) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIslandPreview({ messageIndex: i, fields: hist.fields.map((f) => ({ ...f })) });
+                                setIslandPage(0);
+                              }}
+                              className="mt-1 text-[11px] text-white/40 hover:text-white/70 transition-colors"
+                            >
+                              View answered island
+                            </button>
+                          );
+                        })()}
                       </div>
                     ) : editingIndex === i ? (
                       <div className="flex flex-col gap-2 w-full min-w-0">
@@ -646,7 +950,36 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                       </div>
                     ) : (
                       <>
-                        <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium select-none touch-none">{m.content}</p>
+                        {m.cover_pick ? (
+                          <div className="space-y-3 w-full min-w-0">
+                            {m.content.trim() ? (
+                              <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium select-none touch-none">
+                                {m.content}
+                              </p>
+                            ) : null}
+                            <div className="rounded-xl overflow-hidden border border-white/25 shadow-lg max-w-full sm:max-w-[280px]">
+                              <CoverImageWithBlur
+                                src={m.cover_pick.image_url}
+                                alt={
+                                  m.cover_pick.photographer_name
+                                    ? `Cover — ${m.cover_pick.photographer_name}`
+                                    : "Trip cover"
+                                }
+                                blurHash={m.cover_pick.blur_hash ?? undefined}
+                                className="w-full aspect-[4/3] object-cover"
+                              />
+                            </div>
+                            {m.cover_pick.photographer_name ? (
+                              <p className="text-[11px] text-white/80">
+                                Photo: {m.cover_pick.photographer_name}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium select-none touch-none">
+                            {m.content}
+                          </p>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -669,20 +1002,16 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
               
               {loading && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-                  className="flex gap-4 justify-start"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, transition: { duration: 0.15 } }}
+                  className="flex items-center gap-3 pl-1"
                 >
-                  <div className="shrink-0 pt-1">
+                  <div className="shrink-0">
                     <AssistantAvatar />
                   </div>
-                  <div className="relative rounded-[1.5rem] rounded-tl-sm bg-card/40 backdrop-blur-2xl border border-white/10 px-6 py-5 min-w-[80px] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_8px_24px_-6px_rgba(0,0,0,0.2)]">
-                    <div className="space-y-3">
-                      <ThinkingDots />
-                      <WorkingStatus />
-                    </div>
-                  </div>
+                  <ThinkingDots />
+                  <WorkingStatus />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -715,9 +1044,9 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ layout: { type: "spring", stiffness: 400, damping: 30 }, delay: 0.1, duration: 0.4, type: "spring" }}
-              className={`relative rounded-[2rem] bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col gap-0 min-w-0 overflow-hidden ${selectedTool || wizardActive ? "p-2 pb-2 pt-3" : "p-2"}`}
+              className={`relative rounded-[2rem] bg-background/60 backdrop-blur-3xl border border-white/10 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] flex flex-col gap-0 min-w-0 overflow-hidden ${islandExpanded || selectedTool ? "p-2 pb-2 pt-3" : "p-2"}`}
             >
-              {/* Wizard dynamic island expansion */}
+              {/* === Wizard — one question per page, Claude-style === */}
               <AnimatePresence mode="wait">
                 {wizardActive && !loading && WIZARD_STEPS[wizardStep] ? (
                   <motion.div
@@ -728,59 +1057,333 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                     transition={{ type: "spring", stiffness: 350, damping: 28 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-3 pb-3 pt-1">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="px-3 pb-3 pt-2">
+                      {/* Header: question + nav */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
                         <motion.p
-                          key={`q-${wizardStep}`}
-                          initial={{ opacity: 0, x: 20 }}
+                          key={`wq-${wizardStep}`}
+                          initial={{ opacity: 0, x: 16 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 }}
-                          className="text-sm font-medium text-white/90"
+                          className="text-[15px] font-semibold text-white/90 leading-snug"
                         >
-                          {WIZARD_STEPS[wizardStep].question}
+                          {formatChoiceLabelMarkdown(WIZARD_STEPS[wizardStep].question)}
                         </motion.p>
-                        <button
-                          type="button"
-                          onClick={handleWizardSkip}
-                          className="text-[11px] text-white/50 hover:text-white/80 transition-colors px-1.5 py-0.5 rounded-md hover:bg-white/5"
-                        >
-                          Skip
-                        </button>
-                      </div>
-                      <div className="flex gap-1 mb-3">
-                        {WIZARD_STEPS.map((_, sIdx) => (
-                          <motion.div
-                            key={sIdx}
-                            className="h-0.5 flex-1 rounded-full overflow-hidden bg-white/10"
-                          >
-                            <motion.div
-                              className="h-full bg-[var(--color-accent)]"
-                              initial={{ width: sIdx < wizardStep ? "100%" : "0%" }}
-                              animate={{ width: sIdx <= wizardStep ? "100%" : "0%" }}
-                              transition={{ duration: 0.4, ease: "easeOut" }}
-                            />
-                          </motion.div>
-                        ))}
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {WIZARD_STEPS[wizardStep].options.map((option, idx) => (
-                          <motion.button
-                            key={option}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
                             type="button"
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.05 * idx + 0.12, type: "spring", stiffness: 500, damping: 30 }}
-                            onClick={() => void handleWizardSelect(option)}
-                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left text-[13px] font-medium text-white/90 transition-all hover:bg-white/10 hover:border-white/20 hover:scale-[1.02] active:scale-[0.98]"
+                            disabled={wizardStep === 0}
+                            onClick={() => setWizardStep((p) => Math.max(0, p - 1))}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-20 disabled:pointer-events-none"
                           >
-                            {option}
-                          </motion.button>
-                        ))}
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="text-[11px] text-white/40 tabular-nums min-w-[3rem] text-center">
+                            {wizardStep + 1} of {WIZARD_STEPS.length}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={wizardStep >= WIZARD_STEPS.length - 1}
+                            onClick={() => setWizardStep((p) => Math.min(WIZARD_STEPS.length - 1, p + 1))}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleWizardSkip}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/5 transition-colors ml-0.5"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
+
+                      {(() => {
+                        const step = WIZARD_STEPS[wizardStep];
+                        if (step.kind === "options") {
+                          return (
+                            <div className="space-y-1">
+                              {step.options.map((option, idx) => (
+                                <motion.button
+                                  key={option}
+                                  type="button"
+                                  initial={{ opacity: 0, y: 6 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.03 * idx + 0.08, type: "spring", stiffness: 500, damping: 30 }}
+                                  onClick={() => handleWizardSelect(option)}
+                                  className="flex items-center justify-between w-full rounded-xl px-2 py-3 text-left text-[14px] font-medium text-white/80 transition-all hover:bg-white/5 active:scale-[0.98]"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <span className="w-6 h-6 rounded-lg bg-white/10 text-[12px] font-semibold text-white/50 flex items-center justify-center shrink-0">
+                                      {idx + 1}
+                                    </span>
+                                    <span>{formatChoiceLabelMarkdown(option)}</span>
+                                  </div>
+                                  <span className="text-white/20">→</span>
+                                </motion.button>
+                              ))}
+                            </div>
+                          );
+                        }
+                        const draft = wizardDateRangeDraft;
+                        const draftLabel =
+                          draft?.from && draft?.to
+                            ? formatWizardDateRangeLabel(draft.from, draft.to)
+                            : null;
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setWizardDateRangeDraft(undefined);
+                                setWizardDateOpen(true);
+                              }}
+                              className="flex items-center gap-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-left text-[14px] font-medium text-white/80 transition-all hover:bg-white/10 hover:border-white/20"
+                            >
+                              <CalendarDays className="w-4 h-4 text-white/40 shrink-0" />
+                              <span className={draftLabel ? "text-white/90" : "text-white/30"}>
+                                {draftLabel ?? "Pick start and end dates…"}
+                              </span>
+                            </button>
+                            <Drawer
+                              open={wizardDateOpen}
+                              onOpenChange={(open) => {
+                                setWizardDateOpen(open);
+                                if (!open) setWizardDateRangeDraft(undefined);
+                              }}
+                            >
+                              <DrawerContent className="min-h-0">
+                                <DrawerHeader className="shrink-0">
+                                  <div className="flex items-center justify-between">
+                                    <DrawerClose asChild>
+                                      <Button type="button" variant="ghost">
+                                        Cancel
+                                      </Button>
+                                    </DrawerClose>
+                                    <DrawerTitle className="mb-0">Trip dates</DrawerTitle>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      disabled={!wizardDateRangeDraft?.from || !wizardDateRangeDraft?.to}
+                                      onClick={() => void handleWizardDateDrawerDone()}
+                                    >
+                                      Done
+                                    </Button>
+                                  </div>
+                                </DrawerHeader>
+                                <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                                  <Calendar
+                                    mode="range"
+                                    numberOfMonths={2}
+                                    selected={wizardDateRangeDraft}
+                                    onSelect={(range) => setWizardDateRangeDraft(range)}
+                                    disabled={(date) => date < new Date()}
+                                    className="w-full"
+                                  />
+                                </div>
+                              </DrawerContent>
+                            </Drawer>
+                          </>
+                        );
+                      })()}
                     </div>
                   </motion.div>
                 ) : null}
               </AnimatePresence>
+
+              {/* === AI question fields — paginated, one per page === */}
+              <AnimatePresence mode="wait">
+                {islandActive && activeIslandFields[islandPage] ? (
+                  <motion.div
+                    key={`island-${islandPage}`}
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-3 pb-3 pt-2">
+                      {/* Header: question + nav */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <motion.p
+                          key={`iq-${islandPage}`}
+                          initial={{ opacity: 0, x: 16 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="text-[15px] font-semibold text-white/90 leading-snug"
+                        >
+                          {formatChoiceLabelMarkdown(activeIslandFields[islandPage].question)}
+                        </motion.p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            disabled={islandPage === 0}
+                            onClick={() => setIslandPage((p) => Math.max(0, p - 1))}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <span className="text-[11px] text-white/40 tabular-nums min-w-[3rem] text-center">
+                            {islandPage + 1} of {activeIslandFields.length}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={islandPage >= activeIslandFields.length - 1}
+                            onClick={() => setIslandPage((p) => Math.min(activeIslandFields.length - 1, p + 1))}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (islandViewOnly) {
+                                setIslandPreview(null);
+                              } else {
+                                setIslandDismissed(true);
+                              }
+                              setInput("");
+                            }}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/5 transition-colors ml-0.5"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Content based on field kind */}
+                      {activeIslandFields[islandPage].kind === "date" ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (islandViewOnly) return;
+                              setIslandDateRangeDraft(undefined);
+                              setIslandDateOpen(true);
+                            }}
+                            disabled={islandViewOnly}
+                            className="flex items-center gap-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-left text-[14px] font-medium text-white/80 transition-all hover:bg-white/10 hover:border-white/20 disabled:opacity-60"
+                          >
+                            <CalendarDays className="w-4 h-4 text-white/40 shrink-0" />
+                            <span className={activeIslandFields[islandPage].value ? "text-white/90" : "text-white/30"}>
+                              {activeIslandFields[islandPage].value || "Pick dates..."}
+                            </span>
+                          </button>
+                          <Drawer open={islandDateOpen && !islandViewOnly} onOpenChange={setIslandDateOpen}>
+                            <DrawerContent className="min-h-0">
+                              <DrawerHeader className="shrink-0">
+                                <div className="flex items-center justify-between">
+                                  <DrawerClose asChild>
+                                    <Button variant="ghost">Cancel</Button>
+                                  </DrawerClose>
+                                  <DrawerTitle className="mb-0">Select Dates</DrawerTitle>
+                                  <Button
+                                    variant="ghost"
+                                    disabled={!islandDateRangeDraft?.from || !islandDateRangeDraft?.to}
+                                    onClick={() => {
+                                      if (!islandDateRangeDraft?.from || !islandDateRangeDraft?.to) return;
+                                      updateIslandField(
+                                        islandPage,
+                                        `${islandDateRangeDraft.from.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} - ${islandDateRangeDraft.to.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`,
+                                      );
+                                      setIslandDateOpen(false);
+                                      if (islandPage < activeIslandFields.length - 1) {
+                                        setTimeout(() => setIslandPage((p) => p + 1), 250);
+                                      }
+                                    }}
+                                  >
+                                    Done
+                                  </Button>
+                                </div>
+                              </DrawerHeader>
+                              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                                <Calendar
+                                  mode="range"
+                                  numberOfMonths={2}
+                                  selected={islandDateRangeDraft}
+                                  onSelect={(range) => setIslandDateRangeDraft(range)}
+                                  disabled={(date) => date < new Date()}
+                                  className="w-full"
+                                />
+                              </div>
+                            </DrawerContent>
+                          </Drawer>
+                        </>
+                      ) : activeIslandFields[islandPage].kind === "image" && activeIslandFields[islandPage].imageOptions ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {activeIslandFields[islandPage].imageOptions!.map((img, imgIdx) => (
+                            <motion.button
+                              key={imgIdx}
+                              type="button"
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.05 * imgIdx + 0.08, type: "spring", stiffness: 400, damping: 25 }}
+                              onClick={() => {
+                                if (islandViewOnly) return;
+                                void handleSelectCoverFromIsland(img.oneBasedIndex);
+                              }}
+                              disabled={islandViewOnly || loading}
+                              className="relative aspect-[4/3] rounded-xl overflow-hidden transition-all active:scale-95 hover:ring-1 hover:ring-white/20"
+                            >
+                              <CoverImageWithBlur
+                                src={img.thumbnailUrl}
+                                alt={img.label}
+                                blurHash={img.blurHash}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                              <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center bg-black/50 text-white/70">
+                                {imgIdx + 1}
+                              </span>
+                              <span className="absolute bottom-1.5 left-1.5 right-1.5 text-[10px] font-medium text-white/80 truncate">
+                                {img.label}
+                              </span>
+                            </motion.button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {activeIslandFields[islandPage].options.map((opt, oIdx) => (
+                            <motion.button
+                              key={opt}
+                              type="button"
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.03 * oIdx + 0.08, type: "spring", stiffness: 500, damping: 30 }}
+                              onClick={() => {
+                                if (islandViewOnly) return;
+                                updateIslandField(islandPage, opt);
+                                if (islandPage < activeIslandFields.length - 1) {
+                                  setTimeout(() => setIslandPage((p) => p + 1), 200);
+                                }
+                              }}
+                              disabled={islandViewOnly}
+                              className={`flex items-center justify-between w-full rounded-xl px-2 py-3 text-left text-[14px] font-medium transition-all active:scale-[0.98] ${
+                                activeIslandFields[islandPage].value === opt
+                                  ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+                                  : "text-white/80 hover:bg-white/5"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-lg text-[12px] font-semibold flex items-center justify-center shrink-0 ${
+                                  activeIslandFields[islandPage].value === opt
+                                    ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)]"
+                                    : "bg-white/10 text-white/50"
+                                }`}>
+                                  {oIdx + 1}
+                                </span>
+                                <span>{formatChoiceLabelMarkdown(opt)}</span>
+                              </div>
+                              <span className="text-white/20">→</span>
+                            </motion.button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+
+              {/* Selected tool pill */}
               <AnimatePresence mode="wait">
                 {selectedTool && (
                   <motion.div
@@ -811,8 +1414,11 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                   </motion.div>
                 )}
               </AnimatePresence>
-              <div className="flex gap-2 items-center min-w-0">
-                {!inputAreaMounted ? (
+
+              {/* Main input row — hidden on wizard date step (dates only via drawer) */}
+              {showMainComposerRow ? (
+              <div className={`flex gap-2 items-center min-w-0 ${islandExpanded ? "border-t border-white/5 pt-1 mt-1" : ""}`}>
+                {islandExpanded ? null : !inputAreaMounted ? (
                   <Button
                     type="button"
                     size="icon"
@@ -880,16 +1486,38 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                <Input
-                  placeholder={wizardActive ? "Choose an option above..." : t("ai.placeholder")}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && !e.shiftKey && !loading && !wizardActive && handleSend()
-                  }
-                  disabled={loading || wizardActive}
-                  className="flex-1 min-w-0 h-12 border-0 bg-transparent px-4 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
-                />
+                {islandExpanded && hideIslandFreeformRow ? (
+                  <div className="flex-1 min-w-0 h-12" aria-hidden />
+                ) : (
+                  <Input
+                    placeholder={islandViewOnly ? "Viewing previous answers" : islandExpanded ? "Something else..." : t("ai.placeholder")}
+                    value={input}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                      if (islandActive && !islandViewOnly && activeIslandFields[islandPage]) {
+                        updateIslandField(islandPage, e.target.value);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" || e.shiftKey || loading) return;
+                      e.preventDefault();
+                      if (wizardActive && input.trim()) {
+                        handleWizardCustom();
+                      } else if (islandActive && !islandViewOnly && input.trim()) {
+                        if (islandPage < activeIslandFields.length - 1) {
+                          setIslandPage((p) => p + 1);
+                          setInput("");
+                        } else {
+                          void handleSend();
+                        }
+                      } else if (!islandExpanded) {
+                        void handleSend();
+                      }
+                    }}
+                    disabled={loading || islandViewOnly}
+                    className="flex-1 min-w-0 h-12 border-0 bg-transparent px-4 text-[15px] focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60"
+                  />
+                )}
                 {loading ? (
                   <Button
                     type="button"
@@ -902,15 +1530,22 @@ export default function AiTestClient({ sessionId: initialSessionId, aiUsage: ini
                   </Button>
                 ) : (
                   <Button
-                    onClick={handleSend}
-                    disabled={!input.trim() && !selectedTool}
+                    onClick={() => {
+                      if (wizardActive && input.trim()) {
+                        handleWizardCustom();
+                      } else {
+                        void handleSend();
+                      }
+                    }}
+                    disabled={!input.trim() && !selectedTool && !wizardActive && !(islandActive && !islandViewOnly && islandFields.some((f) => f.value.trim()))}
                     size="icon"
-                    className="w-12 h-12 shrink-0 rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 hover:scale-105 transition-all shadow-[0_0_15px_rgba(255, 118, 112,0.4)] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center"
+                    className="w-12 h-12 shrink-0 rounded-full bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 hover:scale-105 transition-all shadow-[0_0_15px_rgba(255,118,112,0.4)] disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center"
                   >
                     <Send className="w-5 h-5 -ml-0.5 mt-0.5" />
                   </Button>
                 )}
               </div>
+              ) : null}
             </motion.div>
           </div>
         </div>

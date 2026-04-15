@@ -15,6 +15,13 @@ export interface AiImageSuggestion {
   photographer_url: string;
 }
 
+export interface AiCoverPick {
+  image_url: string;
+  blur_hash: string | null;
+  photographer_name: string;
+  photographer_url: string;
+}
+
 export interface AiPlaceSuggestion {
   name: string;
   address?: string | null;
@@ -74,6 +81,8 @@ export interface AiSessionWithMessagesResponse {
   messages: Array<{
     role: "user" | "assistant";
     content: string;
+    linked_trip_id?: string;
+    cover_pick?: AiCoverPick;
     quick_replies?: Array<{ label: string; action: string }>;
     image_suggestions?: AiImageSuggestion[];
     place_suggestions?: AiPlaceSuggestion[];
@@ -201,6 +210,7 @@ export async function createAiSession(
 
 export interface PostMessageResponse {
   message: string;
+  linked_trip_id?: string;
   quick_replies?: Array<{ label: string; action: string }>;
   image_suggestions?: AiImageSuggestion[];
   place_suggestions?: AiPlaceSuggestion[];
@@ -232,6 +242,54 @@ export async function postAiMessage(
       Authorization: `Bearer ${authToken}`,
     },
     body: JSON.stringify({ message }),
+    signal: opts.signal,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err?.message ?? `Request failed: ${res.status}`;
+    const errWithStatus = new Error(`${msg} (${res.status})`);
+    (errWithStatus as Error & { status?: number }).status = res.status;
+    throw errWithStatus;
+  }
+
+  return res.json();
+}
+
+export interface SelectCoverImageBody {
+  /** 1-based index matching the numbered card in the picker */
+  index: number;
+  answers_summary?: string;
+}
+
+export interface SelectCoverImageResponse {
+  messages: Array<{
+    role: "user" | "assistant";
+    content: string;
+    cover_pick?: AiCoverPick;
+    linked_trip_id?: string;
+  }>;
+}
+
+export async function selectSessionCoverImage(
+  sessionId: string,
+  body: SelectCoverImageBody,
+  options?: PostAiMessageOptions | string | null
+): Promise<SelectCoverImageResponse> {
+  const opts: PostAiMessageOptions =
+    options != null && typeof options === "object" ? options : { token: options ?? undefined };
+  const authToken = opts.token ?? (await getAuthToken());
+  if (!authToken) {
+    throw new Error("Authentication required");
+  }
+
+  const res = await fetch(`${API_BASE}/ai/sessions/${sessionId}/select-cover-image`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify(body),
     signal: opts.signal,
   });
 

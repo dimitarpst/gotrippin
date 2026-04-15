@@ -8,6 +8,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { OpenRouterClient } from './openrouter.client';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { PostMessageDto } from './dto/post-message.dto';
+import type { SelectCoverImageBody } from './dto/select-cover-image.dto';
 import { ToolExecutor } from './tools/tool-executor';
 import { AI_TOOLS } from './tools/tool-definitions';
 import type { OpenRouterMessage } from './openrouter.client';
@@ -32,6 +33,8 @@ export interface CreateSessionResult {
 
 export interface PostMessageResult {
   message: string;
+  /** Trip created or linked in this turn (from session slots); client can link to /trips/:id */
+  linked_trip_id?: string;
   quick_replies?: Array<{ label: string; action: string }>;
   image_suggestions?: Array<{
     id: string;
@@ -108,6 +111,157 @@ export class AiService {
       throw new NotFoundException('Session not found');
     }
     await this.supabaseService.deleteAiSession(sessionId, userId);
+  }
+
+  /**
+   * Applies a cover from the pending Unsplash gallery without a fake "Use image N" chat message.
+   * Inserts a user row (with cover_pick for the UI) and a short assistant confirmation.
+   */
+  async selectCoverFromGallery(
+    userId: string,
+    sessionId: string,
+    dto: SelectCoverImageBody,
+  ): Promise<{
+    messages: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      cover_pick?: {
+        image_url: string;
+        blur_hash: string | null;
+        photographer_name: string;
+        photographer_url: string;
+      };
+      linked_trip_id?: string;
+    }>;
+  }> {
+    const { data: session, error } = await this.supabaseService.getAiSession(
+      sessionId,
+      userId,
+    );
+    if (error || !session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    const slots: Record<string, unknown> = {
+      ...((session.slots as Record<string, unknown> | null | undefined) ?? {}),
+    };
+    const tripIdRaw = slots.current_trip_id;
+    if (typeof tripIdRaw !== 'string' || !tripIdRaw.trim()) {
+      throw new BadRequestException(
+        'No trip is linked to this chat yet. Create or open a trip first, then pick a cover.',
+      );
+    }
+    const tripId = tripIdRaw.trim();
+
+    const pendingRaw = slots.pending_cover_images;
+    if (!Array.isArray(pendingRaw) || pendingRaw.length === 0) {
+      throw new BadRequestException(
+        'There are no cover images to choose from. Ask the assistant for cover options first.',
+      );
+    }
+
+    const idx = dto.index - 1;
+    if (idx < 0 || idx >= pendingRaw.length) {
+      throw new BadRequestException(
+        `Invalid image index. Choose between 1 and ${pendingRaw.length}.`,
+      );
+    }
+
+    const rawPhoto = pendingRaw[idx];
+    if (!rawPhoto || typeof rawPhoto !== 'object' || Array.isArray(rawPhoto)) {
+      throw new BadRequestException('Invalid pending image entry.');
+    }
+    const photo = rawPhoto as Record<string, unknown>;
+    const unsplash_photo_id =
+      typeof photo.unsplash_photo_id === 'string' ? photo.unsplash_photo_id : '';
+    const download_location =
+      typeof photo.download_location === 'string' ? photo.download_location : '';
+    const image_url = typeof photo.image_url === 'string' ? photo.image_url : '';
+    const photographer_name =
+      typeof photo.photographer_name === 'string' ? photo.photographer_name : '';
+    const photographer_url =
+      typeof photo.photographer_url === 'string' ? photo.photographer_url : '';
+    if (
+      !unsplash_photo_id ||
+      !download_location ||
+      !image_url ||
+      !photographer_name ||
+      !photographer_url
+    ) {
+      throw new BadRequestException('Pending image is missing required fields.');
+    }
+    const blur_hash =
+      photo.blur_hash == null
+        ? null
+        : typeof photo.blur_hash === 'string'
+          ? photo.blur_hash
+          : null;
+    const dominant_color =
+      photo.dominant_color == null
+        ? null
+        : typeof photo.dominant_color === 'string'
+          ? photo.dominant_color
+          : null;
+
+    await this.toolExecutor.execute(
+      'selectCoverImage',
+      {
+        trip_id: tripId,
+        unsplash_photo_id,
+        download_location,
+        image_url,
+        photographer_name,
+        photographer_url,
+        blur_hash,
+        dominant_color,
+      },
+      userId,
+    );
+
+    const nextSlots = { ...slots };
+    delete nextSlots.pending_cover_images;
+    await this.supabaseService.updateAiSession(sessionId, userId, {
+      slots: nextSlots,
+    });
+
+    const userText = dto.answers_summary?.trim()
+      ? `${dto.answers_summary.trim()}\n\nSelected trip cover`
+      : 'Selected trip cover';
+
+    const coverPick = {
+      image_url,
+      blur_hash,
+      photographer_name,
+      photographer_url,
+    };
+
+    await this.supabaseService.insertAiMessage(sessionId, 'user', {
+      text: userText,
+      cover_pick: coverPick,
+    });
+
+    const assistantText =
+      'Your trip cover is set — this photo is now your trip cover. Open the trip anytime to adjust details.';
+
+    await this.supabaseService.insertAiMessage(sessionId, 'assistant', {
+      text: assistantText,
+      linked_trip_id: tripId,
+    });
+
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: userText,
+          cover_pick: coverPick,
+        },
+        {
+          role: 'assistant',
+          content: assistantText,
+          linked_trip_id: tripId,
+        },
+      ],
+    };
   }
 
   async getSessionWithMessages(userId: string, sessionId: string) {
@@ -211,12 +365,58 @@ export class AiService {
                 .filter((item) => item != null)
             : undefined;
 
+        const linkedTripRaw = c?.linked_trip_id;
+        const linked_trip_id =
+          m.role === 'assistant' &&
+          typeof linkedTripRaw === 'string' &&
+          linkedTripRaw.trim().length > 0
+            ? linkedTripRaw.trim()
+            : undefined;
+
+        const coverPickRaw = c?.cover_pick;
+        let cover_pick:
+          | {
+              image_url: string;
+              blur_hash: string | null;
+              photographer_name: string;
+              photographer_url: string;
+            }
+          | undefined;
+        if (
+          m.role === 'user' &&
+          coverPickRaw &&
+          typeof coverPickRaw === 'object' &&
+          !Array.isArray(coverPickRaw)
+        ) {
+          const cp = coverPickRaw as Record<string, unknown>;
+          const imageUrl =
+            typeof cp.image_url === 'string' ? cp.image_url.trim() : '';
+          if (imageUrl) {
+            const bh = cp.blur_hash;
+            cover_pick = {
+              image_url: imageUrl,
+              blur_hash:
+                bh == null ? null : typeof bh === 'string' ? bh : null,
+              photographer_name:
+                typeof cp.photographer_name === 'string'
+                  ? cp.photographer_name
+                  : '',
+              photographer_url:
+                typeof cp.photographer_url === 'string'
+                  ? cp.photographer_url
+                  : '',
+            };
+          }
+        }
+
         return {
           role: m.role as 'user' | 'assistant',
           content: text,
           ...(quick_replies ? { quick_replies } : {}),
           ...(image_suggestions ? { image_suggestions } : {}),
           ...(place_suggestions ? { place_suggestions } : {}),
+          ...(linked_trip_id ? { linked_trip_id } : {}),
+          ...(cover_pick ? { cover_pick } : {}),
         };
       });
     return {
@@ -261,34 +461,14 @@ export class AiService {
       model_name: 'z-ai/glm-5',
     })) as AiSessionRow;
 
-    let welcome_message: string | undefined;
+    // Do not call the model here: it blocked "New chat" on OpenRouter latency for every session.
+    // The first real user message still runs the full assistant + JSON pipeline.
+    const welcome_message =
+      scope === 'trip'
+        ? "Hi! I'm here to help with this trip — route, dates, stops, or activities. What would you like to work on?"
+        : "Hi! I'm your trip planning assistant. Tell me where you're headed (or what's on your mind) and we'll plan from there.";
 
-    if (this.openRouter.isConfigured()) {
-      const systemPrompt =
-        scope === 'trip'
-          ? 'You are a helpful trip planning assistant. The user is editing a specific trip. Reply briefly in one or two sentences. Welcome them and offer to help plan the route, dates, or activities.'
-          : 'You are a helpful trip planning assistant. Reply briefly in one or two sentences. Welcome the user and offer to help create or plan a trip.';
-
-      try {
-        const response = await this.openRouter.chat({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            {
-              role: 'user',
-              content: dto.initial_message ?? 'Hi, I want to plan a trip.',
-            },
-          ],
-          max_tokens: 150,
-        });
-        welcome_message = response.content?.trim() || undefined;
-      } catch (err) {
-        console.error('[AiService] OpenRouter welcome message failed:', err);
-        welcome_message =
-          "Hi! I'm your trip planning assistant. How can I help you today?";
-      }
-    }
-
-    if (welcome_message?.trim()) {
+    if (welcome_message.trim()) {
       await this.supabaseService.insertAiMessage(session.id, 'assistant', {
         text: welcome_message.trim(),
       });
@@ -362,7 +542,7 @@ export class AiService {
 
     const isFirstUserMessage = !session.summary?.trim();
     if (isFirstUserMessage) {
-      systemPrompt += `\n\nThis is the first message in this chat. You must end your reply with a newline and then exactly one line in this format: TITLE: followed by a 3–4 word phrase that summarizes the conversation topic (e.g. TITLE: Weekend in Paris). The user will not see this line; it is used only as the chat title. Do not mention the TITLE line in your reply.`;
+      systemPrompt += `\n\nThis is the first message in this chat. In your JSON response, include "chat_title" with a 3–4 word phrase that names the thread (e.g. "Weekend in Paris"). Do not use a separate TITLE: line.`;
       messages[0] = { role: 'system', content: systemPrompt };
     }
 
@@ -465,7 +645,7 @@ export class AiService {
           messages: currentMessages,
           tools: AI_TOOLS,
           tool_choice: 'auto',
-          max_tokens: 1024,
+          max_tokens: 2048,
         });
 
         lastResponseContent = response.content?.trim() ?? '';
@@ -554,6 +734,12 @@ export class AiService {
               blur_hash: photo.blur_hash != null ? String(photo.blur_hash) : null,
               dominant_color: photo.color != null ? String(photo.color) : null,
             }));
+            // Must persist in the same turn: the generic flush below only runs at the
+            // *start* of the next tool iteration, so a lone searchCoverImage never
+            // reached the DB and select-cover-image saw empty pending_cover_images.
+            (slots as Record<string, unknown>).pending_cover_images =
+              pendingCoverImagesForSlots;
+            slotsChanged = true;
           }
 
           if (name === 'selectCoverImage' && result && typeof result === 'object') {
@@ -588,18 +774,84 @@ export class AiService {
         );
       }
 
-      let sessionSummary: string | null = null;
-      if (isFirstUserMessage) {
+      const MAX_JSON_CORRECTIONS = 2;
+      if (finalContent.trim().length > 0) {
+        for (let c = 0; c < MAX_JSON_CORRECTIONS; c += 1) {
+          const candidate = finalContent.trim();
+          if (this.parseAssistantJsonEnvelope(candidate) != null) {
+            break;
+          }
+          this.logger.warn(
+            `Assistant reply is not a valid JSON envelope (session ${sessionId}, correction ${c + 1}/${MAX_JSON_CORRECTIONS}); re-prompting model.`,
+          );
+          currentMessages.push({
+            role: 'assistant',
+            content: candidate,
+          });
+          currentMessages.push({
+            role: 'user',
+            content: this.buildJsonFormatCorrectionPrompt(candidate),
+          });
+          const fixResponse = await this.openRouter.chat({
+            messages: currentMessages,
+            max_tokens: 2048,
+            temperature: 0.35,
+          });
+          totalTokensUsed += fixResponse.usage?.total_tokens ?? 0;
+          finalContent = fixResponse.content?.trim() ?? '';
+          if (!finalContent.trim()) {
+            this.logger.warn(
+              `Empty reformatted AI response for session ${sessionId} after JSON correction.`,
+            );
+            break;
+          }
+        }
+        const stillInvalid =
+          finalContent.trim().length > 0 &&
+          this.parseAssistantJsonEnvelope(finalContent.trim()) == null;
+        if (stillInvalid) {
+          this.logger.warn(
+            `Assistant reply still not a valid JSON envelope after ${MAX_JSON_CORRECTIONS} correction(s); continuing with legacy parsers (session ${sessionId}).`,
+          );
+        }
+      }
+
+      const envelopeParsed = this.parseAssistantJsonEnvelope(finalContent);
+      if (envelopeParsed) {
+        finalContent = envelopeParsed.message;
+        if (envelopeParsed.quick_replies?.length) {
+          quickReplies = envelopeParsed.quick_replies;
+        }
+      } else {
         const quickParsed = this.parseQuickRepliesFromResponse(finalContent);
         if (quickParsed) {
           finalContent = quickParsed.content;
           quickReplies = quickParsed.quick_replies;
         }
+      }
+      if (!quickReplies) {
+        const quickParsed2 = this.parseQuickRepliesFromResponse(finalContent);
+        if (quickParsed2) {
+          finalContent = quickParsed2.content;
+          quickReplies = quickParsed2.quick_replies;
+        }
+      }
 
-        const parsed = this.parseTitleFromResponse(finalContent);
-        if (parsed) {
-          sessionSummary = parsed.title;
-          finalContent = parsed.content;
+      let sessionSummary: string | null = null;
+      if (isFirstUserMessage) {
+        if (envelopeParsed?.chat_title) {
+          sessionSummary = envelopeParsed.chat_title;
+        } else {
+          const parsed = this.parseTitleFromResponse(finalContent);
+          if (parsed) {
+            sessionSummary = parsed.title;
+            finalContent = parsed.content;
+          }
+        }
+        const titleStrip = this.parseTitleFromResponse(finalContent);
+        if (titleStrip) {
+          finalContent = titleStrip.content;
+          if (!sessionSummary) sessionSummary = titleStrip.title;
         }
         if (!sessionSummary) {
           const words = userDisplayText.trim().split(/\s+/).slice(0, 4);
@@ -612,6 +864,12 @@ export class AiService {
         finalContent = placeParsed.content;
         placeSuggestions = placeParsed.place_suggestions;
       }
+
+      const linkedTripIdRaw = (slots as Record<string, unknown>).current_trip_id;
+      const linkedTripId =
+        typeof linkedTripIdRaw === 'string' && linkedTripIdRaw.trim().length > 0
+          ? linkedTripIdRaw.trim()
+          : undefined;
 
       await this.supabaseService.insertAiMessage(sessionId, 'user', {
         text: userDisplayText,
@@ -631,6 +889,7 @@ export class AiService {
         ...(quickReplies ? { quick_replies: quickReplies } : {}),
         ...(imageSuggestions ? { image_suggestions: imageSuggestions } : {}),
         ...(placeSuggestions ? { place_suggestions: placeSuggestions } : {}),
+        ...(linkedTripId ? { linked_trip_id: linkedTripId } : {}),
       });
 
       let usage: { used: number; limit: number | null; percent: number | null } | undefined;
@@ -655,6 +914,7 @@ export class AiService {
 
       return {
         message: finalContent,
+        ...(linkedTripId ? { linked_trip_id: linkedTripId } : {}),
         quick_replies: quickReplies,
         image_suggestions: imageSuggestions,
         place_suggestions: placeSuggestions,
@@ -664,6 +924,97 @@ export class AiService {
       this.logger.error(`Error generating response for session ${sessionId}:`, err);
       throw err;
     }
+  }
+
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private buildJsonFormatCorrectionPrompt(invalidAssistantOutput: string): string {
+    const maxLen = 3800;
+    const clipped =
+      invalidAssistantOutput.length > maxLen
+        ? `${invalidAssistantOutput.slice(0, maxLen)}\n… (truncated)`
+        : invalidAssistantOutput;
+    return (
+      'Your last reply did not follow the required output format. Respond with ONLY one JSON object (valid JSON, no markdown fences, no text before or after the object). ' +
+      'Schema: {"message":"<string, markdown allowed inside>","quick_replies":[{"label":"<string>","action":"<string>"}],"chat_title":"<optional 3-4 words; first reply in a new chat only>"}. ' +
+      '"message" is required and must be non-empty. ' +
+      'quick_replies is optional; put tappable choices there, not only as numbered lists inside message. ' +
+      'Inside message you may end with a line PLACE_CARDS: [...] for place cards. ' +
+      'Keep the same meaning and itinerary as before, but output only valid JSON in that shape. ' +
+      'Previous invalid output:\n' +
+      clipped
+    );
+  }
+
+  /**
+   * Parses a JSON-only assistant envelope: { message, quick_replies?, chat_title? }.
+   * Fallback for older chats: returns null.
+   */
+  private parseAssistantJsonEnvelope(content: string): {
+    message: string;
+    quick_replies?: Array<{ label: string; action: string }>;
+    chat_title?: string;
+  } | null {
+    const tryParseRecord = (raw: string): Record<string, unknown> | null => {
+      try {
+        const v: unknown = JSON.parse(raw);
+        return this.isPlainRecord(v) ? v : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const trimmed = content.trim();
+    let rec = tryParseRecord(trimmed);
+    if (!rec) {
+      const fence = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+      if (fence) rec = tryParseRecord(fence[1].trim());
+    }
+    if (!rec) {
+      const start = trimmed.indexOf('{');
+      const end = trimmed.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        rec = tryParseRecord(trimmed.slice(start, end + 1));
+      }
+    }
+    if (!rec) return null;
+
+    const messageVal = rec.message;
+    if (typeof messageVal !== 'string') return null;
+
+    let quick_replies: Array<{ label: string; action: string }> | undefined;
+    const qrRaw = rec.quick_replies;
+    if (Array.isArray(qrRaw)) {
+      const parsed: Array<{ label: string; action: string }> = [];
+      for (const item of qrRaw) {
+        if (!this.isPlainRecord(item)) continue;
+        const label =
+          typeof item.label === 'string' ? item.label.trim() : '';
+        const action =
+          typeof item.action === 'string' ? item.action.trim() : '';
+        if (label.length > 0 && action.length > 0) {
+          parsed.push({ label, action });
+        }
+      }
+      if (parsed.length > 0) quick_replies = parsed;
+    }
+
+    let chat_title: string | undefined;
+    const titleRaw = rec.chat_title;
+    if (typeof titleRaw === 'string' && titleRaw.trim().length > 0) {
+      chat_title = titleRaw.trim().split(/\s+/).slice(0, 4).join(' ');
+    }
+
+    const message = messageVal.trim();
+    if (!message) return null;
+
+    return {
+      message,
+      ...(quick_replies ? { quick_replies } : {}),
+      ...(chat_title ? { chat_title } : {}),
+    };
   }
 
   /**
@@ -836,11 +1187,15 @@ export class AiService {
   ): string {
     let prompt = `You are a helpful trip planning assistant for gotrippin. You help users plan trips, suggest destinations, and give travel advice. Keep responses concise and friendly.`;
 
-    prompt += `\n\nWhen the user first expresses interest in going somewhere or planning a trip (and has not yet chosen a mode), reply briefly and warmly. At the end of your reply, on a new line, output exactly one line: QUICK_REPLIES: [{\"label\":\"Create a trip\",\"action\":\"create_trip\"},{\"label\":\"Just chat\",\"action\":\"just_chat\"}]. Do not mention this line in your visible reply.`;
-    prompt += `\n\nOnce the user has already chosen "Just chat", do NOT keep offering both "Create a trip" and "Just chat". Instead, offer only context-relevant options. When they are asking for inspiration, destinations to visit, or photos/pictures, include "Find images" in your QUICK_REPLIES so they can browse Unsplash: add {\"label\":\"Find images\",\"action\":\"find_images\"}. You can also mention in your reply that they can search for photos (e.g. "Want to see some photos? Use Find images to search Unsplash."). When in "just chat" and they want inspiration or locations, prefer offering QUICK_REPLIES: [{\"label\":\"Find images\",\"action\":\"find_images\"},{\"label\":\"Create a trip\",\"action\":\"create_trip\"}] or similar, rather than repeating "Just chat".`;
+    prompt += `\n\nWhen the user first expresses interest in going somewhere or planning a trip (and has not yet chosen a mode), reply briefly and warmly in JSON, and set quick_replies to include at least {\"label\":\"Create a trip\",\"action\":\"create_trip\"} and {\"label\":\"Just chat\",\"action\":\"just_chat\"}.`;
+    prompt += `\n\nOnce the user has already chosen "Just chat", do NOT keep offering both "Create a trip" and "Just chat" in quick_replies. Instead, offer only context-relevant options. When they are asking for inspiration, destinations to visit, or photos/pictures, include Find images in quick_replies: {\"label\":\"Find images\",\"action\":\"find_images\"}. When in "just chat" and they want inspiration or locations, prefer quick_replies such as Find images and Create a trip rather than repeating "Just chat".`;
     prompt += `\n\nWhen you receive a user message that is exactly "create_trip", treat it as: "User chose: Create a trip. Start the trip creation walkthrough using tools (createTripDraft, updateTrip, addLocation, getRoute, etc.), asking for missing details like title, dates, and route stops, and confirming with the user as you go."\nWhen you receive a user message that is exactly "just_chat", treat it as: "User chose: Just chat. Continue the conversation without creating or modifying any trips."\nWhen you receive "find_images" or "find_images: ...", treat it as: User chose Find images; acknowledge and help them search for photos (they can use the + menu; you can suggest a search query).`;
 
-    prompt += `\n\nWhen the user describes a specific new trip in natural language (for example: "I wanna go on a trip to Bali on the 14th of March"), you must:\n- Extract what you can (destination, approximate dates, preferences) from their message.\n- Ask follow-up questions only for missing key information, one at a time (for example: \"How many days do you want to stay?\" if you know the start date but not the duration or end date).\n- Once you know at least a destination and a start and end date (or a start date and duration that implies the end date), use the tools to:\n  - Create or update a real trip via createTripDraft and updateTrip.\n  - Then call searchCoverImage with an appropriate query (for example: \"Bali travel landscape\"), and describe a few of the returned image options in your reply so the user can pick one.\n- When the user clearly chooses an image (for example: \"use the second image\" or \"use the sunset beach photo\"), call selectCoverImage with the corresponding Unsplash photo metadata to set the trip cover. Confirm in your reply after the tool succeeds.`;
+    prompt += `\n\nOUTPUT FORMAT (required for every visible assistant reply after tools finish): respond with a single JSON object only — no text before or after the JSON, no markdown code fences around the whole reply. The object must include:\n- "message" (string, required): markdown for the user (headings, bold, lists, emojis allowed inside the string).\n- "quick_replies" (optional array): when you offer follow-up choices, use objects {"label":"<short UI label>","action":"<string>"}. Use actions: "create_trip", "find_images", "just_chat", or "just_chat:<concise intent>" so the app forwards the user intent (e.g. "just_chat:Adjust the route order or swap cities"). Include quick_replies whenever you list options the user can tap — do not rely only on numbered lists in message for tap targets.\n- "chat_title" (optional string, 3–4 words): include only on the first assistant message in a brand-new chat to name the thread; omit on later turns.\nInside "message", you may still end with a line PLACE_CARDS: [...] on its own line when you output place cards (valid JSON array on one line), same rules as before. Do not duplicate QUICK_REPLIES: or TITLE: lines inside message when you already use JSON keys.`;
+
+    prompt += `\n\nWhen asking follow-up questions inside "message", you may still use numbered lists for readability, but the tappable choices must appear in quick_replies.`;
+
+    prompt += `\n\nWhen the user describes a specific new trip in natural language (for example: "I wanna go on a trip to Bali on the 14th of March"), you must:\n- Extract what you can (destination, approximate dates, preferences) from their message.\n- Ask follow-up questions only for missing key information, one at a time (for example: \"How many days do you want to stay?\" if you know the start date but not the duration or end date).\n- Once you know at least a destination and a start and end date (or a start date and duration that implies the end date), use the tools to:\n  - Create or update a real trip via createTripDraft and updateTrip.\n  - Then call searchCoverImage with an appropriate query (for example: \"Bali travel landscape\"), and describe a few of the returned image options in your reply so the user can pick one.\n- Cover selection: the app shows images in a tappable gallery. When the user taps there, the client saves the cover and posts the choice to the chat — you must NOT ask them to type \"use image 6\" or similar, and do NOT add quick_replies that only repeat that. If they instead describe a choice only in text (e.g. \"the sunset one\", \"number 3\"), call selectCoverImage with the matching object from pending_cover_images.`;
     prompt += `\n\nWhen you suggest a day plan with concrete places, include a machine-readable line at the end of your response: PLACE_CARDS: [ ... ]. This line must be valid JSON on one line and include 2-8 places. Each place object should contain: name (required), address, latitude, longitude, rating, rating_count, place_type, place_id, photo_url, phone_number, website, weekday_hours (array), visit_time (e.g. \"9:00 AM\"), ai_note (short note). Keep your normal human-readable reply above this line. Do not mention the PLACE_CARDS line in visible text.`;
 
     if (scope === 'trip' && tripId) {
@@ -862,7 +1217,7 @@ export class AiService {
       Array.isArray(pendingCover) &&
       pendingCover.length > 0
     ) {
-      prompt += `\n\nThe user is currently choosing a cover image from the list below (from your last searchCoverImage). When they pick one (e.g. "the second one", "number 3", "the beach one"), call selectCoverImage with that photo's data from this exact list. Do NOT call searchCoverImage again until they have picked one or asked for different images.`;
+      prompt += `\n\nThe user may be choosing a cover from the gallery in the app (tap saves directly; no chat message needed). If they only send text describing which photo, call selectCoverImage with that photo's data from this exact list. Do NOT call searchCoverImage again until they have picked one or asked for different images.`;
       prompt += `\n\nPending cover images (use these exact objects for selectCoverImage; position 1 = first image): ${JSON.stringify(pendingCover)}`;
     }
 

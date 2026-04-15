@@ -45,7 +45,7 @@ export default function AiSessionsListClient({
 }: {
   aiUsage: { used: number; limit: number | null; percent: number | null };
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [sessions, setSessions] = useState<AiSessionListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -204,7 +204,11 @@ export default function AiSessionsListClient({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
-            {aiUsage.percent != null ? `${aiUsage.percent}% used` : "Tracking"}
+            {aiUsage.percent != null
+              ? t("ai_usage_value", { percent: aiUsage.percent })
+              : t("ai_usage_badge_no_cap", {
+                  used: new Intl.NumberFormat(i18n.language).format(aiUsage.used),
+                })}
           </div>
         </header>
 

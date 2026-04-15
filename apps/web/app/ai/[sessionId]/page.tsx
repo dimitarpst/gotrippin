@@ -40,5 +40,5 @@ export default async function AiChatPage({ params }: PageProps) {
         : null,
   };
 
-  return <AiTestClient sessionId={sessionId} aiUsage={aiUsage} />;
+  return <AiTestClient key={sessionId} sessionId={sessionId} aiUsage={aiUsage} />;
 }
