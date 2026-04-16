@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import type { DateRange } from "react-day-picker";
 import { Calendar, ChevronLeft, ChevronRight, ExternalLink, List } from "lucide-react";
-import type { TripExpense, TripLocation } from "@gotrippin/core";
+import type { Trip, TripExpense, TripLocation } from "@gotrippin/core";
+import { getEffectiveStopDateRange } from "@/lib/trip-stop-dates";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { ColorPicker } from "@/components/color-picker";
@@ -68,6 +69,10 @@ export type TripRouteStopDetailsDrawerProps = {
   onOpenRouteList?: () => void;
   /** When set, header shows prev/next between sibling route stops. */
   onNavigateAdjacent?: (direction: "prev" | "next") => void;
+  /** Trip window for inferred stop dates when `arrival_date` is unset. */
+  trip?: Pick<Trip, "start_date" | "end_date">;
+  /** Route order (same array as the map/route page). Required with `trip` for date suggestions. */
+  routeLocationsOrdered?: TripLocation[];
 };
 
 export function TripRouteStopDetailsDrawer({
@@ -87,6 +92,8 @@ export function TripRouteStopDetailsDrawer({
   onMarkerColorCommit,
   onOpenRouteList,
   onNavigateAdjacent,
+  trip,
+  routeLocationsOrdered,
 }: TripRouteStopDetailsDrawerProps) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -267,14 +274,25 @@ export function TripRouteStopDetailsDrawer({
     [onOpenChange],
   );
 
-  const selectedRange: DateRange | undefined = location.arrival_date
+  const ordered =
+    routeLocationsOrdered && routeLocationsOrdered.length > 0 ? routeLocationsOrdered : [location];
+
+  const savedRange: DateRange | undefined = location.arrival_date
     ? {
         from: new Date(location.arrival_date),
         to: location.departure_date ? new Date(location.departure_date) : undefined,
       }
     : undefined;
 
-  const dateLabel = formatDateRangeLabel(selectedRange, t("date_picker.title"));
+  const effectiveRange =
+    trip != null ? getEffectiveStopDateRange(location, stopIndex, ordered, trip) : savedRange;
+
+  const dateLabel = formatDateRangeLabel(
+    effectiveRange ?? savedRange,
+    t("date_picker.title"),
+  );
+
+  const datePickerInitialRange = savedRange ?? effectiveRange;
 
   const markerPickerValue =
     location.marker_color != null && isSolidRouteColor(location.marker_color)
@@ -478,7 +496,7 @@ export function TripRouteStopDetailsDrawer({
             onDatesCommit(location.id, range);
             setShowDatePicker(false);
           }}
-          selectedDateRange={selectedRange}
+          selectedDateRange={datePickerInitialRange}
           minDate={minDate}
           maxDate={maxDate}
         />

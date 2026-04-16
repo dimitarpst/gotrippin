@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Calendar, ChevronRight, ExternalLink, List, X } from "lucide-react";
-import type { TripExpense, TripLocation } from "@gotrippin/core";
+import type { Trip, TripExpense, TripLocation } from "@gotrippin/core";
+import { getEffectiveStopDateRange } from "@/lib/trip-stop-dates";
 import type { DateRange } from "react-day-picker";
 import { ColorPicker } from "@/components/color-picker";
 import { DatePicker } from "@/components/trips/date-picker";
@@ -36,6 +37,8 @@ export interface SelectedRouteStopPeekProps {
   /** Slim on-map chip (route editor when the itinerary sheet is closed). */
   compact?: boolean;
   onExpandDetails?: () => void;
+  trip?: Pick<Trip, "start_date" | "end_date">;
+  routeLocationsOrdered?: TripLocation[];
 }
 
 function formatDateRangeLabel(
@@ -72,6 +75,8 @@ export function SelectedRouteStopPeek({
   tripBudgetCurrency,
   compact = false,
   onExpandDetails,
+  trip,
+  routeLocationsOrdered,
 }: SelectedRouteStopPeekProps) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -141,7 +146,7 @@ export function SelectedRouteStopPeek({
       ? location.marker_color
       : getStablePaletteColorForLocationId(location.id);
 
-  const selectedRange: DateRange | undefined = location.arrival_date
+  const savedRange: DateRange | undefined = location.arrival_date
     ? {
         from: new Date(location.arrival_date),
         to: location.departure_date
@@ -150,10 +155,17 @@ export function SelectedRouteStopPeek({
       }
     : undefined;
 
+  const effectiveRange =
+    trip && routeLocationsOrdered && routeLocationsOrdered.length > 0
+      ? getEffectiveStopDateRange(location, stopIndex, routeLocationsOrdered, trip)
+      : savedRange;
+
   const dateLabel = formatDateRangeLabel(
-    selectedRange,
+    effectiveRange ?? savedRange,
     t("date_picker.title"),
   );
+
+  const datePickerInitialRange = savedRange ?? effectiveRange;
 
   const title =
     draftName.trim() || t("trips.untitled_trip");
@@ -429,7 +441,7 @@ export function SelectedRouteStopPeek({
             onDatesCommit(location.id, range);
             setShowDatePicker(false);
           }}
-          selectedDateRange={selectedRange}
+          selectedDateRange={datePickerInitialRange}
           minDate={minDate}
           maxDate={maxDate}
         />

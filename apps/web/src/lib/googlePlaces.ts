@@ -280,7 +280,7 @@ function mapPlaceDetailsJsonToEnrichment(raw: unknown, apiKey: string): GooglePl
       const name = ph["name"];
       if (typeof name !== "string" || !name.trim()) continue;
       photoUrls.push(buildPlacePhotoMediaUrl(name.trim(), apiKey, 900));
-      if (photoUrls.length >= 5) break;
+      if (photoUrls.length >= 10) break;
     }
   }
   if (photoUrls.length > 0) {

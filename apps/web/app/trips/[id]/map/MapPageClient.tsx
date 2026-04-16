@@ -148,6 +148,8 @@ export default function MapPageClient({
                 location={mapSelectedStopPeek.location}
                 stopIndex={mapSelectedStopPeek.stopIndex}
                 shareCode={shareCode}
+                trip={trip}
+                routeLocationsOrdered={routeLocations}
                 compact
                 onExpandDetails={() => setMapStopDetailsOpen(true)}
                 editable={false}
@@ -173,6 +175,8 @@ export default function MapPageClient({
           stopIndex={mapSelectedStopPeek.stopIndex}
           totalStops={routeLocations.length}
           shareCode={shareCode}
+          trip={trip}
+          routeLocationsOrdered={routeLocations}
           minDate={tripMinDate}
           maxDate={tripMaxDate}
           expenseTripId={trip.id}

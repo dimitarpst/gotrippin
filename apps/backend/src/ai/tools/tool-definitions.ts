@@ -42,18 +42,25 @@ export const AI_TOOLS: OpenRouterTool[] = [
     function: {
       name: 'addLocation',
       description:
-        'Add one stop to the saved trip route (call once per stop in order). The server resolves coordinates (Open-Meteo geocoding). Use trip_id from createTripDraft or context; prefer names like "Plovdiv, Bulgaria". After adding stops, call getRoute to confirm order. Keep adding stops until the route is useful (same bar as the app wizard: at least two stops before the route feels complete).',
+        'Add one stop to the saved trip route (call once per stop in order). The server resolves coordinates (Open-Meteo geocoding) when lat/lng are omitted. Use trip_id from createTripDraft or context. Prefer **specific venues** (museums, districts, landmarks) with real Google Place IDs—**do not** add a separate "City, Country" waypoint if you are already adding concrete places in that city; put the city in the venue\'s name or formatted_address instead. When you have a Google place_id from PLACE_CARDS or Maps, pass google_place_id, photo_url, and formatted_address so the app can show rich photos and hours. After adding stops, call getRoute to confirm order.',
       parameters: {
         type: 'object',
         properties: {
           trip_id: { type: 'string', description: 'Trip UUID' },
           location_name: {
             type: 'string',
-            description: 'Human-readable place (e.g. "Plovdiv, Bulgaria"). Avoid bare city-only names when ambiguous.',
+            description:
+              'Venue or area to visit (e.g. "Kapana Creative District, Plovdiv" or "Alexander Nevsky Cathedral, Sofia"). Avoid redundant city-only rows when specific venues are already on the route.',
           },
           order_index: { type: 'number', description: 'Position in route (1-based)' },
           arrival_date: { type: 'string', description: 'Arrival date ISO 8601' },
           departure_date: { type: 'string', description: 'Departure date ISO 8601' },
+          google_place_id: {
+            type: 'string',
+            description: 'Google Places place id for this venue (enables photos and details in the app)',
+          },
+          photo_url: { type: 'string', description: 'Primary photo URL when known (e.g. from Places)' },
+          formatted_address: { type: 'string', description: 'Full formatted address from Google when known' },
         },
         required: ['trip_id', 'location_name'],
         additionalProperties: false,

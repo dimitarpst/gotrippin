@@ -359,12 +359,13 @@ export default function TripOverview({
     (trip.cover_photo as { dominant_color?: string | null } | null | undefined)?.dominant_color ?? null
 
   const isGradient = trip.color ? trip.color.startsWith('linear-gradient') : false
-  // When a cover image is present: use the extracted dominant color (null while loading, so no flicker).
-  // When no cover image: use the stored trip color directly.
-  // Never mix them — that's what caused the visible color switch on every render.
+  const solidTripColor = trip.color && !isGradient ? trip.color : null
+  // With a cover: prefer dominant from the image (DB or client extraction). Until that exists,
+  // fall back to the trip's solid color so the overview never drops to plain page background.
+  // Color-only trips: solidTripColor only (no cover).
   const tripAccent = coverUrl
-    ? dominantColor  // null until extraction completes → gradient fades in smoothly
-    : (trip.color && !isGradient ? trip.color : null)
+    ? (dominantColor ?? solidTripColor)
+    : solidTripColor
   const backgroundColor = coverUrl ? 'transparent' : (tripAccent ?? 'transparent')
 
   const runScrollSmoothing = useCallback(() => {

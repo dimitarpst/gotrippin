@@ -33,6 +33,7 @@ import { useTranslation } from "react-i18next";
 import type { CreateTripLocation, Trip, TripLocation, UpdateTripLocation } from "@gotrippin/core";
 import { getTripDatePickerBounds } from "@/lib/trip-date-picker-bounds";
 import { tripDisplayTitle } from "@/lib/trip-display";
+import { getEffectiveStopDateRange } from "@/lib/trip-stop-dates";
 import {
   MapView,
   SelectedRouteStopPeek,
@@ -523,6 +524,9 @@ export default function RouteMapPageClient({
       if (range?.from) {
         payload.arrival_date = range.from.toISOString();
         payload.departure_date = (range.to ?? range.from).toISOString();
+      } else {
+        payload.arrival_date = null;
+        payload.departure_date = null;
       }
       const updated = await apiUpdateLocation(trip.id, id, payload);
       setLocations((prev) => prev.map((loc) => (loc.id === id ? { ...loc, ...updated } : loc)));
@@ -1045,6 +1049,8 @@ export default function RouteMapPageClient({
                 location={mapSelectedStopPeek.location}
                 stopIndex={mapSelectedStopPeek.stopIndex}
                 shareCode={shareCode}
+                trip={trip}
+                routeLocationsOrdered={locations}
                 compact
                 onExpandDetails={() => setStopDetailsOpen(true)}
                 editable
@@ -1074,6 +1080,8 @@ export default function RouteMapPageClient({
             stopIndex={mapSelectedStopPeek.stopIndex}
             totalStops={locations.length}
             shareCode={shareCode}
+            trip={trip}
+            routeLocationsOrdered={locations}
             minDate={tripMinDate}
             maxDate={tripMaxDate}
             expenseTripId={trip.id}
@@ -1211,6 +1219,7 @@ export default function RouteMapPageClient({
                           location={loc}
                           index={index}
                           allLocations={locations}
+                          trip={trip}
                           reorderMode
                           onNameCommit={handleNameCommit}
                           onDatesCommit={handleDatesCommit}
@@ -1238,6 +1247,7 @@ export default function RouteMapPageClient({
                     location={loc}
                     index={index}
                     allLocations={locations}
+                    trip={trip}
                     onNameCommit={handleNameCommit}
                     onDatesCommit={handleDatesCommit}
                     onMarkerColorCommit={handleMarkerColorCommit}
@@ -1605,6 +1615,7 @@ interface RouteLocationRowProps {
   location: TripLocation;
   index: number;
   allLocations: TripLocation[];
+  trip: Pick<Trip, "start_date" | "end_date">;
   /** When true, row is styled for drag-reorder (dashed card); row body does not focus the map on click. */
   reorderMode?: boolean;
   onNameCommit: (id: string, name: string) => void;
@@ -1619,6 +1630,7 @@ function RouteLocationRow({
   location,
   index,
   allLocations,
+  trip,
   reorderMode = false,
   onNameCommit,
   onDatesCommit,
@@ -1652,12 +1664,14 @@ function RouteLocationRow({
       ? location.marker_color
       : getStablePaletteColorForLocationId(location.id);
 
-  const selectedRange: DateRange | undefined = location.arrival_date
+  const savedRange: DateRange | undefined = location.arrival_date
     ? {
         from: new Date(location.arrival_date),
         to: location.departure_date ? new Date(location.departure_date) : undefined,
       }
     : undefined;
+
+  const effectiveRange = getEffectiveStopDateRange(location, index, allLocations, trip);
 
   const formatDateLabel = (range: DateRange | undefined): string => {
     if (!range?.from) return t("date_picker.title");
@@ -1668,7 +1682,9 @@ function RouteLocationRow({
     return `${fromStr}${toStr}`;
   };
 
-  const dateLabel = formatDateLabel(selectedRange);
+  const dateLabel = formatDateLabel(effectiveRange ?? savedRange);
+
+  const datePickerInitialRange = savedRange ?? effectiveRange;
 
   const photoThumb = location.photo_url?.trim() ?? "";
 
@@ -1810,7 +1826,7 @@ function RouteLocationRow({
         open={showDatePicker}
         onClose={() => setShowDatePicker(false)}
         onSelect={(range) => onDatesCommit(location.id, range)}
-        selectedDateRange={selectedRange}
+        selectedDateRange={datePickerInitialRange}
         minDate={minDate}
         maxDate={maxDate}
       />

@@ -25,6 +25,9 @@ const AddLocationSchema = z.object({
   order_index: z.number().int().positive().optional(),
   arrival_date: z.string().optional(),
   departure_date: z.string().optional(),
+  google_place_id: z.string().max(512).optional(),
+  photo_url: z.string().max(2048).optional(),
+  formatted_address: z.string().max(500).optional(),
 });
 
 const GetRouteSchema = z.object({
@@ -118,6 +121,9 @@ export class ToolExecutor {
               order_index: parsed.order_index,
               arrival_date: parsed.arrival_date,
               departure_date: parsed.departure_date,
+              google_place_id: parsed.google_place_id,
+              photo_url: parsed.photo_url,
+              formatted_address: parsed.formatted_address,
             },
           );
           return {

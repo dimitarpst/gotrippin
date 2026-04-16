@@ -65,6 +65,25 @@ export class TripLocationsService {
   async addLocation(tripId: string, userId: string, dto: CreateTripLocationDto) {
     await this.validateTripMembership(tripId, userId);
 
+    const { data: existingRows } = await this.supabaseService.getClient()
+      .from('trip_locations')
+      .select('google_place_id')
+      .eq('trip_id', tripId);
+    const hasPoiWithPlaceId = (existingRows ?? []).some(
+      (r: { google_place_id: string | null }) =>
+        typeof r.google_place_id === 'string' && r.google_place_id.trim().length >= 25,
+    );
+    const trimmedName = dto.location_name.trim();
+    const looksLikeCityRegionOnly =
+      /^[^,\n]+,\s*[^,\n]+$/.test(trimmedName) &&
+      trimmedName.length <= 120 &&
+      (dto.google_place_id == null || dto.google_place_id.trim() === '');
+    if (hasPoiWithPlaceId && looksLikeCityRegionOnly) {
+      throw new BadRequestException(
+        'When the route already includes stops with a Google Place ID, add specific venues instead of a separate "City, Region/Country" stop. Put the city in the venue title or pass google_place_id from Google Places.',
+      );
+    }
+
     // If no order_index provided, get the max order_index and add 1
     let orderIndex = dto.order_index;
     if (!orderIndex) {

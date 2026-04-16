@@ -9,6 +9,7 @@ import type { GooglePlaceEnrichment } from "@/lib/googlePlaces";
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
 import { GoAiWordmark } from "@/components/ai/go-ai-wordmark";
 import { cn } from "@/lib/utils";
+import { visitTimeLabelFromArrivalIso } from "@/lib/trip-stop-dates";
 
 /** Shown next to a star icon — avoid duplicate ★ in the text. */
 export function formatRatingTextBesideStar(rating: number, count?: number | null): string {
@@ -68,7 +69,7 @@ export function aiPlaceSuggestionToDetailsModel(p: AiPlaceSuggestion): AiPlaceDe
 export function tripLocationToDetailsModel(loc: TripLocation): AiPlaceDetailsModel {
   return {
     name: loc.location_name,
-    visitTime: null,
+    visitTime: visitTimeLabelFromArrivalIso(loc.arrival_date),
     rating: null,
     ratingCount: null,
     placeType: null,

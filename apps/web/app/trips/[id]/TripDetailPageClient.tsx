@@ -424,7 +424,7 @@ export default function TripDetailPageClient({
       onChangeDates: handleChangeDates,
       onChangeBackground: async (_type, coverPhoto) => {
         if (!trip?.id) return;
-        const result = await updateTripAction(trip.id, { cover_photo: coverPhoto, color: undefined });
+        const result = await updateTripAction(trip.id, { cover_photo: coverPhoto });
         if (result.success) {
           toast.success(t("trips.background_updated"));
           router.refresh();
@@ -436,7 +436,6 @@ export default function TripDetailPageClient({
         if (!trip?.id) return;
         const result = await updateTripAction(trip.id, {
           cover_upload_storage_key: storage_key,
-          color: undefined,
         });
         if (result.success) {
           toast.success(t("trips.background_updated"));
