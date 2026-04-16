@@ -31,10 +31,10 @@ export default function BudgetPageClient({
   const router = useRouter();
 
   return (
-    <main className="relative flex min-h-screen flex-col overflow-hidden bg-[var(--color-background)] text-[var(--color-foreground)]">
+    <main className="relative flex min-h-screen flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
       <AuroraBackground />
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+      <div className="relative z-10 flex flex-1 flex-col">
         <header className="z-20 shrink-0 border-b border-border/40 bg-background/20 backdrop-blur-xl dark:border-white/[0.08] dark:bg-black/25">
           <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-4 py-3 sm:gap-3 sm:px-6 lg:px-8">
             <button
