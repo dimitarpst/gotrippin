@@ -7,7 +7,6 @@ import { Logo } from "@/components/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileHeader from "./ProfileHeader";
 import ProfileHero from "./ProfileHero";
-import ProfileStats from "./ProfileStats";
 import ProfileError from "./ProfileError";
 import ChangeEmailCard from "./ChangeEmailCard";
 import ChangePasswordCard from "./ChangePasswordCard";
@@ -240,8 +239,6 @@ export default function UserProfile({
           googleAvatarUrl={googleAvatarUrl}
           editSessionId={editSessionId}
         />
-
-        <ProfileStats />
 
         {/* AI Usage Card */}
         <motion.div
