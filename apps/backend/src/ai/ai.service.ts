@@ -995,11 +995,22 @@ export class AiService {
         }
       }
 
+      const xmlStrippedOuter = this.stripXmlStyleQuickReplyLeak(finalContent);
+      finalContent = xmlStrippedOuter.content;
+      if (xmlStrippedOuter.quick_replies?.length) {
+        quickReplies = xmlStrippedOuter.quick_replies;
+      }
+
       const envelopeParsed = this.parseAssistantJsonEnvelope(finalContent);
       if (envelopeParsed) {
         finalContent = envelopeParsed.message;
         if (envelopeParsed.quick_replies?.length) {
           quickReplies = envelopeParsed.quick_replies;
+        }
+        const xmlStrippedInner = this.stripXmlStyleQuickReplyLeak(finalContent);
+        finalContent = xmlStrippedInner.content;
+        if (xmlStrippedInner.quick_replies?.length && !quickReplies?.length) {
+          quickReplies = xmlStrippedInner.quick_replies;
         }
       } else {
         const quickParsed = this.parseQuickRepliesFromResponse(finalContent);
@@ -1291,6 +1302,52 @@ export class AiService {
     }
   }
 
+  /**
+   * Some models leak XML-style tool fragments instead of valid JSON, e.g.
+   * quick_replies</arg_key><arg_value>[{"label":"…","action":"…"}]</arg_value>
+   * Strip from visible text and recover quick_replies when the array parses.
+   */
+  private stripXmlStyleQuickReplyLeak(content: string): {
+    content: string;
+    quick_replies?: Array<{ label: string; action: string }>;
+  } {
+    let quick_replies: Array<{ label: string; action: string }> | undefined;
+    const extractRe =
+      /(?:<arg_key>\s*)?quick_replies\s*<\/arg_key>\s*<arg_value>\s*(\[[\s\S]*?\])\s*<\/arg_value>/i;
+    const match = extractRe.exec(content);
+    if (match?.[1]) {
+      try {
+        const parsed = JSON.parse(match[1]) as unknown;
+        if (Array.isArray(parsed)) {
+          const arr: Array<{ label: string; action: string }> = [];
+          for (const item of parsed) {
+            if (!this.isPlainRecord(item)) continue;
+            const label =
+              typeof item.label === 'string' ? item.label.trim() : '';
+            const action =
+              typeof item.action === 'string' ? item.action.trim() : '';
+            if (label.length > 0 && action.length > 0) {
+              arr.push({ label, action });
+            }
+          }
+          if (arr.length > 0) quick_replies = arr;
+        }
+      } catch {
+        // ignore malformed JSON
+      }
+    }
+    const stripKnown =
+      /(?:<arg_key>\s*)?quick_replies\s*<\/arg_key>\s*<arg_value>\s*\[[\s\S]*?\]\s*<\/arg_value>/gi;
+    let text = content.replace(stripKnown, '').trim();
+    text = text
+      .replace(
+        /<arg_key>[\s\S]*?<\/arg_key>\s*<arg_value>[\s\S]*?<\/arg_value>/gi,
+        '',
+      )
+      .trim();
+    return { content: text, quick_replies };
+  }
+
   private parsePlaceCardsFromResponse(
     content: string,
   ): {
@@ -1548,6 +1605,11 @@ export class AiService {
   /**
    * Refreshes trip_snapshot for trip-scoped chats; merges attached_trip_snapshot when the client sends attached_trip_id (global only).
    * Persists merged slots on each message so the model always sees up-to-date route/activities.
+   *
+   * **Snapshot contract (for tools + system prompt):**
+   * - `trip_snapshot` / `attached_trip_snapshot`: same shape as `TripsService.getTripDetailByTripId` — `trip`, `route_locations` (ordered stops with lat/lng), `grouped_activities`, `weather`, optional `*_error` fields.
+   * - `current_trip_id`: UUID the model should pass to addLocation, getRoute, inviteTripByEmail, etc. Set from session.trip_id (trip-scoped chat) or from `attached_trip_id` (global chat with attachment).
+   * - `attached_trip_id`: only for global scope; duplicates the id inside snapshot for client/UI; tools should prefer `current_trip_id`.
    */
   private async hydrateSessionSlotsForPrompt(
     userId: string,
@@ -1570,6 +1632,7 @@ export class AiService {
           userId,
         );
         base.trip_snapshot = detail as unknown;
+        base.current_trip_id = session.trip_id;
       } catch (err) {
         this.logger.warn(
           `trip_snapshot refresh failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -1590,6 +1653,7 @@ export class AiService {
         );
         base.attached_trip_snapshot = detail as unknown;
         base.attached_trip_id = dto.attached_trip_id;
+        base.current_trip_id = dto.attached_trip_id;
       } catch (err) {
         if (err instanceof BadRequestException) throw err;
         throw new BadRequestException(
@@ -1614,7 +1678,7 @@ export class AiService {
     prompt += `\n\nOnce the user has already chosen "Just chat", do NOT keep offering both "Create a trip" and "Just chat" in quick_replies. Instead, offer only context-relevant options. When they are asking for inspiration, destinations to visit, or photos/pictures, include Find images in quick_replies: {\"label\":\"Find images\",\"action\":\"find_images\"}. When in "just chat" and they want inspiration or locations, prefer quick_replies such as Find images and Create a trip rather than repeating "Just chat".`;
     prompt += `\n\nWhen you receive a user message that is exactly "create_trip", treat it as: "User chose: Create a trip. Start the trip creation walkthrough using tools (createTripDraft, updateTrip, addLocation, getRoute, etc.), asking for missing details like title, dates, and route stops, and confirming with the user as you go."\nWhen you receive a user message that is exactly "just_chat", treat it as: "User chose: Just chat. Continue the conversation without creating or modifying any trips."\nWhen you receive "find_images" or "find_images: ...", treat it as: User chose Find images; acknowledge and help them search for photos (they can use the + menu; you can suggest a search query).`;
 
-    prompt += `\n\nOUTPUT FORMAT (required for every visible assistant reply after tools finish): respond with a single JSON object only — no text before or after the JSON, no markdown code fences around the whole reply. The object must include:\n- "message" (string, required): markdown for the user (headings, bold, lists, emojis allowed inside the string).\n- "quick_replies" (optional array): when you offer follow-up choices, use objects {"label":"<short UI label>","action":"<string>"}. Use actions: "create_trip", "find_images", "just_chat", or "just_chat:<concise intent>" so the app forwards the user intent (e.g. "just_chat:Adjust the route order or swap cities"). Include quick_replies whenever you list options the user can tap — do not rely only on numbered lists in message for tap targets.\n- "chat_title" (optional string, 3–4 words): include only on the first assistant message in a brand-new chat to name the thread; omit on later turns.\nInside "message", you may still end with optional machine-readable lines on their own lines: PLACE_CARDS: [...] (valid JSON array) and/or BUDGET_SUMMARY: {...} (valid JSON object), same rules as below. Do not duplicate QUICK_REPLIES: or TITLE: lines inside message when you already use JSON keys.`;
+    prompt += `\n\nOUTPUT FORMAT (required for every visible assistant reply after tools finish): respond with a single JSON object only — no text before or after the JSON, no markdown code fences around the whole reply. Never emit XML-like or HTML-like fragments (for example <arg_key>, <arg_value>, or quick_replies</arg_key>); put choices only in the JSON "quick_replies" array as specified below. The object must include:\n- "message" (string, required): markdown for the user (headings, bold, lists, emojis allowed inside the string).\n- "quick_replies" (optional array): when you offer follow-up choices, use objects {"label":"<short UI label>","action":"<string>"}. Use actions: "create_trip", "find_images", "just_chat", or "just_chat:<concise intent>" so the app forwards the user intent (e.g. "just_chat:Adjust the route order or swap cities"). Include quick_replies whenever you list options the user can tap — do not rely only on numbered lists in message for tap targets.\n- "chat_title" (optional string, 3–4 words): include only on the first assistant message in a brand-new chat to name the thread; omit on later turns.\nInside "message", you may still end with optional machine-readable lines on their own lines: PLACE_CARDS: [...] (valid JSON array) and/or BUDGET_SUMMARY: {...} (valid JSON object), same rules as below. Do not duplicate QUICK_REPLIES: or TITLE: lines inside message when you already use JSON keys.`;
 
     prompt += `\n\nWhen asking follow-up questions inside "message", you may still use numbered lists for readability, but the tappable choices must appear in quick_replies.`;
 
@@ -1625,13 +1689,14 @@ export class AiService {
     prompt += `\n\nTrip route (saved map / itinerary) vs PLACE_CARDS: PLACE_CARDS is only for the in-chat itinerary UI (venues with place_id). It does NOT add stops to the user's saved trip. Once you have a trip_id (from createTripDraft or session context), you must build the real route with tools: call addLocation once per agreed stop (use clear names like "Sofia, Bulgaria", "Plovdiv, Bulgaria"), in visit order, then call getRoute to verify the ordered list. When the user confirms two or more cities or stops, do this in the same turn batch if possible—do not stop after cover images or PLACE_CARDS alone. If they only want ideas without saving, stay in just_chat and skip addLocation.`;
     prompt += `\n\nMinimum route (matches the app route wizard): do not tell the user their saved route is complete or that they should move on to the trip overview until getRoute shows at least two stops. If only one stop exists, keep helping them add another stop before treating planning as done.`;
     prompt += `\n\nWhen the user sends a short intent to work on the saved route (e.g. "Add stops to my trip") and Current context includes current_trip_id, treat that as a request to use addLocation and getRoute with that trip_id—ask which places if none are named yet.`;
+    prompt += `\n\nWhen the user wants to invite a companion to an existing trip by email (partner, friend, etc.), you have a real trip_id (from context current_trip_id, createTripDraft, or getUserTrips), and they gave or confirmed a specific email address, call inviteTripByEmail with that trip_id and email. The server sends the join link; do not claim the invite was sent until after the tool succeeds. If email is missing or ambiguous, ask first. If mail is not configured on the server, the tool will return an error—explain briefly and suggest they invite from the trip page in the app when it is available.`;
 
     if (scope === 'trip' && tripId) {
       prompt += `\n\nThe user is working on a specific trip (trip_id: ${tripId}).`;
     }
 
     if (slots.trip_snapshot || slots.attached_trip_snapshot) {
-      prompt += `\n\nCurrent context may include trip_snapshot (this trip-scoped chat) or attached_trip_snapshot (user attached a trip in a global chat): server-loaded trip details including route_locations, grouped activities, and weather. Treat as ground truth for that trip; use tools when the user wants changes persisted.`;
+      prompt += `\n\nCurrent context may include trip_snapshot (this trip-scoped chat) or attached_trip_snapshot (user attached a trip in a global chat): server-loaded trip details including route_locations (ordered stops), grouped activities, and weather. The JSON context also includes current_trip_id when known — use that UUID with addLocation, getRoute, and related tools. Treat snapshots as ground truth; use tools when the user wants changes persisted.`;
     }
 
     const pendingCover = slots.pending_cover_images as

@@ -153,6 +153,40 @@ export async function inviteTripByEmail(
   );
 }
 
+/** Row from `GET /trips/:id/members` (`trip_members` + `profiles`). */
+export interface TripMemberWithProfile {
+  user_id: string;
+  joined_at: string;
+  profiles: unknown;
+}
+
+/**
+ * List trip members with nested profile (display name, etc.).
+ */
+export async function fetchTripMembers(
+  tripId: string,
+  token?: string | null
+): Promise<TripMemberWithProfile[]> {
+  return apiRequest<TripMemberWithProfile[]>(
+    `/trips/${tripId}/members`,
+    { cache: "no-store" },
+    token
+  );
+}
+
+/**
+ * Remove a member from a trip (caller must be allowed; typically self-leave).
+ */
+export async function removeTripMember(
+  tripId: string,
+  userIdToRemove: string,
+  token?: string | null
+): Promise<void> {
+  await apiRequest<unknown>(`/trips/${tripId}/members/${encodeURIComponent(userIdToRemove)}`, {
+    method: "DELETE",
+  }, token);
+}
+
 /** Response from GET /trips/share/:shareCode/detail (one request for detail screen; web + mobile) */
 export interface TripDetailResponse {
   trip: Trip;

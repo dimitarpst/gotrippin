@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarIcon, ImageIcon } from "lucide-react";
 import { BackgroundPicker } from "./background-picker";
@@ -70,6 +70,7 @@ export default function CreateTrip({
   const { user, refreshProfile } = useAuth();
   const [tourOpen, setTourOpen] = useState(false);
   const hasForcedFromQueryRef = useRef(false);
+  const tripNameInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Details State
   const [tripName, setTripName] = useState(initialData?.title || "");
@@ -125,6 +126,13 @@ export default function CreateTrip({
       setTourOpen(true);
     }
   }, [user, isEditing]);
+
+  useLayoutEffect(() => {
+    const el = tripNameInputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [tripName]);
 
   const markTourSeen = async () => {
     try {
@@ -335,15 +343,17 @@ export default function CreateTrip({
         </div>
 
         <div className="flex-1 flex flex-col">
-          <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pb-32">
-            <input
-              type="text"
+          <div className="relative z-10 flex w-full min-w-0 flex-1 flex-col items-center justify-center px-6 pb-32">
+            <textarea
+              ref={tripNameInputRef}
               id="create-trip-name-input"
               value={tripName}
               onChange={(e) => setTripName(e.target.value)}
               placeholder={t("trips.trip_name")}
+              rows={1}
+              spellCheck={true}
               className={cn(
-                "mb-4 w-full border-none bg-transparent text-center text-5xl font-bold focus:outline-none",
+                "mb-4 w-full max-w-full min-w-0 resize-none overflow-hidden border-none bg-transparent text-center text-5xl font-bold leading-tight tracking-tight break-words [overflow-wrap:anywhere] focus:outline-none focus:ring-0",
                 immersiveChrome
                   ? "text-white placeholder:text-white/40"
                   : "text-foreground placeholder:text-muted-foreground",

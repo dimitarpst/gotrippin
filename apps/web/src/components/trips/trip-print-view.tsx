@@ -7,6 +7,7 @@ import { bg, enUS } from "date-fns/locale";
 import { ArrowRight, Calendar, Printer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Activity, Trip, TripLocation } from "@gotrippin/core";
+import { tripDisplayTitle } from "@/lib/trip-display";
 import { Card } from "@/components/ui/card";
 import { CoverImageWithBlur } from "@/components/ui/cover-image-with-blur";
 import { resolveTripCoverUrl } from "@/lib/r2-public";
@@ -67,7 +68,7 @@ export default function TripPrintView({
   const backgroundColor =
     !coverUrl && trip.color && !isGradient ? trip.color : tripAccent;
 
-  const title = trip.destination?.trim() || trip.title?.trim() || t("trips.untitled_trip");
+  const title = tripDisplayTitle(trip) ?? t("trips.untitled_trip");
   const sortedStops = useMemo(
     () => [...routeLocations].sort((a, b) => a.order_index - b.order_index),
     [routeLocations]
@@ -154,7 +155,7 @@ export default function TripPrintView({
             >
               <CoverImageWithBlur
                 src={coverUrl}
-                alt={trip.destination || title}
+                alt={tripDisplayTitle(trip) ?? title}
                 blurHash={blurHash}
                 containerBackground={tripAccent}
                 className="absolute inset-0 h-full w-full"

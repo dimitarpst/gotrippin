@@ -112,6 +112,9 @@ export class TripLocationsService {
       arrival_date: dto.arrival_date ?? null,
       departure_date: dto.departure_date ?? null,
       marker_color: dto.marker_color ?? null,
+      google_place_id: dto.google_place_id ?? null,
+      photo_url: dto.photo_url ?? null,
+      formatted_address: dto.formatted_address ?? null,
     };
 
     const { data, error } = await this.supabaseService.getClient()

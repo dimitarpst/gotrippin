@@ -3,7 +3,8 @@
 import { AlertCircle, ChevronLeft, CloudOff } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import type { Trip, TripWeatherResponse, TripLocationWeather } from "@gotrippin/core"
+import type { Trip, TripLocationWeather, TripWeatherResponse } from "@gotrippin/core"
+import { tripDisplayTitle } from "@/lib/trip-display"
 import { useTranslation } from "react-i18next"
 import { formatStopDateRange, getUpdatedLabel } from "./weather-utils"
 import { useRouter } from "next/navigation"
@@ -38,7 +39,10 @@ export default function WeatherPageChrome({
   const router = useRouter()
   const { t } = useTranslation()
 
-  const locationLabel = selectedLocation?.locationName || trip?.destination || trip?.title || "Weather"
+  const placeName =
+    selectedLocation?.locationName?.trim() || trip?.destination?.trim() || null
+  const tripName = tripDisplayTitle(trip)
+  const locationLabel = placeName || tripName || "Weather"
   const locationWeather = selectedLocation?.weather || null
   const current = locationWeather?.current
   const forecast = locationWeather?.forecast || []
@@ -64,7 +68,9 @@ export default function WeatherPageChrome({
         <div className="flex flex-col">
           <h1 className="text-lg font-bold leading-tight">{locationLabel}</h1>
           <span className="text-xs text-white/60">
-            {trip?.title ? trip.title : t("weather.insights", { defaultValue: "Weather Insights" })}
+            {placeName && tripName && placeName !== tripName
+              ? tripName
+              : t("weather.insights", { defaultValue: "Weather Insights" })}
           </span>
         </div>
       </div>

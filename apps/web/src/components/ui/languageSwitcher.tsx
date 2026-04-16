@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useLanguagePreference } from "@/hooks/useLanguagePreference";
 
@@ -11,6 +12,8 @@ interface LanguageSwitcherProps {
   defaultLanguage?: Language;
   isOpen?: boolean;
   onToggle?: () => void;
+  /** Match toolbar icon buttons: no extra border/glow (use next to theme toggle). */
+  compact?: boolean;
 }
 
 const UKFlag = () => (
@@ -40,7 +43,9 @@ const languages = {
 export function LanguageSwitcher({
   isOpen = false,
   onToggle,
+  compact = false,
 }: LanguageSwitcherProps) {
+  const { t } = useTranslation();
   const { currentLanguage, changeLanguage } = useLanguagePreference();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -65,19 +70,28 @@ export function LanguageSwitcher({
     <div ref={containerRef} className="relative">
       {/* Trigger button */}
       <motion.button
-        onClick={onToggle}
+        type="button"
+        onClick={() => onToggle?.()}
+        onMouseDown={(e) => e.stopPropagation()}
         className={cn(
-          "flex items-center justify-center w-12 h-10 rounded-xl",
-          "border border-white/10",
-          "bg-gradient-to-br from-white/10 via-white/5 to-transparent",
-          "backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.3)]",
-          "hover:border-[var(--color-accent)]/60 hover:shadow-[0_0_20px_rgba(255, 118, 112,0.3)]",
-          "transition-all duration-300 cursor-pointer"
+          "flex items-center justify-center cursor-pointer rounded-md transition-colors",
+          compact
+            ? "h-9 w-9 border-0 bg-transparent p-0 shadow-none hover:bg-muted/80 dark:hover:bg-white/10"
+            : [
+                "w-12 h-10 rounded-xl",
+                "border border-white/10",
+                "bg-gradient-to-br from-white/10 via-white/5 to-transparent",
+                "backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.3)]",
+                "hover:border-[var(--color-accent)]/60 hover:shadow-[0_0_20px_rgba(255, 118, 112,0.3)]",
+              ]
         )}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: compact ? 1 : 1.05 }}
+        whileTap={{ scale: compact ? 1 : 0.95 }}
+        aria-label={t("language.switcher_aria", { defaultValue: "Language" })}
       >
-        <CurrentFlag />
+        <span className={cn(compact && "scale-[0.72]")}>
+          <CurrentFlag />
+        </span>
       </motion.button>
 
       {/* Dropdown */}
@@ -89,11 +103,10 @@ export function LanguageSwitcher({
             exit={{ opacity: 0, y: -8, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className={cn(
-              "absolute top-full mt-2 right-0",
+              "absolute top-full right-0 z-[100] mt-2",
               "w-40 rounded-2xl border border-white/10 overflow-hidden",
-              "backdrop-blur-2xl shadow-[0_4px_40px_rgba(0,0,0,0.4)]",
+              "backdrop-blur-2xl",
               "bg-[linear-gradient(160deg,rgba(25,25,35,0.9),rgba(40,35,50,0.7))]",
-              "z-50"
             )}
           >
             {Object.entries(languages).map(([code, { flag: Flag, name }]) => (

@@ -6,18 +6,21 @@ import { TripLocationsService } from '../trip-locations/trip-locations.service';
 import { ActivitiesService } from '../activities/activities.service';
 import { WeatherService } from '../weather/weather.service';
 import { MailService } from '../mail/mail.service';
-import type { AddTripGalleryImageBody, CoverPhotoInput, TripGalleryImage, TripWeatherResponse } from '@gotrippin/core';
+import {
+  buildTripInviteEmailHtml,
+  buildTripInviteEmailSubject,
+  buildTripInviteEmailText,
+} from '../mail/trip-invite-email';
+import type {
+  AddTripGalleryImageBody,
+  CoverPhotoInput,
+  Trip,
+  TripGalleryImage,
+  TripWeatherResponse,
+} from '@gotrippin/core';
 
 const MAX_TRIP_GALLERY_IMAGES = 100;
 const GALLERY_KEY_PREFIX = 'trip-images/gallery/';
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function assertGalleryStorageKeyForTrip(tripId: string, storageKey: string): void {
   const expected = `${GALLERY_KEY_PREFIX}${tripId}/`;
@@ -116,10 +119,28 @@ export class TripsService {
     });
   }
 
-  async getTrips(userId: string) {
+  async getTrips(userId: string): Promise<Trip[]> {
     try {
       const trips = await this.supabaseService.getTrips(userId);
-      return trips;
+      const ids = trips
+        .map((t: { id?: unknown }) => t.id)
+        .filter((id): id is string => typeof id === 'string');
+      let facepile: Record<string, { user_id: string; avatar_url: string | null; label: string }[]> = {};
+      try {
+        facepile = await this.supabaseService.getTripMemberFacepilePreviews(ids);
+      } catch (previewErr) {
+        this.logger.warn(
+          `getTripMemberFacepilePreviews failed: ${previewErr instanceof Error ? previewErr.message : String(previewErr)}`,
+        );
+      }
+      return trips.map((t: { id?: string }) => {
+        const id = typeof t.id === 'string' ? t.id : '';
+        const pile = id ? facepile[id] : undefined;
+        return {
+          ...t,
+          member_facepile: pile !== undefined && pile.length > 0 ? pile : [],
+        };
+      }) as Trip[];
     } catch (error) {
       const message =
         error instanceof Error
@@ -476,30 +497,18 @@ export class TripsService {
     const base = this.getPublicAppUrl();
     const joinUrl = `${base}/trips/${encodeURIComponent(shareCode)}/join`;
 
-    const subject = `${inviterLabel} invited you to “${tripTitle}” on gotrippin`;
-    const textContent = [
-      `${inviterLabel} invited you to collaborate on a trip.`,
-      '',
-      `Trip: ${tripTitle}`,
-      '',
-      `Open this link while signed in to join:`,
+    const inviteParams = {
+      appOrigin: base,
       joinUrl,
-      '',
-      'If you do not have an account yet, create one first — you will return to this link after signing in.',
-    ].join('\n');
-
-    const htmlContent = [
-      `<p><strong>${escapeHtml(inviterLabel)}</strong> invited you to collaborate on a trip.</p>`,
-      `<p><strong>Trip:</strong> ${escapeHtml(tripTitle)}</p>`,
-      `<p><a href="${escapeHtml(joinUrl)}">Join this trip on gotrippin</a></p>`,
-      `<p style="color:#666;font-size:14px;">If the button does not work, copy this link:<br/>${escapeHtml(joinUrl)}</p>`,
-    ].join('');
+      tripTitle,
+      inviterLabel,
+    };
 
     await this.mailService.sendTransactionalEmail({
       to: toEmail.trim().toLowerCase(),
-      subject,
-      htmlContent,
-      textContent,
+      subject: buildTripInviteEmailSubject(inviteParams),
+      htmlContent: buildTripInviteEmailHtml(inviteParams),
+      textContent: buildTripInviteEmailText(inviteParams),
     });
 
     return { ok: true };

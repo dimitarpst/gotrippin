@@ -208,6 +208,86 @@ export class SupabaseService {
     return data?.map((item: any) => item.trips).filter(Boolean) || [];
   }
 
+  /**
+   * Maps `trip_id` → member facepile rows (join order ascending): every member gets a label; photo optional.
+   */
+  async getTripMemberFacepilePreviews(
+    tripIds: string[],
+  ): Promise<Record<string, { user_id: string; avatar_url: string | null; label: string }[]>> {
+    const result: Record<string, { user_id: string; avatar_url: string | null; label: string }[]> = {};
+    if (tripIds.length === 0) {
+      return result;
+    }
+
+    const { data, error } = await this.supabase
+      .from('trip_members')
+      .select('trip_id, user_id, joined_at, profiles(avatar_url, display_name)')
+      .in('trip_id', tripIds)
+      .order('joined_at', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    const isRecord = (value: unknown): value is Record<string, unknown> =>
+      typeof value === 'object' && value !== null && !Array.isArray(value);
+
+    const facepileFromProfiles = (
+      profiles: unknown,
+      userId: string,
+    ): { user_id: string; avatar_url: string | null; label: string } => {
+      let avatar_url: string | null = null;
+      let displayName = '';
+      if (profiles !== null && profiles !== undefined) {
+        const applyProfile = (p: Record<string, unknown>) => {
+          if (typeof p.avatar_url === 'string' && p.avatar_url.trim().length > 0) {
+            avatar_url = p.avatar_url.trim();
+          }
+          if (typeof p.display_name === 'string') {
+            displayName = p.display_name;
+          }
+        };
+        if (Array.isArray(profiles)) {
+          const first = profiles[0];
+          if (isRecord(first)) {
+            applyProfile(first);
+          }
+        } else if (isRecord(profiles)) {
+          applyProfile(profiles);
+        }
+      }
+      const trimmed = displayName.trim();
+      const label =
+        trimmed.length > 0
+          ? trimmed
+          : userId.length > 4
+            ? `${userId.slice(0, 8)}…`
+            : userId;
+      return { user_id: userId, avatar_url, label };
+    };
+
+    for (const row of data ?? []) {
+      if (!isRecord(row) || typeof row.trip_id !== 'string' || typeof row.user_id !== 'string') {
+        continue;
+      }
+      const tripId = row.trip_id;
+      const userId = row.user_id;
+      const entry = facepileFromProfiles(row.profiles, userId);
+      if (!result[tripId]) {
+        result[tripId] = [];
+      }
+      if (result[tripId].length >= 12) {
+        continue;
+      }
+      if (result[tripId].some((e) => e.user_id === userId)) {
+        continue;
+      }
+      result[tripId].push(entry);
+    }
+
+    return result;
+  }
+
   // Helper method to get a single trip (if user is a member)
   async getTrip(tripId: string, userId: string) {
     const { data: membership } = await this.supabase

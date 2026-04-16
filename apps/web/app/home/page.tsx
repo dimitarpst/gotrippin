@@ -97,7 +97,7 @@ export default async function HomeRoutePage() {
           <LandingNav />
           <HomeHeroSection signedIn={signedIn} heroCopy={heroCopy} />
         </div>
-        <HomeBelowFold faq={faqCopy} />
+        <HomeBelowFold />
       </main>
     </div>
   )

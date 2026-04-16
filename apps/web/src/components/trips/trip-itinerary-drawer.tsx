@@ -14,6 +14,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { AlertCircle, ArrowDownUp, ChevronRight, Plus, X } from "lucide-react";
 import type { Activity, Trip, TripLocation, TripLocationWeather } from "@gotrippin/core";
 import { formatTripDate } from "@gotrippin/core";
+import { tripDisplayTitle } from "@/lib/trip-display";
 
 import WeatherWidget from "@/components/trips/weather-widget";
 import { WeatherUnavailableIndicator } from "@/components/trips/weather-unavailable-indicator";
@@ -76,7 +77,7 @@ function renderLocationWeather(
         minimal
         weather={{
           ...weather,
-          location: location.location_name || trip.destination || weather.location,
+          location: location.location_name || tripDisplayTitle(trip) || trip.destination || weather.location,
         }}
       />
     );
@@ -135,7 +136,7 @@ export function TripItineraryDrawer({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const tripTitle = trip.destination || trip.title || t("trips.untitled_trip");
+  const tripTitle = tripDisplayTitle(trip) ?? t("trips.untitled_trip");
   const monthLabel = useMemo(() => {
     if (!trip.start_date) return null;
     try {

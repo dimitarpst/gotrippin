@@ -12,6 +12,7 @@ import type {
 } from "@/components/trips/trip-overview";
 import { TripItineraryDrawer } from "@/components/trips/trip-itinerary-drawer";
 import { TripScheduleRepairDrawer } from "@/components/trips/trip-schedule-repair-drawer";
+import { TripMembersDrawer } from "@/components/trips/trip-members-drawer";
 import { updateTripAction, deleteTripAction } from "@/actions/trips";
 import { toast } from "sonner";
 import { computeTripStartCalendarDayDelta } from "@/lib/trip-date-shift-calendar";
@@ -81,6 +82,7 @@ export default function TripDetailPageClient({
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
+  const [membersDrawerOpen, setMembersDrawerOpen] = useState(false);
 
   const [scheduleRepair, setScheduleRepair] = useState<ScheduleRepairState | null>(null);
   const [repairDrawerOpen, setRepairDrawerOpen] = useState(false);
@@ -414,7 +416,7 @@ export default function TripDetailPageClient({
         setInviteOpen(true);
       },
       onManageGuests: () => {
-        // TODO: Implement manage guests functionality
+        setMembersDrawerOpen(true);
       },
       onEditName: () => router.push(`/trips/${shareCode}/edit`),
       onOpenLocation: (locationId) =>
@@ -553,6 +555,15 @@ export default function TripDetailPageClient({
           saving={repairSaving}
           setSaving={setRepairSaving}
           onRepaired={handleScheduleRepaired}
+        />
+      ) : null}
+
+      {trip.id ? (
+        <TripMembersDrawer
+          open={membersDrawerOpen}
+          onOpenChange={setMembersDrawerOpen}
+          tripId={trip.id}
+          onInviteByEmail={() => setInviteOpen(true)}
         />
       ) : null}
 

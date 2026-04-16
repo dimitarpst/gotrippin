@@ -14,13 +14,16 @@ import {
   type PostAiMessageOptions,
   type PostMessageResponse,
 } from "@/lib/api/ai";
-import { fetchTrips } from "@/lib/api/trips";
+import { fetchTrips, inviteTripByEmail, ApiError } from "@/lib/api/trips";
 import type { Trip } from "@gotrippin/core";
 import { getAuthToken } from "@/lib/api/auth";
 import { searchImages } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import AuroraBackground from "@/components/effects/aurora-background";
 import MarkdownMessage from "@/components/ai/MarkdownMessage";
+import { stripXmlQuickReplyArtifacts } from "@/lib/ai/stripXmlQuickReplyArtifacts";
+import { AI_PLAN_CONTEXT_STORAGE_KEY } from "@/lib/ai/aiPlanContextStorage";
 import AiPlaceSuggestions from "@/components/ai/AiPlaceSuggestions";
 import AiBudgetCard from "@/components/ai/AiBudgetCard";
 import { GoAiWordmark } from "@/components/ai/go-ai-wordmark";
@@ -71,15 +74,6 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
 interface ChatMessage {
   role: "user" | "assistant";
   /** Wire/API text; user bubble may show a friendlier `formatUserMessageForDisplay(content)`. */
@@ -207,6 +201,8 @@ interface ImageOption {
 interface IslandField {
   question: string;
   options: string[];
+  /** When many single-option fields are merged, subtitle per tile (former per-question titles). */
+  optionSubtitles?: string[];
   imageOptions?: ImageOption[];
   value: string;
   kind: "text" | "date" | "image";
@@ -216,13 +212,82 @@ interface IslandField {
   optionActions?: string[];
 }
 
+/** Sent to indicate merged cover-pick island title should use i18n `ai.island_choose_cover`. */
+const COVER_ISLAND_MERGED_QUESTION = "__gt_cover_island_merged__";
+
+/**
+ * The model often emits one numbered block per cover candidate (7 pages). Collapse that into a single
+ * field so users pick in one grid. Also drops duplicate tail fields when quick_replies already merged
+ * all labels onto the first field.
+ */
+function normalizeCoverIslandFields(fields: IslandField[]): IslandField[] {
+  if (fields.length < 2) return fields;
+
+  const head = fields[0];
+  if (
+    head &&
+    head.kind === "text" &&
+    head.options.length >= 2 &&
+    fields.slice(1).every((f) => f.kind === "text" && f.options.length === 1)
+  ) {
+    return [head];
+  }
+
+  const allTextSingleOption = fields.every(
+    (f) =>
+      f.kind === "text" &&
+      f.options.length === 1 &&
+      (f.options[0] ?? "").trim().length > 0,
+  );
+  if (!allTextSingleOption) return fields;
+
+  const merged: IslandField = {
+    question: COVER_ISLAND_MERGED_QUESTION,
+    options: fields.map((f) => (f.options[0] ?? "").trim()),
+    optionSubtitles: fields.map((f) => f.question.trim()),
+    value: "",
+    kind: "text",
+  };
+
+  const perFieldActions: string[] = [];
+  let allHaveOneAction = true;
+  for (const f of fields) {
+    const action = f.optionActions?.[0];
+    if (action !== undefined && action.trim().length > 0) {
+      perFieldActions.push(action.trim());
+    } else {
+      allHaveOneAction = false;
+      break;
+    }
+  }
+  if (allHaveOneAction && perFieldActions.length === merged.options.length) {
+    merged.optionActions = perFieldActions;
+  }
+
+  return [merged];
+}
+
 interface IslandHistory {
   messageIndex: number;
   fields: IslandField[];
 }
 
+/** Strips trailing punctuation so model mistakes like "create_trip." map to create_trip. */
+function normalizeActionKey(raw: string): string {
+  return raw.trim().replace(/\.+$/, "").toLowerCase();
+}
+
+function quickReplyActionHead(wire: string | undefined): string | undefined {
+  if (!wire) return undefined;
+  const s = wire.trim();
+  const colon = s.indexOf(":");
+  const head = (colon === -1 ? s : s.slice(0, colon)).trim();
+  if (!head) return undefined;
+  return normalizeActionKey(head);
+}
+
 function normalizeQuickReplyAction(q: { label: string; action: string }): string {
-  const a = q.action.trim();
+  const a = normalizeActionKey(q.action);
   if (a === "just_chat") return `just_chat:${q.label.trim()}`;
   return a;
 }
@@ -395,7 +460,6 @@ export default function AiTestClient({
   const [wizardStep, setWizardStep] = useState(0);
   /** When true, show the guided questionnaire in the composer (opt-in; not auto-started). */
   const [wizardFlowActive, setWizardFlowActive] = useState(false);
-  const [wizardEntryModalOpen, setWizardEntryModalOpen] = useState(false);
   /** User hid the guided-setup CTA; can bring it back via subtle link. */
   const [guidedSetupDismissed, setGuidedSetupDismissed] = useState(false);
   const [wizardAnswers, setWizardAnswers] = useState<Partial<WizardAnswer>>({});
@@ -414,12 +478,19 @@ export default function AiTestClient({
   const [islandDateRangeDraft, setIslandDateRangeDraft] = useState<DateRange | undefined>(undefined);
   const [wizardDateOpen, setWizardDateOpen] = useState(false);
   const [wizardDateRangeDraft, setWizardDateRangeDraft] = useState<DateRange | undefined>(undefined);
+  /** After guided wizard + trip id exists: optional email invite for non-Solo “who’s joining”. */
+  const [postWizardPartnerInvite, setPostWizardPartnerInvite] = useState<null | { tripId: string; email: string }>(
+    null,
+  );
+  const [postWizardInviteSending, setPostWizardInviteSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const islandOptionPreviewsRef = useRef<Record<string, { url: string; blurHash: string | null }>>({});
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const editingInputRef = useRef<HTMLTextAreaElement | null>(null);
   const composerGrowRef = useRef<HTMLTextAreaElement | null>(null);
+  /** Prevents double auto-send of create-trip "Plan with AI" bootstrap (e.g. React Strict Mode). */
+  const planBootstrapConsumedRef = useRef(false);
   const { t, i18n } = useTranslation();
   const router = useRouter();
 
@@ -459,9 +530,14 @@ export default function AiTestClient({
     return "idle";
   }
 
+  function streamToolDisplayName(toolName: string): string {
+    const key = toolName === "create_trip" ? "createTripDraft" : toolName;
+    return t(`ai.tool.${key}`, { defaultValue: toolName });
+  }
+
   function streamActivityLabel(): string {
     if (streamActiveTool) {
-      const toolLabel = t(`ai.tool.${streamActiveTool}`, { defaultValue: streamActiveTool });
+      const toolLabel = streamToolDisplayName(streamActiveTool);
       return t("ai.stream.active_tool", {
         tool: toolLabel,
         defaultValue: `Using ${toolLabel}…`,
@@ -474,7 +550,7 @@ export default function AiTestClient({
       return t("ai.stream.phase_reply", { defaultValue: "Writing your reply…" });
     }
     if (streamPhase === "tools" && streamRecentTool && !streamActiveTool) {
-      const toolLabel = t(`ai.tool.${streamRecentTool}`, { defaultValue: streamRecentTool });
+      const toolLabel = streamToolDisplayName(streamRecentTool);
       return t("ai.stream.after_tool_batch", {
         tool: toolLabel,
         defaultValue: `Finished ${toolLabel} · continuing…`,
@@ -484,7 +560,7 @@ export default function AiTestClient({
       return t("ai.stream.phase_tools", { defaultValue: "Running tools…" });
     }
     if (streamPhase === "model" && streamRecentTool) {
-      const toolLabel = t(`ai.tool.${streamRecentTool}`, { defaultValue: streamRecentTool });
+      const toolLabel = streamToolDisplayName(streamRecentTool);
       return t("ai.stream.phase_model_followup", {
         tool: toolLabel,
         defaultValue: `After ${toolLabel} · planning next step…`,
@@ -501,6 +577,16 @@ export default function AiTestClient({
 
   function formatUserMessageForDisplay(content: string): string {
     const s = content.trim();
+    if (!s.includes(":") && normalizeActionKey(s) === "create_trip") {
+      return t("ai.create_trip");
+    }
+    // Island send can be "Human chip. just_chat:…" — wire is for the API; hide the suffix in the bubble.
+    const pickedPlusWire = /^([\s\S]+?)\.\s+(just_chat:.+)$/;
+    const pickedWire = pickedPlusWire.exec(s);
+    if (pickedWire && pickedWire[1]) {
+      const human = pickedWire[1].trim();
+      if (human.length > 0) return human;
+    }
     if (s.startsWith("just_chat:")) {
       const rest = s.slice("just_chat:".length).trim();
       if (rest === "Add stops to my trip") return t("ai.add_stops_to_trip");
@@ -628,8 +714,7 @@ export default function AiTestClient({
     const period = t(`ai.greeting.${bucket}`);
     const raw = displayNameProp?.trim();
     if (!raw) return period;
-    const first = raw.split(/\s+/)[0];
-    return first ? `${period}, ${first}` : period;
+    return `${period}, ${raw}`;
   }, [t, displayNameProp]);
 
   const hasUserMessage = useMemo(
@@ -640,6 +725,9 @@ export default function AiTestClient({
   useEffect(() => {
     setWizardFlowActive(false);
     setWizardStep(0);
+    setPostWizardPartnerInvite(null);
+    setPostWizardInviteSending(false);
+    planBootstrapConsumedRef.current = false;
     try {
       setGuidedSetupDismissed(sessionStorage.getItem(`ai_guided_setup_dismiss_${sessionId}`) === "1");
     } catch {
@@ -840,6 +928,50 @@ export default function AiTestClient({
     }
   }
 
+  useEffect(() => {
+    if (loading) return;
+    if (sessionScope !== "global") return;
+    if (messages.length > 0) return;
+    if (planBootstrapConsumedRef.current) return;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(AI_PLAN_CONTEXT_STORAGE_KEY);
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    planBootstrapConsumedRef.current = true;
+    try {
+      sessionStorage.removeItem(AI_PLAN_CONTEXT_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    let parsed: { title?: string; start_date?: string | null; end_date?: string | null };
+    try {
+      parsed = JSON.parse(raw) as typeof parsed;
+    } catch {
+      planBootstrapConsumedRef.current = false;
+      return;
+    }
+    const title = typeof parsed.title === "string" ? parsed.title.trim() : "";
+    const d1 = parsed.start_date ? new Date(parsed.start_date) : null;
+    const d2 = parsed.end_date ? new Date(parsed.end_date) : null;
+    const locale = i18n.language;
+    const fmt = (d: Date | null) =>
+      d && !Number.isNaN(d.getTime())
+        ? d.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" })
+        : null;
+    const ds = fmt(d1);
+    const de = fmt(d2);
+    const datesText =
+      ds && de ? `${ds} – ${de}` : ds ? ds : de ? de : t("trips.plan_with_ai_bootstrap_dates_unknown");
+    const text = t("trips.plan_with_ai_bootstrap", {
+      title: title.length > 0 ? title : t("trips.untitled_trip"),
+      dates: datesText,
+    });
+    void sendMessage(text, null);
+  }, [loading, sessionScope, messages.length, sessionId, t, i18n.language]);
+
   const wizardActive =
     wizardFlowActive &&
     wizardStep < WIZARD_STEPS.length &&
@@ -849,29 +981,21 @@ export default function AiTestClient({
   const islandActive = activeIslandFields.length >= 1 && (islandViewOnly || (!islandDismissed && !wizardActive && !loading));
   const islandExpanded = wizardActive || islandActive;
 
-  useEffect(() => {
-    if (loading) return;
-    if (sessionScope !== "global") return;
-    if (messages.some((m) => m.role === "user")) return;
-    if (wizardFlowActive) return;
-    try {
-      if (sessionStorage.getItem(`ai_wizard_intro_${sessionId}`) === "1") return;
-    } catch {
-      /* ignore */
-    }
-    setWizardEntryModalOpen(true);
-  }, [loading, sessionScope, sessionId, messages, wizardFlowActive]);
-
   const currentIslandField =
     islandActive && !islandViewOnly ? activeIslandFields[islandPage] : undefined;
   const hideIslandFreeformRow =
     !wizardActive &&
     (currentIslandField?.kind === "date" || currentIslandField?.kind === "image");
   const currentWizardStep = wizardActive ? WIZARD_STEPS[wizardStep] : undefined;
+  const wizardHeaderQuestion: ReactNode = useMemo(() => {
+    if (!wizardActive) return "";
+    const step = WIZARD_STEPS[wizardStep];
+    return step ? formatChoiceLabelMarkdown(step.question) : "";
+  }, [wizardActive, wizardStep, t]);
   const showMainComposerRow = !wizardActive || currentWizardStep?.kind !== "dates";
   /** Reserve scroll space so the last messages clear the fixed composer (expanded island or tool chip). */
   const composerScrollReserveResolved =
-    islandExpanded || selectedTool || attachedTripId
+    islandExpanded || selectedTool || attachedTripId || postWizardPartnerInvite
       ? "pb-[min(52vh,360px)]"
       : "pb-[5.75rem]";
 
@@ -895,6 +1019,62 @@ export default function AiTestClient({
     syncComposerTextareaHeight();
   }, [input, islandExpanded, hideIslandFreeformRow, islandViewOnly, loading, attachedTripId]);
 
+  async function resolveTripIdAfterWizardResponse(
+    res: PostMessageResponse,
+    sessionTripIdHint: string | null,
+  ): Promise<string | null> {
+    let tripId = res.linked_trip_id?.trim() ?? "";
+    if (!tripId && sessionTripIdHint?.trim()) {
+      tripId = sessionTripIdHint.trim();
+    }
+    if (!tripId) {
+      try {
+        const loadSessionTripId = async () => {
+          const refreshed = await getAiSessionWithMessages(sessionId);
+          return refreshed.session.current_trip_id?.trim() ?? "";
+        };
+        let tid = await loadSessionTripId();
+        if (!tid) {
+          await new Promise((r) => setTimeout(r, 800));
+          tid = await loadSessionTripId();
+        }
+        if (tid) {
+          tripId = tid;
+        }
+      } catch (refetchErr) {
+        console.error("AiTestClient: session refetch for trip id failed", refetchErr);
+      }
+    }
+    return tripId.length > 0 ? tripId : null;
+  }
+
+  async function handlePostWizardPartnerInviteSend() {
+    if (!postWizardPartnerInvite) return;
+    const email = postWizardPartnerInvite.email.trim();
+    if (!email) {
+      toast.error(t("ai.wizard_collab_email_required"));
+      return;
+    }
+    setPostWizardInviteSending(true);
+    try {
+      const token = await getAuthToken();
+      if (!token) {
+        toast.error(t("common.auth_required"));
+        return;
+      }
+      await inviteTripByEmail(postWizardPartnerInvite.tripId, email, token);
+      toast.success(t("ai.wizard_collab_invite_sent"));
+      setPostWizardPartnerInvite(null);
+    } catch (inviteErr) {
+      const msg =
+        inviteErr instanceof ApiError ? inviteErr.message : t("ai.wizard_collab_invite_failed");
+      console.error("AiTestClient: post-wizard inviteTripByEmail failed", inviteErr);
+      toast.error(t("ai.wizard_collab_invite_failed"), { description: msg });
+    } finally {
+      setPostWizardInviteSending(false);
+    }
+  }
+
   async function submitWizardToServer(answers: WizardAnswer) {
     const { heading, vibe, joining, travelDates } = answers;
     const displayText = `${heading} · ${vibe} · ${joining} · ${travelDates}`;
@@ -917,8 +1097,16 @@ export default function AiTestClient({
       const res = await postAiMessageStream(sessionId, wizardPrompt, applyStreamProgress, postStreamOpts(controller.signal));
       setMessages((prev) => [...prev, assistantMessageFromPostResponse(res)]);
       if (res.usage) setAiUsage(res.usage);
+      const tid = await resolveTripIdAfterWizardResponse(res, sessionCurrentTripId);
+      if (tid) {
+        setSessionCurrentTripId(tid);
+      }
+      if (answers.joining !== "Solo" && tid) {
+        setPostWizardPartnerInvite({ tripId: tid, email: "" });
+      }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
+      setPostWizardPartnerInvite(null);
       setError(err instanceof Error ? err.message : t("ai.failed_request"));
       setMessages((prev) => prev.slice(0, -1));
     } finally {
@@ -965,6 +1153,7 @@ export default function AiTestClient({
   }
 
   function handleWizardSkip() {
+    setPostWizardPartnerInvite(null);
     setWizardFlowActive(false);
     setWizardStep(WIZARD_STEPS.length);
     setWizardDateOpen(false);
@@ -1047,7 +1236,7 @@ export default function AiTestClient({
   }
 
   function actionToDisplayLabel(action: string): string {
-    switch (action) {
+    switch (normalizeActionKey(action)) {
       case "find_images":
         return t("ai.find_images");
       case "create_trip":
@@ -1055,8 +1244,20 @@ export default function AiTestClient({
       case "just_chat":
         return t("ai.just_chat");
       default:
-        return action;
+        return action.trim();
     }
+  }
+
+  /** When the model sends a raw action as the chip label (e.g. "create_trip."), show the real title. */
+  function displayQuickReplyOptionLabel(opt: string, actionWire: string | undefined): ReactNode {
+    const head = quickReplyActionHead(actionWire);
+    if (head === "create_trip" || normalizeActionKey(opt) === "create_trip") {
+      return t("ai.create_trip");
+    }
+    if (head === "find_images" || normalizeActionKey(opt) === "find_images") {
+      return t("ai.find_images");
+    }
+    return formatChoiceLabelMarkdown(opt);
   }
 
   async function handleQuickReplyClick(action: string, label: string, extraText?: string) {
@@ -1124,6 +1325,7 @@ export default function AiTestClient({
     if (qrs.length >= 1) {
       mergeAssistantQuickRepliesIntoIslandFields(fields, qrs, t("ai.island_pick_reply"));
     }
+    const fieldsNormalized = normalizeCoverIslandFields(fields);
     if (last.image_suggestions && last.image_suggestions.length > 0) {
       const imgField: IslandField = {
         question: "Pick a cover image",
@@ -1137,10 +1339,10 @@ export default function AiTestClient({
         value: "",
         kind: "image",
       };
-      fields.push(imgField);
+      fieldsNormalized.push(imgField);
     }
-    if (fields.length >= 1) {
-      setIslandFields(fields);
+    if (fieldsNormalized.length >= 1) {
+      setIslandFields(fieldsNormalized);
       setIslandDismissed(false);
       setIslandPage(0);
       setIslandPreview(null);
@@ -1148,6 +1350,7 @@ export default function AiTestClient({
       islandOptionPreviewsRef.current = {};
     } else {
       setIslandFields([]);
+      setIslandPage(0);
     }
   }, [messages, loading, t]);
 
@@ -1158,14 +1361,18 @@ export default function AiTestClient({
       if (!token || cancelled) return;
       for (let fi = 0; fi < islandFields.length; fi += 1) {
         const f = islandFields[fi];
-        if (f.kind !== "text" || !f.optionActions?.length) continue;
+        if (f.kind !== "text" || f.options.length === 0) continue;
         for (let oi = 0; oi < f.options.length; oi += 1) {
           const key = `${fi}-${oi}`;
           if (islandOptionPreviewsRef.current[key]) continue;
           const label = f.options[oi];
           if (!label) continue;
           try {
-            const query = `${label} city travel landmark`;
+            const sub = f.optionSubtitles?.[oi]?.trim();
+            const query =
+              sub && sub.length > 0
+                ? `${sub} travel landscape`
+                : `${label} city travel landmark`;
             const res = await searchImages(query, 1, 1, token);
             const first = res.results[0];
             if (cancelled || !first) continue;
@@ -1281,111 +1488,47 @@ export default function AiTestClient({
         >
           <div className="max-w-3xl mx-auto px-4 py-6 pb-4 space-y-8">
             {sessionScope === "global" && !hasUserMessage && !wizardFlowActive && (
-              <motion.div
-                className="flex min-h-[calc(100dvh-16rem)] flex-col items-center justify-center px-2 text-center"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  hidden: {},
-                  visible: {
-                    transition: { staggerChildren: 0.11, delayChildren: 0.12 },
-                  },
-                }}
-              >
-                <motion.div
-                  variants={{
-                    hidden: { opacity: 0, y: 36, filter: "blur(12px)" },
-                    visible: {
-                      opacity: 1,
-                      y: 0,
-                      filter: "blur(0px)",
-                      transition: { duration: 0.85, ease: [0.22, 1, 0.36, 1] },
-                    },
-                  }}
-                  className="mb-5 max-w-lg sm:mb-6"
-                >
-                  <motion.div
-                    animate={{ y: [0, -5, 0] }}
-                    transition={{
-                      duration: 5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  >
-                    <p className="font-serif text-4xl font-light leading-[1.12] tracking-[-0.02em] text-white/[0.96] sm:text-5xl sm:leading-[1.08] md:text-[3.25rem]">
-                      {composerGreetingLine}
-                    </p>
-                  </motion.div>
-                </motion.div>
-                <motion.p
-                  variants={{
-                    hidden: { opacity: 0, y: 18 },
-                    visible: {
-                      opacity: 1,
-                      y: 0,
-                      transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-                    },
-                  }}
-                  className="mb-10 max-w-md text-[15px] leading-relaxed text-white/40 sm:text-base"
-                >
+              <div className="relative z-[2] flex w-full flex-col items-center px-2 pb-8 pt-14 text-center sm:pt-20">
+                <p className="mb-5 max-w-lg break-words font-serif text-4xl font-light leading-[1.12] tracking-[-0.02em] text-white/[0.96] sm:mb-6 sm:text-5xl sm:leading-[1.08] md:text-[3.25rem]">
+                  {composerGreetingLine}
+                </p>
+                <p className="mb-8 max-w-md text-[15px] leading-relaxed text-white/40 sm:mb-10 sm:text-base">
                   {t("ai.empty_state_tagline")}
-                </motion.p>
+                </p>
                 {!guidedSetupDismissed ? (
-                  <motion.div
-                    variants={{
-                      hidden: { opacity: 0, y: 14 },
-                      visible: {
-                        opacity: 1,
-                        y: 0,
-                        transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
-                      },
-                    }}
-                    className="flex w-full max-w-sm flex-col items-center gap-3"
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 24 }}
-                      className="w-full sm:w-auto"
-                    >
+                  <div className="relative z-[3] flex w-full max-w-sm flex-col items-center gap-3">
+                    <div className="w-full sm:w-auto">
                       <Button
                         type="button"
                         variant="secondary"
                         className="w-full rounded-full border border-white/12 bg-white/[0.06] px-6 py-3 text-[15px] font-medium text-white/90 shadow-none backdrop-blur-sm hover:bg-white/[0.1] sm:min-w-[14rem]"
                         onClick={() => {
+                          setPostWizardPartnerInvite(null);
                           setWizardFlowActive(true);
                           setWizardStep(0);
                         }}
                       >
                         {t("ai.guided_trip_setup")}
                       </Button>
-                    </motion.div>
+                    </div>
                     <button
                       type="button"
                       onClick={dismissGuidedSetupCta}
-                      className="text-[14px] font-medium text-white/40 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white/65 hover:decoration-white/35"
+                      className="relative z-[3] inline-flex min-h-11 min-w-[min(100%,12rem)] cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-[14px] font-medium text-white/40 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white/65 hover:decoration-white/35"
                     >
                       {t("ai.guided_trip_dismiss")}
                     </button>
-                  </motion.div>
+                  </div>
                 ) : (
-                  <motion.button
+                  <button
                     type="button"
                     onClick={restoreGuidedSetupCta}
-                    variants={{
-                      hidden: { opacity: 0, y: 12 },
-                      visible: {
-                        opacity: 1,
-                        y: 0,
-                        transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-                      },
-                    }}
-                    className="text-[14px] font-medium text-white/45 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white/75 hover:decoration-white/40"
+                    className="relative z-[3] inline-flex min-h-11 min-w-[min(100%,12rem)] cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-[14px] font-medium text-white/45 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white/75 hover:decoration-white/40"
                   >
                     {t("ai.guided_trip_setup_restore")}
-                  </motion.button>
+                  </button>
                 )}
-              </motion.div>
+              </div>
             )}
             <AnimatePresence initial={false}>
               {messages.map((m, i) => {
@@ -1438,7 +1581,11 @@ export default function AiTestClient({
                             const hist = islandHistory.find((h) => h.messageIndex === i);
                             const isCurrentIsland = i === messages.length - 1 && islandFields.length >= 1;
                             const fieldsForStrip = hist?.fields ?? (isCurrentIsland ? islandFields : []);
-                            return fieldsForStrip.length > 0 ? stripParsedQuestions(m.content, fieldsForStrip) : m.content;
+                            const raw =
+                              fieldsForStrip.length > 0
+                                ? stripParsedQuestions(m.content, fieldsForStrip)
+                                : m.content;
+                            return stripXmlQuickReplyArtifacts(raw);
                           })()} />
                         </div>
                         {m.tool_calls && m.tool_calls.length > 0 ? (
@@ -1483,6 +1630,13 @@ export default function AiTestClient({
                           <AiPlaceSuggestions
                             key={m.place_suggestions.map((p) => p.name).join("|")}
                             places={m.place_suggestions}
+                            defaultTargetTripId={
+                              sessionScope === "trip"
+                                ? sessionCurrentTripId
+                                : sessionScope === "global"
+                                  ? attachedTripId
+                                  : null
+                            }
                           />
                         ) : null}
                         {i === messages.length - 1 && islandDismissed && islandFields.length >= 1 && (
@@ -1681,12 +1835,12 @@ export default function AiTestClient({
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -6 }}
                           transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                          className="min-w-0 flex items-center"
+                          className="flex min-w-0 w-full items-start justify-start"
                         >
                           <motion.p
                             animate={{ opacity: [0.62, 1, 0.62] }}
                             transition={{ duration: 2.35, repeat: Infinity, ease: "easeInOut" }}
-                            className="text-[15px] font-medium leading-[1.25] tracking-tight text-white/72"
+                            className="w-full min-w-0 text-left break-words text-[15px] font-medium leading-[1.35] tracking-tight text-white/72"
                           >
                             {streamActivityLabel()}
                           </motion.p>
@@ -1725,8 +1879,51 @@ export default function AiTestClient({
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.1, duration: 0.4, type: "spring" }}
-              className={`relative flex min-w-0 flex-col gap-0 overflow-hidden rounded-[2rem] border border-white/10 bg-background/60 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-3xl ${islandExpanded || selectedTool ? "p-2 pb-2 pt-3" : "p-2"}`}
+              className={`relative flex min-w-0 flex-col gap-0 overflow-hidden rounded-[2rem] border border-white/10 bg-background/60 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-3xl ${islandExpanded || selectedTool || postWizardPartnerInvite ? "p-2 pb-2 pt-3" : "p-2"}`}
             >
+              {postWizardPartnerInvite && !wizardActive && !loading ? (
+                <div className="border-b border-white/10 px-3 pb-3 pt-2">
+                  <p className="mb-2 text-[14px] font-semibold leading-snug text-white/90">
+                    {t("ai.post_wizard_partner_invite_title")}
+                  </p>
+                  <p className="mb-2.5 text-[12px] leading-snug text-white/45">
+                    {t("ai.post_wizard_partner_invite_body")}
+                  </p>
+                  <Input
+                    type="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    placeholder={t("ai.wizard_collab_email_placeholder")}
+                    value={postWizardPartnerInvite.email}
+                    onChange={(e) =>
+                      setPostWizardPartnerInvite((prev) =>
+                        prev ? { ...prev, email: e.target.value } : prev,
+                      )
+                    }
+                    disabled={postWizardInviteSending}
+                    className="mb-2.5 h-11 rounded-xl border-white/15 bg-white/5 text-white/90 placeholder:text-white/35"
+                  />
+                  <div className="flex flex-col gap-1.5 sm:flex-row sm:gap-2">
+                    <Button
+                      type="button"
+                      className="flex-1 rounded-xl bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 disabled:opacity-50"
+                      disabled={postWizardInviteSending}
+                      onClick={() => void handlePostWizardPartnerInviteSend()}
+                    >
+                      {t("ai.wizard_collab_send_invite")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="flex-1 rounded-xl text-white/70 hover:bg-white/10 hover:text-white"
+                      disabled={postWizardInviteSending}
+                      onClick={() => setPostWizardPartnerInvite(null)}
+                    >
+                      {t("ai.post_wizard_partner_invite_dismiss")}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               {/* === Wizard — one question per page, Claude-style === */}
               <AnimatePresence mode="wait">
                 {wizardActive && !loading && WIZARD_STEPS[wizardStep] ? (
@@ -1747,13 +1944,15 @@ export default function AiTestClient({
                           animate={{ opacity: 1, x: 0 }}
                           className="text-[15px] font-semibold text-white/90 leading-snug"
                         >
-                          {formatChoiceLabelMarkdown(WIZARD_STEPS[wizardStep].question)}
+                          {wizardHeaderQuestion}
                         </motion.p>
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
                             disabled={wizardStep === 0}
-                            onClick={() => setWizardStep((p) => Math.max(0, p - 1))}
+                            onClick={() => {
+                              setWizardStep((p) => Math.max(0, p - 1));
+                            }}
                             className="w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-20 disabled:pointer-events-none"
                           >
                             <ChevronLeft className="w-4 h-4" />
@@ -1892,28 +2091,34 @@ export default function AiTestClient({
                           animate={{ opacity: 1, x: 0 }}
                           className="text-[15px] font-semibold text-white/90 leading-snug"
                         >
-                          {formatChoiceLabelMarkdown(activeIslandFields[islandPage].question)}
+                          {activeIslandFields[islandPage].question === COVER_ISLAND_MERGED_QUESTION
+                            ? t("ai.island_choose_cover")
+                            : formatChoiceLabelMarkdown(activeIslandFields[islandPage].question)}
                         </motion.p>
                         <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            disabled={islandPage === 0}
-                            onClick={() => setIslandPage((p) => Math.max(0, p - 1))}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-20 disabled:pointer-events-none"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </button>
-                          <span className="text-[11px] text-white/40 tabular-nums min-w-[3rem] text-center">
-                            {islandPage + 1} of {activeIslandFields.length}
-                          </span>
-                          <button
-                            type="button"
-                            disabled={islandPage >= activeIslandFields.length - 1}
-                            onClick={() => setIslandPage((p) => Math.min(activeIslandFields.length - 1, p + 1))}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-20 disabled:pointer-events-none"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
+                          {activeIslandFields.length > 1 ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={islandPage === 0}
+                                onClick={() => setIslandPage((p) => Math.max(0, p - 1))}
+                                className="w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </button>
+                              <span className="text-[11px] text-white/40 tabular-nums min-w-[3rem] text-center">
+                                {islandPage + 1} of {activeIslandFields.length}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={islandPage >= activeIslandFields.length - 1}
+                                onClick={() => setIslandPage((p) => Math.min(activeIslandFields.length - 1, p + 1))}
+                                className="w-6 h-6 rounded-md flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors disabled:opacity-20 disabled:pointer-events-none"
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => {
@@ -2021,59 +2226,77 @@ export default function AiTestClient({
                             </motion.button>
                           ))}
                         </div>
-                      ) : activeIslandFields[islandPage].optionActions &&
-                        activeIslandFields[islandPage].optionActions.length > 0 ? (
-                        <div className="flex gap-2.5 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1 pt-0.5 -mx-0.5 px-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                      ) : activeIslandFields[islandPage].kind === "text" && activeIslandFields[islandPage].options.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 max-h-[min(52vh,440px)] overflow-y-auto overflow-x-hidden pb-1 [scrollbar-width:thin]">
                           {activeIslandFields[islandPage].options.map((opt, oIdx) => {
                             const previewKey = `${islandPage}-${oIdx}`;
                             const pv = islandOptionPreviews[previewKey];
                             const selected = activeIslandFields[islandPage].value === opt;
+                            const wire = activeIslandFields[islandPage].optionActions?.[oIdx];
+                            const subtitle = activeIslandFields[islandPage].optionSubtitles?.[oIdx];
                             return (
                               <motion.button
-                                key={`${opt}-${oIdx}`}
+                                key={`${islandPage}-${oIdx}-${opt}`}
                                 type="button"
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{
-                                  delay: 0.04 * oIdx + 0.06,
+                                  delay: Math.min(0.04 * oIdx + 0.06, 0.45),
                                   type: "spring",
                                   stiffness: 480,
                                   damping: 28,
                                 }}
                                 onClick={() => {
                                   if (islandViewOnly) return;
-                                  const action = activeIslandFields[islandPage].optionActions?.[oIdx];
-                                  updateIslandField(islandPage, opt, {
-                                    valueAction: action,
-                                  });
+                                  if (wire !== undefined && wire.trim().length > 0) {
+                                    updateIslandField(islandPage, opt, { valueAction: wire });
+                                  } else {
+                                    updateIslandField(islandPage, opt, { valueAction: null });
+                                  }
                                   if (islandPage < activeIslandFields.length - 1) {
                                     setTimeout(() => setIslandPage((p) => p + 1), 200);
                                   }
                                 }}
                                 disabled={islandViewOnly}
-                                className={`w-[7.25rem] shrink-0 overflow-hidden rounded-2xl border text-left transition-all active:scale-[0.98] ${
+                                className={`relative overflow-hidden rounded-2xl border text-left transition-all active:scale-[0.98] aspect-[4/3] ${
                                   selected
                                     ? "border-[var(--color-accent)]/50 ring-1 ring-[var(--color-accent)]/35 shadow-[0_0_20px_-4px_rgba(255,118,112,0.35)]"
                                     : "border-white/15 hover:border-white/25"
                                 }`}
                               >
-                                <div className="relative h-24 w-full bg-white/5">
+                                <div className="relative h-full w-full bg-white/5">
                                   {pv ? (
                                     <CoverImageWithBlur
                                       src={pv.url}
-                                      alt={opt}
+                                      alt={subtitle ?? opt}
                                       blurHash={pv.blurHash ?? undefined}
                                       className="h-full w-full"
                                       imgClassName="h-full w-full object-cover"
                                     />
                                   ) : (
-                                    <div className="flex h-full w-full items-center justify-center px-2 text-center text-[11px] font-semibold leading-tight text-white/55">
-                                      {formatChoiceLabelMarkdown(opt)}
+                                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center">
+                                      {subtitle ? (
+                                        <span className="line-clamp-3 text-[11px] font-semibold leading-snug text-white/75">
+                                          {formatChoiceLabelMarkdown(subtitle)}
+                                        </span>
+                                      ) : null}
+                                      <span className="line-clamp-2 text-[11px] font-medium leading-tight text-white/50">
+                                        {displayQuickReplyOptionLabel(opt, wire)}
+                                      </span>
                                     </div>
                                   )}
-                                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-8">
-                                    <p className="line-clamp-2 text-[11px] font-semibold leading-snug text-white">
-                                      {formatChoiceLabelMarkdown(opt)}
+                                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-2 pb-2 pt-10">
+                                    {subtitle ? (
+                                      <p className="line-clamp-2 text-[10px] font-semibold leading-snug text-white/95">
+                                        {formatChoiceLabelMarkdown(subtitle)}
+                                      </p>
+                                    ) : null}
+                                    <p
+                                      className={
+                                        subtitle ? "mt-0.5 line-clamp-2 text-[10px] leading-snug text-white/70" : "line-clamp-2 text-[11px] font-semibold leading-snug text-white"
+                                      }
+                                    >
+                                      {displayQuickReplyOptionLabel(opt, wire)}
                                     </p>
                                   </div>
                                 </div>
@@ -2081,46 +2304,7 @@ export default function AiTestClient({
                             );
                           })}
                         </div>
-                      ) : (
-                        <div className="space-y-1">
-                          {activeIslandFields[islandPage].options.map((opt, oIdx) => (
-                            <motion.button
-                              key={opt}
-                              type="button"
-                              initial={{ opacity: 0, y: 6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.03 * oIdx + 0.08, type: "spring", stiffness: 500, damping: 30 }}
-                              onClick={() => {
-                                if (islandViewOnly) return;
-                                updateIslandField(islandPage, opt);
-                                if (islandPage < activeIslandFields.length - 1) {
-                                  setTimeout(() => setIslandPage((p) => p + 1), 200);
-                                }
-                              }}
-                              disabled={islandViewOnly}
-                              className={`flex items-center justify-between w-full rounded-xl px-2 py-3 text-left text-[14px] font-medium transition-all active:scale-[0.98] ${
-                                activeIslandFields[islandPage].value === opt
-                                  ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
-                                  : "text-white/80 hover:bg-white/5"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <span
-                                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[12px] font-semibold ${
-                                    activeIslandFields[islandPage].value === opt
-                                      ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)]"
-                                      : "bg-white/10 text-white/50"
-                                  }`}
-                                >
-                                  {oIdx + 1}
-                                </span>
-                                <span>{formatChoiceLabelMarkdown(opt)}</span>
-                              </div>
-                              <span className="text-white/20">→</span>
-                            </motion.button>
-                          ))}
-                        </div>
-                      )}
+                      ) : null}
                     </div>
                   </motion.div>
                 ) : null}
@@ -2131,7 +2315,7 @@ export default function AiTestClient({
                 <div
                   className={`flex min-w-0 flex-col ${
                     sessionScope === "global" && attachedTripId && attachedTripTitle ? "gap-1.5" : "gap-0"
-                  } ${islandExpanded ? "mt-0.5 pt-1" : ""}`}
+                  } ${islandExpanded ? "mt-0 pt-3" : ""}`}
                 >
                   {sessionScope === "global" && attachedTripId && attachedTripTitle ? (
                     <div className="mx-1.5 flex min-w-0 items-center gap-2.5 rounded-xl border border-white/[0.12] bg-white/[0.05] p-2 pr-1.5">
@@ -2167,8 +2351,9 @@ export default function AiTestClient({
                     </div>
                   ) : null}
                   {islandExpanded && hideIslandFreeformRow ? (
-                    <div className="min-h-10 px-3" aria-hidden />
+                    <div className="min-h-8 px-3 pt-1" aria-hidden />
                   ) : (
+                    <>
                     <textarea
                       ref={composerGrowRef}
                       placeholder={
@@ -2207,12 +2392,11 @@ export default function AiTestClient({
                       rows={1}
                       className="mx-1 max-h-[10.5rem] min-h-[44px] w-[calc(100%-0.5rem)] resize-none overflow-hidden border-0 bg-transparent px-3 py-2 text-[15px] text-white/95 shadow-none outline-none ring-0 placeholder:text-white/40 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
                     />
+                    </>
                   )}
                   <div className="flex min-w-0 items-end justify-between gap-1.5 px-1 pb-0.5 pt-1">
                     <div className="flex min-w-0 flex-1 items-center gap-1">
-                      {islandExpanded ? (
-                        <span className="inline-flex h-10 w-10 shrink-0" aria-hidden />
-                      ) : !inputAreaMounted ? (
+                      {!islandExpanded && !inputAreaMounted ? (
                         <span
                           className="inline-flex h-10 w-10 items-center justify-center text-white/35"
                           aria-hidden
@@ -2326,7 +2510,9 @@ export default function AiTestClient({
                               <span className="min-w-0 truncate">
                                 {selectedTool.kind === "route_help"
                                   ? t("ai.add_stops_chip_short")
-                                  : selectedTool.label}
+                                  : selectedTool.kind === "quick_reply"
+                                    ? actionToDisplayLabel(selectedTool.action)
+                                    : selectedTool.label}
                               </span>
                               <button
                                 type="button"
@@ -2526,61 +2712,6 @@ export default function AiTestClient({
         </Drawer>
       ) : null}
 
-      {sessionScope === "global" ? (
-        <Dialog
-          open={wizardEntryModalOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              try {
-                sessionStorage.setItem(`ai_wizard_intro_${sessionId}`, "1");
-              } catch {
-                /* ignore */
-              }
-            }
-            setWizardEntryModalOpen(open);
-          }}
-        >
-          <DialogContent className="border-white/15 bg-zinc-950 text-white sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t("ai.wizard_intro_title")}</DialogTitle>
-              <DialogDescription className="text-white/55">{t("ai.wizard_intro_body")}</DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2 sm:justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-white/70 hover:bg-white/10 hover:text-white"
-                onClick={() => {
-                  try {
-                    sessionStorage.setItem(`ai_wizard_intro_${sessionId}`, "1");
-                  } catch {
-                    /* ignore */
-                  }
-                  setWizardEntryModalOpen(false);
-                }}
-              >
-                {t("ai.wizard_intro_not_now")}
-              </Button>
-              <Button
-                type="button"
-                className="bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90"
-                onClick={() => {
-                  try {
-                    sessionStorage.setItem(`ai_wizard_intro_${sessionId}`, "1");
-                  } catch {
-                    /* ignore */
-                  }
-                  setWizardEntryModalOpen(false);
-                  setWizardFlowActive(true);
-                  setWizardStep(0);
-                }}
-              >
-                {t("ai.wizard_intro_start")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : null}
     </main>
   );
 }

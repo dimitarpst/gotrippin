@@ -3,7 +3,9 @@
 import type { ReactNode } from "react"
 
 import { motion, useReducedMotion } from "framer-motion"
-import { Eye, Map, Pencil, Smartphone, Sparkles, Users } from "lucide-react"
+import { Eye, Map, Pencil, Smartphone, Users } from "lucide-react"
+
+import { GoAiWordmark } from "@/components/ai/go-ai-wordmark"
 import Image from "next/image"
 import { useTranslation } from "react-i18next"
 
@@ -206,8 +208,8 @@ export default function LandingMarketingSections() {
         body={t("landing.ai_section.body")}
       >
         <div className="flex justify-center">
-          <div className="inline-flex items-center gap-3 rounded-2xl border border-border bg-card/80 px-6 py-4 dark:border-white/10 dark:bg-white/[0.04]">
-            <Sparkles className="h-6 w-6 text-indigo-500 dark:text-indigo-300" aria-hidden />
+          <div className="inline-flex items-center gap-4 rounded-2xl border border-border bg-card/80 px-6 py-4 dark:border-white/10 dark:bg-white/[0.04]">
+            <GoAiWordmark alt={t("landing.bento.goai_logo_alt")} className="h-7 w-auto max-w-[7rem] object-contain" />
             <span className="text-sm text-muted-foreground dark:text-white/70">{t("landing.ai_section.card")}</span>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Calendar, ExternalLink, List, X } from "lucide-react";
+import { Calendar, ChevronRight, ExternalLink, List, X } from "lucide-react";
 import type { TripExpense, TripLocation } from "@gotrippin/core";
 import type { DateRange } from "react-day-picker";
 import { ColorPicker } from "@/components/color-picker";
@@ -33,6 +33,9 @@ export interface SelectedRouteStopPeekProps {
   /** When set, show spent total for expenses linked to this stop. */
   expenseTripId?: string;
   tripBudgetCurrency?: string | null;
+  /** Slim on-map chip (route editor when the itinerary sheet is closed). */
+  compact?: boolean;
+  onExpandDetails?: () => void;
 }
 
 function formatDateRangeLabel(
@@ -67,6 +70,8 @@ export function SelectedRouteStopPeek({
   onMarkerColorCommit,
   expenseTripId,
   tripBudgetCurrency,
+  compact = false,
+  onExpandDetails,
 }: SelectedRouteStopPeekProps) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -80,6 +85,11 @@ export function SelectedRouteStopPeek({
   }, [location.id, location.location_name]);
 
   useEffect(() => {
+    if (compact) {
+      setStopExpenses(null);
+      setStopExpensesFailed(false);
+      return;
+    }
     if (!expenseTripId) {
       setStopExpenses(null);
       setStopExpensesFailed(false);
@@ -102,7 +112,7 @@ export function SelectedRouteStopPeek({
     return () => {
       cancelled = true;
     };
-  }, [expenseTripId, location.id]);
+  }, [compact, expenseTripId, location.id]);
 
   const stopSpendLabel = useMemo(() => {
     if (!stopExpenses || stopExpenses.length === 0) return null;
@@ -148,6 +158,94 @@ export function SelectedRouteStopPeek({
   const title =
     draftName.trim() || t("trips.untitled_trip");
 
+  const thumbRaw = location.photo_url?.trim();
+  const thumb = thumbRaw && thumbRaw.length > 0 ? thumbRaw : null;
+  const addressLine =
+    location.formatted_address != null && location.formatted_address.trim().length > 0
+      ? location.formatted_address.trim()
+      : null;
+  const markerLetter = (draftName.trim() || location.location_name || "?").trim().charAt(0).toUpperCase() || "?";
+
+  const [peekImgFailed, setPeekImgFailed] = useState(false);
+  useEffect(() => {
+    setPeekImgFailed(false);
+  }, [location.id, location.photo_url]);
+
+  if (compact) {
+    return (
+      <div
+        className="max-w-lg mx-auto rounded-2xl border border-white/15 bg-black/90 shadow-2xl backdrop-blur-xl pointer-events-auto ring-1 ring-white/5"
+        role="dialog"
+        aria-label={t("trip_overview.map_stop_peek_a11y", {
+          defaultValue: "Selected route stop",
+        })}
+      >
+        <div className="flex items-center gap-2.5 px-3 py-2.5">
+          <div
+            className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border-2 border-white/25 shadow-md"
+            aria-hidden
+          >
+            {thumb && !peekImgFailed ? (
+              <img
+                src={thumb}
+                alt=""
+                className="h-full w-full object-cover"
+                onError={() => setPeekImgFailed(true)}
+              />
+            ) : (
+              <div
+                className="flex h-full w-full items-center justify-center text-base font-bold text-white/95"
+                style={{ backgroundColor: markerPickerValue }}
+              >
+                {markerLetter}
+              </div>
+            )}
+            <div className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-white/90 bg-white px-1 text-[10px] font-bold leading-none text-neutral-900 shadow-sm">
+              {stopIndex + 1 > 99 ? "99+" : stopIndex + 1}
+            </div>
+          </div>
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-white">{title}</p>
+          <div className="flex shrink-0 items-center gap-0.5">
+            {onExpandDetails ? (
+              <button
+                type="button"
+                onClick={onExpandDetails}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/90 transition-colors hover:bg-white/10"
+                aria-label={t("trip_overview.map_stop_peek_expand", {
+                  defaultValue: "Place details",
+                })}
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden />
+              </button>
+            ) : null}
+            {editable && onOpenRouteList ? (
+              <button
+                type="button"
+                onClick={() => onOpenRouteList()}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/90 transition-colors hover:bg-white/10"
+                aria-label={t("trip_overview.map_stop_peek_open_list", {
+                  defaultValue: "Open list",
+                })}
+              >
+                <List className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label={t("trip_overview.map_stop_peek_close", {
+                defaultValue: "Close",
+              })}
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div
@@ -159,11 +257,27 @@ export function SelectedRouteStopPeek({
       >
         <div className="flex items-start gap-3 p-3 sm:p-3.5">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 text-xs font-bold text-white shadow-md"
-            style={{ backgroundColor: markerPickerValue }}
+            className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border-2 border-white/25 shadow-md"
             aria-hidden
           >
-            {stopIndex + 1}
+            {thumb && !peekImgFailed ? (
+              <img
+                src={thumb}
+                alt=""
+                className="h-full w-full object-cover"
+                onError={() => setPeekImgFailed(true)}
+              />
+            ) : (
+              <div
+                className="flex h-full w-full items-center justify-center text-lg font-bold text-white/95"
+                style={{ backgroundColor: markerPickerValue }}
+              >
+                {markerLetter}
+              </div>
+            )}
+            <div className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border border-white/90 bg-white px-1 text-[10px] font-bold leading-none text-neutral-900 shadow-sm">
+              {stopIndex + 1 > 99 ? "99+" : stopIndex + 1}
+            </div>
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
@@ -205,6 +319,11 @@ export function SelectedRouteStopPeek({
                 </button>
               </div>
             </div>
+            {addressLine ? (
+              <p className="mt-1 text-[11px] leading-snug text-white/55 line-clamp-2 [overflow-wrap:anywhere]">
+                {addressLine}
+              </p>
+            ) : null}
             {editable && onDatesCommit ? (
               <button
                 type="button"

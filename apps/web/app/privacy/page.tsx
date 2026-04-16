@@ -21,6 +21,12 @@ export default function PrivacyPage() {
           "We are preparing a complete privacy policy that describes what gotrippin collects, how we use it, and your choices. This page will be updated before we ask for broad indexing or marketing spend."
         }
       </p>
+      <h2 className="text-xl font-semibold font-display mb-3 mt-10">Cookies</h2>
+      <p className="text-muted-foreground mb-4 leading-relaxed">
+        {
+          "Today gotrippin sets only what is needed to run the service: authentication session cookies from Supabase (so you can stay signed in securely), and a first-party language preference cookie so the site can show Bulgarian or English consistently. Dismissing the cookie notice is remembered for your browser session only (session storage), not for cross-site tracking. The small notice at the bottom appears only on public pages (home and legal stubs), not inside the trip dashboard."
+        }
+      </p>
       <p className="text-muted-foreground mb-6 leading-relaxed">
         {"For security or privacy questions today, please open an issue on GitHub so we can respond in writing."}
       </p>

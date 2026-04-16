@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { Images, Loader2, Search, Trash2, Upload, Wallpaper } from "lucide-react";
 import type { CoverPhotoInput, Trip, TripGalleryImage } from "@gotrippin/core";
+import { tripDisplayTitle } from "@/lib/trip-display";
 import { toast } from "sonner";
 
 import { BackgroundPicker } from "@/components/trips/background-picker";
@@ -144,8 +145,7 @@ export function TripGallery({
     resolvedCoverSrc && coverStorageKey && !coverInGallery,
   );
   const hasGalleryGrid = showEmbeddedCoverTile || images.length > 0;
-  const defaultUnsplashQuery =
-    trip.destination?.trim() || trip.title?.trim() || "";
+  const defaultUnsplashQuery = tripDisplayTitle(trip) ?? "";
 
   const idsKey = useMemo(
     () =>

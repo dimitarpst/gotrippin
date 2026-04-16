@@ -348,15 +348,19 @@ export function DatePicker({
   };
 
   const handleDone = () => {
-    if (localRange?.from && localRange?.to) {
-      void Promise.resolve(onSelect(localRange)).catch((err) => {
+    if (localRange?.from) {
+      const normalized: DateRange = {
+        from: localRange.from,
+        to: localRange.to ?? localRange.from,
+      };
+      void Promise.resolve(onSelect(normalized)).catch((err) => {
         console.error("DatePicker: onSelect failed", err);
       });
     }
     onClose();
   };
 
-  const canSubmit = !!(localRange?.from && localRange?.to);
+  const canSubmit = !!localRange?.from;
 
   const tripWindowText =
     minDate && maxDate

@@ -6,7 +6,7 @@ export const AI_TOOLS: OpenRouterTool[] = [
     function: {
       name: 'createTripDraft',
       description:
-        'Create a new trip draft. Use when the user wants to start planning a trip. Returns trip_id and share_code—then use addLocation (and getRoute) in sequence to build the route on that trip.',
+        'Create a new trip draft. Use when the user wants to start planning a trip. Returns trip_id and share_code—then use addLocation (and getRoute) in sequence to build the route on that trip. Match the app route wizard: aim for at least two stops on the saved route before treating planning as complete.',
       parameters: {
         type: 'object',
         properties: {
@@ -42,7 +42,7 @@ export const AI_TOOLS: OpenRouterTool[] = [
     function: {
       name: 'addLocation',
       description:
-        'Add one stop to the saved trip route (call once per stop in order). The server resolves coordinates (Open-Meteo geocoding). Use trip_id from createTripDraft or context; prefer names like "Plovdiv, Bulgaria". After adding stops, call getRoute to confirm order.',
+        'Add one stop to the saved trip route (call once per stop in order). The server resolves coordinates (Open-Meteo geocoding). Use trip_id from createTripDraft or context; prefer names like "Plovdiv, Bulgaria". After adding stops, call getRoute to confirm order. Keep adding stops until the route is useful (same bar as the app wizard: at least two stops before the route feels complete).',
       parameters: {
         type: 'object',
         properties: {
@@ -104,6 +104,23 @@ export const AI_TOOLS: OpenRouterTool[] = [
       parameters: {
         type: 'object',
         properties: {},
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'inviteTripByEmail',
+      description:
+        'Send this user\'s trip invite email to someone so they can join as a collaborator (same as Invite by email on the trip page). Only call after the user clearly asked to invite someone and gave a specific email address (or confirmed which email to use). Use trip_id from createTripDraft, getUserTrips, or Current context current_trip_id when the invite is for the trip already in this chat. Do not invent emails.',
+      parameters: {
+        type: 'object',
+        properties: {
+          trip_id: { type: 'string', description: 'Trip UUID the inviter is a member of' },
+          email: { type: 'string', description: 'Recipient email address' },
+        },
+        required: ['trip_id', 'email'],
         additionalProperties: false,
       },
     },

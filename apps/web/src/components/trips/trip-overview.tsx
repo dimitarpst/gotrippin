@@ -44,6 +44,7 @@ import {
   averageRgbFromImageDataSampled,
   rgbToHex,
 } from "@gotrippin/core"
+import { tripDisplayTitle } from "@/lib/trip-display"
 import { useTranslation } from "react-i18next"
 import {
   DropdownMenu,
@@ -244,9 +245,28 @@ export default function TripOverview({
     endDate: trip.end_date ? formatTripDate(trip.end_date) : "—",
   }), [trip.start_date, trip.end_date])
 
+  const primaryTripLabel = tripDisplayTitle(trip) ?? t("trips.untitled_trip")
+
   const hasCustomizeActions = Boolean(onEditName || onChangeDates || onChangeBackground)
 
   const derivedLocations = timelineLocations.length ? timelineLocations : routeLocations
+
+  /** Hero already shows the trip name; cards below use timing + places (not a duplicate title). */
+  const itineraryCardSummary = useMemo(() => {
+    const startPart = daysUntil > 0 ? t("trips.starts_in", { count: daysUntil }) : t("trips.started")
+    const durPart =
+      duration > 0 ? t("trips.day_trip", { count: duration }) : t("trips.duration_tbd")
+    return `${startPart} · ${durPart}`
+  }, [daysUntil, duration, t])
+
+  /** Weather is for a place — prefer first stop, then destination, then title as last resort. */
+  const weatherLocationLabel = useMemo(() => {
+    const firstStop = derivedLocations[0]?.location_name?.trim()
+    if (firstStop) return firstStop
+    const dest = trip.destination?.trim()
+    if (dest) return dest
+    return tripDisplayTitle(trip) ?? "—"
+  }, [derivedLocations, trip])
 
   const itineraryOverviewVisible = derivedLocations.slice(0, ITINERARY_OVERVIEW_VISIBLE_MAX)
   const itineraryOverviewMoreCount = Math.max(
@@ -316,7 +336,10 @@ export default function TripOverview({
           className="rounded-full border-0 bg-black/30 px-2 py-1 shadow-none backdrop-blur-md dark:border-transparent dark:bg-black/40 dark:shadow-none"
           weather={{
             ...weather,
-            location: location.location_name || trip.destination || weather.location,
+            location:
+              location.location_name?.trim() ||
+              trip.destination?.trim() ||
+              weather.location,
           }}
         />
       )
@@ -515,7 +538,7 @@ export default function TripOverview({
             {coverUrl ? (
               <CoverImageWithBlur
                 src={coverUrl}
-                alt={trip.destination || "Trip destination"}
+                alt={tripDisplayTitle(trip) ?? trip.destination ?? "Trip"}
                 blurHash={(trip.cover_photo as { blur_hash?: string | null } | null | undefined)?.blur_hash ?? undefined}
                 className="absolute inset-0 w-full h-full"
                 imgStyle={{
@@ -695,26 +718,18 @@ export default function TripOverview({
               y: { duration: 0.4 }
             }}
           >
-            <div className="text-center">
-              <h2 className="text-lg font-bold text-white whitespace-nowrap">
-                {trip.destination || trip.title || t('trips.untitled_trip')}
+            <div className="mx-auto max-w-[min(100%,calc(100vw-7rem))] text-center px-1">
+              <h2 className="text-base font-bold text-white leading-tight line-clamp-2 [overflow-wrap:anywhere] sm:text-lg">
+                {primaryTripLabel}
               </h2>
-              <p className="text-xs text-white/70 whitespace-nowrap">
+              <p className="text-xs text-white/70 truncate tabular-nums">
                 {startDate} → {endDate}
               </p>
             </div>
           </motion.div>
 
-          {/* Right: Search and close buttons */}
+          {/* Right: Close */}
           <div className="flex gap-3">
-            <motion.button
-              className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
-              style={{ background: "rgba(0,0,0,0.3)" }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Search className="w-5 h-5 text-white" />
-            </motion.button>
             <motion.button
               onClick={onBack}
               className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
@@ -763,13 +778,13 @@ export default function TripOverview({
           }}
         >
           <motion.h1
-            className="text-5xl font-bold text-white mb-2 drop-shadow-lg"
+            className="mb-2 w-full max-w-full px-3 text-3xl font-bold leading-tight text-white drop-shadow-lg [overflow-wrap:anywhere] break-words sm:px-4 sm:text-4xl md:text-5xl"
             variants={{
               hidden: { opacity: 0, y: 20 },
               visible: { opacity: 1, y: 0 },
             }}
           >
-            {trip.destination || trip.title || t('trips.untitled_trip')}
+            {primaryTripLabel}
           </motion.h1>
           <motion.p
             className="text-white/90 text-base mb-0.5 drop-shadow-md"
@@ -937,14 +952,9 @@ export default function TripOverview({
                 >
                   <Calendar className="w-5 h-5 text-primary-foreground" />
                 </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {t('trip_overview.route_title')}
-                    </span>
-                    <span className="text-sm font-semibold text-foreground">
-                      {trip.destination || trip.title || t('trips.untitled_trip')}
-                    </span>
-                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('trip_overview.route_title')}
+                  </span>
                 </div>
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {hasRoute ? todayLabel : startDate}
@@ -1071,6 +1081,7 @@ export default function TripOverview({
                       routeLineGeo={routeGeo}
                       fitToRoute
                       fitPadding={40}
+                      waypointMarkerDisplay="square"
                       interactive={false}
                     />
                     {/* Very dark gradient overlays to ensure absolute text legibility while letting the map peek through */}
@@ -1080,20 +1091,21 @@ export default function TripOverview({
                   </div>
 
                   {/* Content on top of map */}
-                  <div className="relative z-10 h-full flex flex-col justify-center items-center p-4 text-center sm:p-5">
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#ff7670] drop-shadow-md mb-1">
-                        {t("trip_overview.route_map_title")}
+                  <div className="relative z-10 flex h-full flex-col items-center justify-center gap-5 p-4 text-center sm:gap-6 sm:p-5">
+                    <div className="flex max-w-[min(100%,18rem)] flex-col items-center gap-1.5 px-2 sm:max-w-[22rem]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ff7670] drop-shadow-md sm:text-[11px] sm:tracking-[0.22em]">
+                        {t("trip_overview.route_map_preview_kicker")}
                       </span>
-                      <span className="text-3xl font-bold text-white drop-shadow-xl mb-3 sm:mb-4">
-                        {trip.destination || trip.title || t("trips.untitled_trip")}
-                      </span>
+                      <p className="text-xs leading-snug text-white/80 drop-shadow-md [text-wrap:balance] sm:text-sm">
+                        {t("trip_overview.route_map_preview_subline")}
+                      </p>
                     </div>
-                    
-                    <div className="flex items-center gap-2 text-white/90 group-hover:text-white transition-colors bg-white/10 backdrop-blur-md px-5 py-2 rounded-full border border-white/20 shadow-lg">
-                      <MapIcon className="w-4 h-4" />
-                      <span className="text-[11px] font-bold uppercase tracking-widest">Expand Map</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <div className="flex items-center gap-2 text-white/90 transition-colors group-hover:text-white bg-white/10 backdrop-blur-md px-5 py-2 rounded-full border border-white/20 shadow-lg">
+                      <MapIcon className="w-4 h-4 shrink-0" />
+                      <span className="text-[11px] font-bold uppercase tracking-widest">
+                        {t("trip_overview.expand_map")}
+                      </span>
+                      <ArrowRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-1" />
                     </div>
                   </div>
                 </Card>
@@ -1105,8 +1117,6 @@ export default function TripOverview({
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
             <div onClick={() => onNavigate("weather")}>
               {(() => {
-                const weatherLocationLabel =
-                  derivedLocations[0]?.location_name || trip.destination || trip.title || "—"
                 const accent = tripAccent ?? '#1a1a2e'
 
                 if (weatherLoading) {
@@ -1393,7 +1403,7 @@ export default function TripOverview({
               </div>
             </div>
             <p className="text-muted-foreground mb-6">
-              {t('trip_overview.delete_message', { tripName: trip.destination || trip.title })}
+              {t('trip_overview.delete_message', { tripName: primaryTripLabel })}
             </p>
             <div className="flex gap-3">
               <button
@@ -1471,7 +1481,7 @@ export default function TripOverview({
             onChangeBackgroundColor?.(color)
             setShowBackgroundPicker(false)
           }}
-          defaultSearchQuery={trip.destination || trip.title || undefined}
+          defaultSearchQuery={tripDisplayTitle(trip) ?? undefined}
         />
       )}
     </div>

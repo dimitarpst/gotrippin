@@ -34,7 +34,6 @@ export default function TripOverviewSkeleton({ onBack }: TripOverviewSkeletonPro
           </div>
 
           <div className="flex gap-3">
-            <Skeleton className="w-12 h-12 rounded-full bg-white/5" />
             {onBack && (
               <motion.button
                 onClick={onBack}

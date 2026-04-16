@@ -1,6 +1,6 @@
 # gotrippin
 
-> gotrippin is a route-first trip planner. Plan trips together without the chaos — build your route, invite others, and let AI suggest the rest. Ditch messy spreadsheets and endless group chats.
+> gotrippin is a route-first trip planner. Plan together, without the chaos — build your route, invite others, and let AI suggest the rest. Ditch messy spreadsheets and endless group chats.
 
 ## Description
 

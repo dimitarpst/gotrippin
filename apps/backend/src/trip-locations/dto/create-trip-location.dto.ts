@@ -1,4 +1,4 @@
-import { IsString, IsUUID, IsNumber, IsOptional, Min, Max, IsInt, IsPositive, IsDateString, Matches } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, Max, IsInt, IsPositive, IsDateString, Matches, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateTripLocationDto {
@@ -40,5 +40,23 @@ export class CreateTripLocationDto {
   @IsOptional()
   @Matches(/^#[0-9A-Fa-f]{6}$/)
   marker_color?: string;
+
+  @ApiPropertyOptional({ description: 'Google Places place id' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  google_place_id?: string | null;
+
+  @ApiPropertyOptional({ description: 'Primary photo URL for map / UI' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  photo_url?: string | null;
+
+  @ApiPropertyOptional({ description: 'Formatted address from Places' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  formatted_address?: string | null;
 }
 

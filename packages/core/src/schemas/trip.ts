@@ -118,6 +118,22 @@ export const TripSchema = z.object({
         .transform((s) => s.toUpperCase()),
     ])
     .optional(),
+  /** Trip creator (Supabase `trips.created_by`) — used for “My trips” vs “Shared” on the client. */
+  created_by: z.string().uuid('Invalid creator ID format').nullable().optional(),
+  /**
+   * Optional on GET /trips list: members for dashboard facepile (join order).
+   * Not a DB column — merged from `trip_members` + `profiles`.
+   */
+  member_facepile: z
+    .array(
+      z.object({
+        user_id: z.string().uuid('Invalid member id'),
+        avatar_url: z.string().nullable().optional(),
+        label: z.string().min(1),
+      })
+    )
+    .max(12)
+    .optional(),
   created_at: z.string().datetime({ message: 'Invalid creation date format' }),
 })
   .refine(
@@ -296,6 +312,9 @@ export const TripLocationSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid marker color format')
     .nullable()
     .optional(),
+  google_place_id: z.string().max(512).nullable().optional(),
+  photo_url: z.string().max(2048).nullable().optional(),
+  formatted_address: z.string().max(500).nullable().optional(),
   created_at: z.string().datetime({ message: 'Invalid creation date format' }),
   updated_at: z.string().datetime({ message: 'Invalid update date format' }),
 }).refine(
@@ -329,6 +348,9 @@ export const CreateTripLocationSchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid marker color format')
     .optional(),
+  google_place_id: z.string().max(512).nullable().optional(),
+  photo_url: z.string().max(2048).nullable().optional(),
+  formatted_address: z.string().max(500).nullable().optional(),
 }).refine(
   (data) => {
     if (data.arrival_date && data.departure_date) {
@@ -361,6 +383,9 @@ export const UpdateTripLocationSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid marker color format')
     .nullable()
     .optional(),
+  google_place_id: z.string().max(512).nullable().optional(),
+  photo_url: z.string().max(2048).nullable().optional(),
+  formatted_address: z.string().max(500).nullable().optional(),
 });
 
 /**

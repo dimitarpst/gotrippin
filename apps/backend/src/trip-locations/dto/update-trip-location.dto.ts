@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, Min, Max, IsInt, IsPositive, IsDateString, Matches, ValidateIf } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, Max, IsInt, IsPositive, IsDateString, Matches, ValidateIf, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateTripLocationDto {
@@ -42,5 +42,23 @@ export class UpdateTripLocationDto {
   @ValidateIf((_, value) => typeof value === 'string')
   @Matches(/^#[0-9A-Fa-f]{6}$/)
   marker_color?: string | null;
+
+  @ApiPropertyOptional({ description: 'Google Places place id' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  google_place_id?: string | null;
+
+  @ApiPropertyOptional({ description: 'Primary photo URL for map / UI' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  photo_url?: string | null;
+
+  @ApiPropertyOptional({ description: 'Formatted address from Places' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  formatted_address?: string | null;
 }
 

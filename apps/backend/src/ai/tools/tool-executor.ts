@@ -31,6 +31,18 @@ const GetRouteSchema = z.object({
   trip_id: z.string().uuid(),
 });
 
+const inviteEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const InviteTripByEmailSchema = z.object({
+  trip_id: z.string().uuid(),
+  email: z
+    .string()
+    .min(3)
+    .max(320)
+    .transform((s) => s.trim().toLowerCase())
+    .refine((s) => inviteEmailPattern.test(s), { message: 'Invalid email address' }),
+});
+
 const ReorderLocationsSchema = z.object({
   trip_id: z.string().uuid(),
   location_ids: z.array(z.string().uuid()).min(1),
@@ -149,6 +161,15 @@ export class ToolExecutor {
             start_date: t.start_date,
             end_date: t.end_date,
           }));
+        }
+        case 'inviteTripByEmail': {
+          const parsed = InviteTripByEmailSchema.parse(args);
+          await this.tripsService.sendTripInviteEmail(
+            parsed.trip_id,
+            userId,
+            parsed.email,
+          );
+          return { ok: true, trip_id: parsed.trip_id, email: parsed.email };
         }
         case 'searchCoverImage': {
           const parsed = SearchCoverImageSchema.parse(args);

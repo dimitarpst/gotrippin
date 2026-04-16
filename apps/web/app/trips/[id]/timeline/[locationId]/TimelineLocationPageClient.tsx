@@ -231,6 +231,7 @@ export default function TimelineLocationPageClient(props: TimelineLocationPageCl
                       routeLineGeo={routeGeo}
                       fitToRoute
                       fitPadding={36}
+                      waypointMarkerDisplay="square"
                       interactive={false}
                     />
                     <div className="absolute inset-0 bg-black/35 group-hover:bg-black/25 transition-colors duration-300" />

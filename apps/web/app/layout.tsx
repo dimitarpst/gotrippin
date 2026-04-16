@@ -14,6 +14,7 @@ import {
 } from "../src/i18n/config";
 import { appConfig } from "@/config/appConfig";
 import { ThemeProvider } from "@/components/theme-provider";
+import CookieBanner from "@/components/CookieBanner";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -32,7 +33,7 @@ const martianGrotesk = localFont({
 const siteUrl = appConfig.siteUrl || "https://gotrippin.app";
 const defaultTitle = "gotrippin — travel planning made simple";
 const defaultDescription =
-  "Plan trips together without the chaos. gotrippin is a route-first trip planner: build your route, invite others, and let AI suggest the rest. Interactive maps, AI assistant, shareable itineraries.";
+  "Plan together, without the chaos. gotrippin is a route-first trip planner: build your route, invite others, and let AI suggest the rest. Interactive maps, AI assistant, shareable itineraries.";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -142,6 +143,7 @@ export default async function RootLayout({
           <AuthProvider>
             <I18nProvider initialLanguage={initialLanguage}>
               {children}
+              <CookieBanner />
               <Toaster position="top-center" expand={true} richColors />
             </I18nProvider>
           </AuthProvider>

@@ -84,16 +84,20 @@ export default function CtaFooter() {
           </div>
         </div>
 
-        <div className="mt-14 pt-8 border-t border-border flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
+        <div className="mt-14 flex flex-col gap-6 border-t border-border pt-8 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
           <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-white/45">
             <Logo variant="sm" className="h-5 w-auto opacity-80" />
             <span suppressHydrationWarning>© {new Date().getFullYear()} gotrippin</span>
           </div>
-          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-            <span className="text-xs text-muted-foreground uppercase tracking-wide mr-2 dark:text-white/40">{t("landing.footer.appearance")}</span>
-            <ThemeToggle className="h-9 w-9 shrink-0 border border-border hover:bg-muted/80 dark:border-white/10 dark:hover:bg-white/5" />
-            <span className="text-xs text-muted-foreground uppercase tracking-wide ml-3 mr-2 dark:text-white/40">{t("landing.footer.language")}</span>
-            <FooterLanguageMenu />
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-6 sm:gap-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground dark:text-white/55">{t("landing.footer.appearance")}</span>
+              <ThemeToggle className="h-9 w-9 shrink-0 border border-border hover:bg-muted/80 dark:border-white/10 dark:hover:bg-white/5" />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground dark:text-white/55">{t("landing.footer.language")}</span>
+              <FooterLanguageMenu />
+            </div>
           </div>
         </div>
       </div>

@@ -3,3 +3,4 @@ export type { MapWaypoint } from "./MapView";
 export { tripLocationsToWaypoints } from "./trip-location-utils";
 export { SelectedRouteStopPeek } from "./selected-route-stop-peek";
 export type { SelectedRouteStopPeekProps } from "./selected-route-stop-peek";
+export { TripRouteStopDetailsDrawer } from "./trip-route-stop-details-drawer";

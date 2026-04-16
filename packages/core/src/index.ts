@@ -105,6 +105,13 @@ export {
 } from './utils/date';
 
 export {
+  getTripDatePickerBounds,
+  type TripDatePickerBounds,
+} from './utils/trip-date-picker-bounds';
+
+export { tripDisplayTitle } from './utils/trip-display';
+
+export {
   averageRgbFromImageDataSampled,
   rgbToHex,
   type RgbaImageRegion,

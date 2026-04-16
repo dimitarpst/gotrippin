@@ -7,6 +7,7 @@ import CreateTrip from "@/components/trips/create-trip"
 import { toast } from "sonner"
 import { useState, useSyncExternalStore } from "react"
 import { createAiSession } from "@/lib/api/ai"
+import { AI_PLAN_CONTEXT_STORAGE_KEY } from "@/lib/ai/aiPlanContextStorage"
 import type { DateRange } from "react-day-picker"
 import { useTranslation } from "react-i18next"
 import { getRandomRouteColor } from "@/lib/route-colors"
@@ -40,6 +41,19 @@ export default function CreateTripPageClient() {
     if (planWithAiLoading) return
     setPlanWithAiLoading(true)
     try {
+      if (pendingData) {
+        const payload = {
+          v: 1 as const,
+          title: pendingData.title.trim(),
+          start_date: pendingData.dateRange?.from?.toISOString() ?? null,
+          end_date: pendingData.dateRange?.to?.toISOString() ?? null,
+        }
+        try {
+          sessionStorage.setItem(AI_PLAN_CONTEXT_STORAGE_KEY, JSON.stringify(payload))
+        } catch (e) {
+          console.error("[CreateTripPageClient] sessionStorage ai plan context failed", e)
+        }
+      }
       const res = await createAiSession({ scope: "global" })
       router.push(`/ai/${res.session_id}`)
     } catch (err) {

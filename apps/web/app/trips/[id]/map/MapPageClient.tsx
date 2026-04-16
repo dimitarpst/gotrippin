@@ -1,15 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Map as MapIcon, Navigation } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Trip, TripLocation } from "@gotrippin/core";
+import { getTripDatePickerBounds } from "@/lib/trip-date-picker-bounds";
+import { tripDisplayTitle } from "@/lib/trip-display";
 import type { MapWaypoint } from "@/components/maps";
 import {
   MapView,
   SelectedRouteStopPeek,
+  TripRouteStopDetailsDrawer,
   tripLocationsToWaypoints,
 } from "@/components/maps";
 import { useRouteDirections } from "@/hooks";
@@ -32,6 +35,7 @@ function MapViewWithRoute({
       routeLineGeo={routeGeo}
       fitToRoute
       fitPadding={80}
+      waypointMarkerDisplay="square"
       className="w-full h-full"
       selectedWaypointId={selectedWaypointId}
       onWaypointClick={onWaypointClick}
@@ -54,9 +58,14 @@ export default function MapPageClient({
   const router = useRouter();
   const { t } = useTranslation();
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [mapStopDetailsOpen, setMapStopDetailsOpen] = useState(false);
   const [focusLngLat, setFocusLngLat] = useState<{ lng: number; lat: number } | null>(null);
 
   const waypoints = tripLocationsToWaypoints(routeLocations);
+  const { minDate: tripMinDate, maxDate: tripMaxDate } = useMemo(
+    () => getTripDatePickerBounds(trip, routeLocations),
+    [trip, routeLocations],
+  );
 
   const mapSelectedStopPeek =
     selectedLocationId && routeLocations.length > 0
@@ -66,6 +75,10 @@ export default function MapPageClient({
           return { location: routeLocations[stopIdx], stopIndex: stopIdx };
         })()
       : null;
+
+  useEffect(() => {
+    setMapStopDetailsOpen(false);
+  }, [selectedLocationId]);
 
   const hideBottomRouteCta = Boolean(selectedLocationId);
 
@@ -85,8 +98,8 @@ export default function MapPageClient({
             <span className="text-xs uppercase tracking-wide text-white/80 font-medium drop-shadow-md">
               {t("trip_overview.route_map_title")}
             </span>
-            <span className="text-sm font-semibold text-white truncate drop-shadow-md">
-              {trip.destination || trip.title || t("trips.untitled_trip")}
+            <span className="line-clamp-2 min-w-0 max-w-full text-sm font-semibold leading-tight text-white [overflow-wrap:anywhere] break-words drop-shadow-md">
+              {tripDisplayTitle(trip) ?? t("trips.untitled_trip")}
             </span>
           </div>
         </div>
@@ -135,7 +148,11 @@ export default function MapPageClient({
                 location={mapSelectedStopPeek.location}
                 stopIndex={mapSelectedStopPeek.stopIndex}
                 shareCode={shareCode}
+                compact
+                onExpandDetails={() => setMapStopDetailsOpen(true)}
                 editable={false}
+                minDate={tripMinDate}
+                maxDate={tripMaxDate}
                 expenseTripId={trip.id}
                 tripBudgetCurrency={trip.budget_currency ?? null}
                 onDismiss={() => {
@@ -147,6 +164,42 @@ export default function MapPageClient({
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      {mapSelectedStopPeek ? (
+        <TripRouteStopDetailsDrawer
+          open={mapStopDetailsOpen}
+          onOpenChange={setMapStopDetailsOpen}
+          location={mapSelectedStopPeek.location}
+          stopIndex={mapSelectedStopPeek.stopIndex}
+          totalStops={routeLocations.length}
+          shareCode={shareCode}
+          minDate={tripMinDate}
+          maxDate={tripMaxDate}
+          expenseTripId={trip.id}
+          tripBudgetCurrency={trip.budget_currency ?? null}
+          editable={false}
+          onNavigateAdjacent={
+            routeLocations.length > 1
+              ? (dir) => {
+                  const idx = routeLocations.findIndex((l) => l.id === selectedLocationId);
+                  if (idx < 0) return;
+                  const n = dir === "prev" ? idx - 1 : idx + 1;
+                  if (n < 0 || n >= routeLocations.length) return;
+                  const loc = routeLocations[n];
+                  setSelectedLocationId(loc.id);
+                  if (
+                    loc.latitude != null &&
+                    loc.longitude != null &&
+                    Number.isFinite(loc.latitude) &&
+                    Number.isFinite(loc.longitude)
+                  ) {
+                    setFocusLngLat({ lng: loc.longitude, lat: loc.latitude });
+                  }
+                }
+              : undefined
+          }
+        />
+      ) : null}
 
       {/* Floating Route Legend / Info Panel that links to the route editor */}
       {routeLocations.length > 0 && (

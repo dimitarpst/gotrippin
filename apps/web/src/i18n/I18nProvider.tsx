@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import i18n from "./index";
 import {
   DEFAULT_LANGUAGE,
@@ -29,19 +29,19 @@ export default function I18nProvider({
 }: I18nProviderProps) {
   const lastLanguageRef = useRef<string | null>(null);
 
-  const applyLanguage = (language: SupportedLanguage) => {
+  const applyLanguage = useCallback((language: SupportedLanguage) => {
     if (!i18n.isInitialized) return;
     if (lastLanguageRef.current === language) return;
 
-    i18n.changeLanguage(language);
+    void i18n.changeLanguage(language);
     lastLanguageRef.current = language;
-  };
+  }, []);
 
-  // Apply language in effects only; calling changeLanguage during render would
-  // update i18n subscribers (e.g. AiTestClient) and cause "setState during render".
-  useEffect(() => {
+  // Sync before children render (SSR + first client paint) so `useTranslation()` on /home
+  // sees the cookie/layout language instead of fallback English until effects run.
+  useMemo(() => {
     applyLanguage(initialLanguage);
-  }, [initialLanguage]);
+  }, [initialLanguage, applyLanguage]);
 
   useEffect(() => {
     // After hydration, prefer whatever is stored client-side to keep detector/cookie in sync
@@ -49,7 +49,7 @@ export default function I18nProvider({
     const cookieLanguage = getClientCookieLanguage();
 
     applyLanguage(cookieLanguage ?? initialLanguage);
-  }, [initialLanguage]);
+  }, [initialLanguage, applyLanguage]);
 
   return <>{children}</>;
 }
