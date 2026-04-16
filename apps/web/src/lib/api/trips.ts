@@ -9,6 +9,7 @@ import type {
   Trip,
   TripCreateData,
   TripGalleryImage,
+  TripMemberRole,
   TripUpdateData,
   TripWeatherResponse,
 } from "@gotrippin/core";
@@ -157,6 +158,8 @@ export async function inviteTripByEmail(
 export interface TripMemberWithProfile {
   user_id: string;
   joined_at: string;
+  /** Present after collaboration migration; treated as editor if missing. */
+  role?: TripMemberRole;
   profiles: unknown;
 }
 
@@ -187,9 +190,29 @@ export async function removeTripMember(
   }, token);
 }
 
+/**
+ * Change a member's role (trip creator only).
+ */
+export async function patchTripMemberRole(
+  tripId: string,
+  memberUserId: string,
+  role: TripMemberRole,
+  token?: string | null
+): Promise<{ ok: true }> {
+  return apiRequest<{ ok: true }>(
+    `/trips/${tripId}/members/${encodeURIComponent(memberUserId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    },
+    token
+  );
+}
+
 /** Response from GET /trips/share/:shareCode/detail (one request for detail screen; web + mobile) */
 export interface TripDetailResponse {
   trip: Trip;
+  my_role: TripMemberRole;
   route_locations: unknown[] | null;
   route_locations_error?: string;
   grouped_activities: { locations: unknown[]; unassigned: unknown[] } | null;

@@ -60,6 +60,10 @@ npm run build
 npm run dev
 ```
 
+### CI / deploy consumers
+
+Apps import `@gotrippin/core` from compiled `dist/`. In this monorepo, **`apps/web`** and **`apps/backend`** run `npm run build:core` via their npm **`prebuild`** scripts before `next build` / `nest build`. If you add a new workspace consumer, mirror that pattern or run `npm run build:core` from the repo root before building the consumer.
+
 ## 🎯 Design Principles
 
 1. **Single Source of Truth**: All data structures defined once

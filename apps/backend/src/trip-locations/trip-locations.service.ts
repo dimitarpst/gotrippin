@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateTripLocationDto, UpdateTripLocationDto, ReorderLocationsDto } from './dto';
 import { geocodePlaceNameOrThrow, GeocodePlaceError } from './open-meteo-geocode';
@@ -18,6 +24,10 @@ export class TripLocationsService {
     if (!isMember) {
       throw new ForbiddenException('You must be a member of this trip to access locations');
     }
+  }
+
+  private async assertTripEditor(tripId: string, userId: string): Promise<void> {
+    await this.supabaseService.assertTripEditor(tripId, userId);
   }
 
   /**
@@ -64,6 +74,7 @@ export class TripLocationsService {
    */
   async addLocation(tripId: string, userId: string, dto: CreateTripLocationDto) {
     await this.validateTripMembership(tripId, userId);
+    await this.assertTripEditor(tripId, userId);
 
     const { data: existingRows } = await this.supabaseService.getClient()
       .from('trip_locations')
@@ -159,6 +170,15 @@ export class TripLocationsService {
   async updateLocation(locationId: string, userId: string, dto: UpdateTripLocationDto) {
     // First get the location to validate membership
     const location = await this.getLocation(locationId, userId);
+    await this.assertTripEditor(location.trip_id, userId);
+
+    const expected = dto.expected_updated_at;
+    if (expected !== undefined && expected !== null && expected !== '') {
+      const current = (location as { updated_at?: string }).updated_at;
+      if (typeof current === 'string' && Date.parse(expected) !== Date.parse(current)) {
+        throw new ConflictException('This stop was modified by someone else');
+      }
+    }
 
     // Validate dates if both provided
     const arrivalDate = dto.arrival_date !== undefined ? dto.arrival_date : location.arrival_date;
@@ -170,9 +190,11 @@ export class TripLocationsService {
       }
     }
 
-    // Filter out undefined values
+    // Filter out undefined values and optimistic-lock field
     const updateData = Object.fromEntries(
-      Object.entries(dto).filter(([_, value]) => value !== undefined)
+      Object.entries(dto).filter(
+        ([key, value]) => value !== undefined && key !== 'expected_updated_at',
+      ),
     );
 
     if (Object.keys(updateData).length === 0) {
@@ -203,6 +225,7 @@ export class TripLocationsService {
     // First get the location to validate membership and get trip_id
     const location = await this.getLocation(locationId, userId);
     const tripId = location.trip_id;
+    await this.assertTripEditor(tripId, userId);
     const removedOrderIndex = location.order_index;
 
     // Delete the location
@@ -247,6 +270,7 @@ export class TripLocationsService {
    */
   async reorderLocations(tripId: string, userId: string, dto: ReorderLocationsDto) {
     await this.validateTripMembership(tripId, userId);
+    await this.assertTripEditor(tripId, userId);
 
     const { location_ids } = dto;
 

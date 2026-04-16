@@ -18,6 +18,10 @@ export class TripExpensesService {
     }
   }
 
+  private async assertTripEditor(tripId: string, userId: string): Promise<void> {
+    await this.supabaseService.assertTripEditor(tripId, userId);
+  }
+
   private async validateLocationBelongsToTrip(locationId: string, tripId: string): Promise<void> {
     const { data, error } = await this.supabaseService
       .getClient()
@@ -102,6 +106,7 @@ export class TripExpensesService {
 
   async createExpense(tripId: string, userId: string, dto: CreateTripExpense) {
     await this.validateTripMembership(tripId, userId);
+    await this.assertTripEditor(tripId, userId);
 
     if (dto.location_id) {
       await this.validateLocationBelongsToTrip(dto.location_id, tripId);
@@ -157,6 +162,8 @@ export class TripExpensesService {
     if (existing.trip_id !== tripId) {
       throw new NotFoundException('Expense not found');
     }
+
+    await this.assertTripEditor(tripId, userId);
 
     if (dto.location_id !== undefined && dto.location_id !== null) {
       await this.validateLocationBelongsToTrip(dto.location_id, tripId);
@@ -226,6 +233,8 @@ export class TripExpensesService {
     if (existing.trip_id !== tripId) {
       throw new NotFoundException('Expense not found');
     }
+
+    await this.assertTripEditor(tripId, userId);
 
     const { error } = await this.supabaseService
       .getClient()

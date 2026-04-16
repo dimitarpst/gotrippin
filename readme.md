@@ -15,7 +15,7 @@ gotrippin helps small groups plan trips without juggling spreadsheets, screensho
 - **Route-first planning** — the core of each trip is an ordered route (A → B → C). Locations drive activities, weather, images and collaboration.
 - **AI assistant with tools** — a server-side AI agent that can call validated backend endpoints: create trips, manage locations, reorder routes, search cover images.
 - **Shared trips** — join via invite link (authenticated); trip members can send **invite emails** through [Brevo](https://www.brevo.com) transactional API (`BREVO_*` in `apps/backend/.env`). Copy **join link** from the trip menu for a zero-email path.
-- **Weather forecasts** — per-stop weather data for the dates of your trip.
+- **Weather forecasts** — per-stop weather for trip dates via **[Open-Meteo](https://open-meteo.com/)** (forecast + geocoding HTTP APIs on the server; no vendor API key required for the public endpoints used in code).
 - **Visual covers** — Unsplash integration with blurhash placeholders for instant loading.
 
 ---
@@ -44,6 +44,8 @@ Monorepo with three packages:
 
 **Infrastructure:** Supabase (PostgreSQL, Auth, Storage, Realtime), Vercel (frontend), Cloudflare R2 (image storage)
 
+**Production builds:** both `apps/web` and `apps/backend` define an npm **`prebuild`** step that runs `npm run build:core` at the repo root so `@gotrippin/core` is compiled to `dist/` before `next build` / `nest build`. This avoids `Cannot find module '@gotrippin/core'` on hosts that only install workspace deps (e.g. Vercel, Render).
+
 ---
 
 ## Development
@@ -60,7 +62,7 @@ npm run dev
 
 Environment files needed:
 - `apps/web/.env.local` — Supabase keys, Mapbox token
-- `apps/backend/.env` — Supabase service role key, API keys (Unsplash, weather, OpenRouter); optional **Brevo** keys for trip invite email (`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `PUBLIC_APP_URL`). See [`apps/backend/.env.example`](apps/backend/.env.example).
+- `apps/backend/.env` — Supabase service role key, API keys (Unsplash, OpenRouter, etc.); optional **Brevo** keys for trip invite email (`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `PUBLIC_APP_URL`). See [`apps/backend/.env.example`](apps/backend/.env.example).
 
 **Brevo:** verify the sender (or domain) in the Brevo dashboard before production; keep the API key **server-only** (never `NEXT_PUBLIC_*` on the web app).
 

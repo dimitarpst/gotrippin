@@ -40,7 +40,7 @@ import {
   TripRouteStopDetailsDrawer,
   tripLocationsToWaypoints,
 } from "@/components/maps";
-import { useAlongRoutePlaces, useRouteDirections } from "@/hooks";
+import { useAlongRoutePlaces, useRouteDirections, useTripRealtimeSync } from "@/hooks";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -89,6 +89,8 @@ interface RouteMapPageClientProps {
   routeLocations: TripLocation[];
   shareCode: string;
   isWizard?: boolean;
+  /** When false, route mutations are blocked in the UI (viewer role). */
+  canEdit?: boolean;
 }
 
 /** Pending stop before "Add to route" (search, map tap, or along-route). */
@@ -108,10 +110,20 @@ export default function RouteMapPageClient({
   routeLocations,
   shareCode,
   isWizard = false,
+  canEdit = true,
 }: RouteMapPageClientProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const { user, refreshProfile } = useAuth();
+  useTripRealtimeSync(trip.id);
+
+  const guardCanEdit = useCallback(() => {
+    if (!canEdit) {
+      toast.error(t("trips.viewer_cannot_edit"));
+      return false;
+    }
+    return true;
+  }, [canEdit, t]);
   const [open, setOpen] = useState(false);
   const [stopDetailsOpen, setStopDetailsOpen] = useState(false);
   const [locations, setLocations] = useState<TripLocation[]>(() => [...routeLocations]);
@@ -450,6 +462,7 @@ export default function RouteMapPageClient({
   const handleConfirmAddPlace = useCallback(
     async () => {
       if (!previewPlace || addingPlaceId) return;
+      if (!guardCanEdit()) return;
       setAddingPlaceId(previewPlace.id);
       try {
         const gid = previewPlace.googlePlaceId?.trim();
@@ -504,9 +517,10 @@ export default function RouteMapPageClient({
         setAddingPlaceId(null);
       }
     },
-    [previewPlace, previewDateRange, addingPlaceId, trip.id, locations.length, t]
+    [previewPlace, previewDateRange, addingPlaceId, trip.id, locations.length, t, guardCanEdit]
   );
   const handleNameCommit = async (id: string, name: string) => {
+    if (!guardCanEdit()) return;
     const trimmed = name.trim();
     if (!trimmed) return;
     try {
@@ -519,6 +533,7 @@ export default function RouteMapPageClient({
   };
 
   const handleDatesCommit = async (id: string, range: DateRange | undefined) => {
+    if (!guardCanEdit()) return;
     try {
       const payload: UpdateTripLocation = {};
       if (range?.from) {
@@ -537,6 +552,7 @@ export default function RouteMapPageClient({
   };
 
   const handleMarkerColorCommit = async (id: string, hex: string) => {
+    if (!guardCanEdit()) return;
     if (!isSolidRouteColor(hex)) return;
     try {
       const updated = await apiUpdateLocation(trip.id, id, { marker_color: hex });
@@ -549,6 +565,7 @@ export default function RouteMapPageClient({
 
   async function handleEditWithAiFromRoute() {
     if (editWithAiLoading) return;
+    if (!guardCanEdit()) return;
     setEditWithAiLoading(true);
     try {
       const res = await createAiSession({ scope: "trip", trip_id: trip.id });
@@ -599,6 +616,11 @@ export default function RouteMapPageClient({
 
   return (
     <div className="h-screen w-full bg-[var(--color-background)] flex flex-col overflow-hidden relative">
+      {!canEdit ? (
+        <div className="relative z-[200] shrink-0 border-b border-white/15 bg-black/60 px-4 py-2 text-center text-xs text-white/85">
+          {t("trips.viewer_mode_banner")}
+        </div>
+      ) : null}
       {isWizard && <AuroraBackground className="absolute inset-0 pointer-events-none z-0" />}
       {/* Wizard: step bar is transparent so aurora shows through (like create-trip step 2). Gradient bar overlays map only. */}
       {isWizard && (
@@ -1191,6 +1213,7 @@ export default function RouteMapPageClient({
                 orientation="vertical"
                 onMove={async ({ activeIndex, overIndex }) => {
                   if (activeIndex === overIndex) return;
+                  if (!guardCanEdit()) return;
                   const newOrder = [...locations];
                   const [moved] = newOrder.splice(activeIndex, 1);
                   newOrder.splice(overIndex, 0, moved);

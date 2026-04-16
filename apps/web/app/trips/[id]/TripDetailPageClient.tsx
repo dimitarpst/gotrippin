@@ -16,7 +16,14 @@ import { TripMembersDrawer } from "@/components/trips/trip-members-drawer";
 import { updateTripAction, deleteTripAction } from "@/actions/trips";
 import { toast } from "sonner";
 import { computeTripStartCalendarDayDelta } from "@/lib/trip-date-shift-calendar";
-import type { Trip, TripLocation, Activity, TripLocationWeather } from "@gotrippin/core";
+import type {
+  Trip,
+  TripLocation,
+  Activity,
+  TripLocationWeather,
+  TripMemberRole,
+  TripUpdateData,
+} from "@gotrippin/core";
 import type { DateRange } from "react-day-picker";
 import { shiftTripRelatedDatesByCalendarDays } from "@/lib/shift-trip-related-dates";
 import { getGroupedActivities, normalizeTimelineData, type GroupedActivitiesResponse } from "@/lib/api/activities";
@@ -32,7 +39,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { inviteTripByEmail, ApiError } from "@/lib/api/trips";
+import { inviteTripByEmail, ApiError, fetchTripMembers, type TripMemberWithProfile } from "@/lib/api/trips";
+import { avatarUrlFromProfiles, displayNameFromProfiles } from "@/lib/trip-member-profile";
+import { useTripRealtimeSync, useTripPresencePeers } from "@/hooks/useTripCollaboration";
+import { TripPresenceFacepile, type HeroFacepileEntry } from "@/components/trips/trip-presence-facepile";
+import { useAuth } from "@/contexts/AuthContext";
 
 type ScheduleRepairState = {
   tripStart: Date;
@@ -58,6 +69,8 @@ interface TripDetailPageClientProps {
   unassignedActivities: Activity[];
   /** Open itinerary drawer on load (e.g. `/trips/x?itinerary=1`). */
   initialItineraryOpen?: boolean;
+  /** Current user's role on this trip (from GET .../detail). */
+  myRole: TripMemberRole;
 }
 
 export default function TripDetailPageClient({
@@ -73,9 +86,73 @@ export default function TripDetailPageClient({
   shareCode,
   unassignedActivities,
   initialItineraryOpen = false,
+  myRole,
 }: TripDetailPageClientProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user, accessToken } = useAuth();
+
+  const canEdit = myRole === "editor";
+
+  useTripRealtimeSync(trip.id);
+  const presencePeers = useTripPresencePeers(
+    trip.id,
+    typeof user?.display_name === "string" && user.display_name.trim().length > 0
+      ? user.display_name.trim()
+      : typeof user?.email === "string"
+        ? user.email.split("@")[0]
+        : "Traveler",
+  );
+
+  const [tripMembers, setTripMembers] = useState<TripMemberWithProfile[] | null>(null);
+
+  useEffect(() => {
+    if (!trip.id || !accessToken) {
+      return;
+    }
+    let cancelled = false;
+    void fetchTripMembers(trip.id, accessToken)
+      .then((rows) => {
+        if (!cancelled) {
+          setTripMembers(rows);
+        }
+      })
+      .catch((err) => {
+        console.error("TripDetailPageClient: fetchTripMembers failed", err);
+        if (!cancelled) {
+          setTripMembers([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trip.id, accessToken]);
+
+  /** Other members only (not you): online = on this trip page in Supabase presence; offline = muted. */
+  const heroFacepileEntries = useMemo((): HeroFacepileEntry[] => {
+    if (!tripMembers) {
+      return [];
+    }
+    const others =
+      typeof user?.id === "string" && user.id.length > 0
+        ? tripMembers.filter((m) => m.user_id !== user.id)
+        : tripMembers;
+    const rows: HeroFacepileEntry[] = others.map((m) => {
+      const presence = presencePeers.find((p) => p.userId === m.user_id);
+      const online = presencePeers.some((p) => p.userId === m.user_id);
+      const fromProfile = displayNameFromProfiles(m.profiles);
+      const label = presence?.label ?? (fromProfile.length > 0 ? fromProfile : m.user_id);
+      const avatarUrl = presence?.avatarUrl ?? avatarUrlFromProfiles(m.profiles);
+      return { userId: m.user_id, label, avatarUrl, online };
+    });
+    rows.sort((a, b) => {
+      if (a.online !== b.online) {
+        return a.online ? -1 : 1;
+      }
+      return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
+    });
+    return rows;
+  }, [tripMembers, user?.id, presencePeers]);
 
   const [itineraryDrawerOpen, setItineraryDrawerOpen] = useState(initialItineraryOpen);
 
@@ -103,6 +180,42 @@ export default function TripDetailPageClient({
     const raw = timelineLocations.length > 0 ? timelineLocations : routeLocations;
     return [...raw].sort((a, b) => a.order_index - b.order_index);
   }, [timelineLocations, routeLocations]);
+
+  /** Attach `expected_updated_at` when the server sent `trip.updated_at` (optimistic concurrency). */
+  const withTripVersion = useCallback(
+    (patch: Partial<TripUpdateData>): TripUpdateData => {
+      const u = (trip as { updated_at?: string }).updated_at;
+      if (typeof u === "string" && u.length > 0) {
+        const merged: Partial<TripUpdateData> = { ...patch, expected_updated_at: u };
+        return merged as TripUpdateData;
+      }
+      return patch as TripUpdateData;
+    },
+    [trip],
+  );
+
+  const notifyTripConflict = useCallback(() => {
+    toast.error(t("trips.concurrent_edit"), { description: t("trips.concurrent_edit_hint") });
+    router.refresh();
+  }, [router, t]);
+
+  const patchTrip = useCallback(
+    async (patch: Partial<TripUpdateData>) => {
+      if (!trip?.id) {
+        return { ok: false as const, conflict: false, message: "No trip" };
+      }
+      const result = await updateTripAction(trip.id, withTripVersion(patch));
+      if (result.success) {
+        return { ok: true as const };
+      }
+      if (result.error.includes("modified")) {
+        notifyTripConflict();
+        return { ok: false as const, conflict: true, message: result.error };
+      }
+      return { ok: false as const, conflict: false, message: result.error };
+    },
+    [trip?.id, withTripVersion, notifyTripConflict]
+  );
 
   const handleItineraryDrawerOpenChange = useCallback(
     (open: boolean) => {
@@ -175,11 +288,18 @@ export default function TripDetailPageClient({
         return;
       }
       try {
-        const result = await updateTripAction(trip.id, {
-          start_date: snapshot.rollback.start_date,
-          end_date: snapshot.rollback.end_date,
-        });
+        const result = await updateTripAction(
+          trip.id,
+          withTripVersion({
+            start_date: snapshot.rollback.start_date,
+            end_date: snapshot.rollback.end_date,
+          })
+        );
         if (!result.success) {
+          if (result.error.includes("modified")) {
+            notifyTripConflict();
+            return;
+          }
           toast.error(t("trips.dates_update_failed"), { description: result.error });
           return;
         }
@@ -206,7 +326,7 @@ export default function TripDetailPageClient({
         });
       }
     },
-    [trip?.id, router, t]
+    [trip?.id, router, t, withTripVersion, notifyTripConflict]
   );
 
   const handleChangeDates = useCallback(
@@ -225,11 +345,18 @@ export default function TripDetailPageClient({
         previousStartIso && dateRange.from
           ? computeTripStartCalendarDayDelta(previousStartIso, dateRange.from)
           : null;
-      const result = await updateTripAction(trip.id, {
-        start_date: dateRange.from.toISOString(),
-        end_date: dateRange.to.toISOString(),
-      });
+      const result = await updateTripAction(
+        trip.id,
+        withTripVersion({
+          start_date: dateRange.from.toISOString(),
+          end_date: dateRange.to.toISOString(),
+        })
+      );
       if (!result.success) {
+        if (result.error.includes("modified")) {
+          notifyTripConflict();
+          return;
+        }
         toast.error(t("trips.dates_update_failed"), { description: result.error });
         return;
       }
@@ -302,6 +429,8 @@ export default function TripDetailPageClient({
       router,
       t,
       beginScheduleRepair,
+      withTripVersion,
+      notifyTripConflict,
     ]
   );
 
@@ -357,9 +486,16 @@ export default function TripDetailPageClient({
     }
   }, [trip?.id, inviteEmail, t]);
 
-  const actions: TripOverviewActions = useMemo(
-    () => ({
+  const actions: TripOverviewActions = useMemo(() => {
+    const base: TripOverviewActions = {
       onNavigate: (screen) => {
+        if (
+          !canEdit &&
+          (screen === "activity" || screen === "flight" || screen === "lodging" || screen === "place")
+        ) {
+          toast.error(t("trips.viewer_cannot_edit"));
+          return;
+        }
         if (screen === "flight") {
           router.push(`/trips/${shareCode}/activity/new?type=flight`);
           return;
@@ -388,17 +524,6 @@ export default function TripDetailPageClient({
         if (path) router.push(path);
       },
       onBack: () => router.push("/trips"),
-      onEdit: () => router.push(`/trips/${shareCode}/edit`),
-      onDelete: async () => {
-        if (!trip?.id) return;
-        const result = await deleteTripAction(trip.id);
-        if (result.success) {
-          toast.success(t("trips.delete_success"));
-          router.push("/trips");
-        } else {
-          toast.error(t("trips.delete_failed"), { description: result.error });
-        }
-      },
       onShare: () => {
         const origin = typeof window !== "undefined" ? window.location.origin : "";
         const url = `${origin}/trips/${shareCode}/join`;
@@ -412,48 +537,11 @@ export default function TripDetailPageClient({
           }
         );
       },
-      onInviteByEmail: () => {
-        setInviteOpen(true);
-      },
       onManageGuests: () => {
         setMembersDrawerOpen(true);
       },
-      onEditName: () => router.push(`/trips/${shareCode}/edit`),
       onOpenLocation: (locationId) =>
         router.push(`/trips/${shareCode}/timeline/${locationId}`),
-      onChangeDates: handleChangeDates,
-      onChangeBackground: async (_type, coverPhoto) => {
-        if (!trip?.id) return;
-        const result = await updateTripAction(trip.id, { cover_photo: coverPhoto });
-        if (result.success) {
-          toast.success(t("trips.background_updated"));
-          router.refresh();
-        } else {
-          toast.error(t("trips.background_update_failed"), { description: result.error });
-        }
-      },
-      onChangeBackgroundUpload: async ({ storage_key }) => {
-        if (!trip?.id) return;
-        const result = await updateTripAction(trip.id, {
-          cover_upload_storage_key: storage_key,
-        });
-        if (result.success) {
-          toast.success(t("trips.background_updated"));
-          router.refresh();
-        } else {
-          toast.error(t("trips.background_update_failed"), { description: result.error });
-        }
-      },
-      onChangeBackgroundColor: async (color) => {
-        if (!trip?.id) return;
-        const result = await updateTripAction(trip.id, { color, cover_photo: undefined });
-        if (result.success) {
-          toast.success(t("trips.color_updated"));
-          router.refresh();
-        } else {
-          toast.error(t("trips.color_update_failed"), { description: result.error });
-        }
-      },
       onExportTripPdf: () => {
         const url = `/trips/${shareCode}/print?autoprint=1`;
         const w = window.open(url, "_blank", "noopener,noreferrer");
@@ -465,18 +553,69 @@ export default function TripDetailPageClient({
         }
         toast.success(t("trips.export_pdf_success"));
       },
-    }),
-    [
-      trip,
-      routeLocations,
-      activitiesByLocation,
-      unassignedActivities,
-      shareCode,
-      router,
-      t,
-      handleChangeDates,
-    ]
-  );
+    };
+
+    if (!canEdit) {
+      return base;
+    }
+
+    return {
+      ...base,
+      onEdit: () => router.push(`/trips/${shareCode}/edit`),
+      onDelete: async () => {
+        if (!trip?.id) return;
+        const result = await deleteTripAction(trip.id);
+        if (result.success) {
+          toast.success(t("trips.delete_success"));
+          router.push("/trips");
+        } else {
+          toast.error(t("trips.delete_failed"), { description: result.error });
+        }
+      },
+      onInviteByEmail: () => {
+        setInviteOpen(true);
+      },
+      onEditName: () => router.push(`/trips/${shareCode}/edit`),
+      onChangeDates: handleChangeDates,
+      onChangeBackground: async (_type, coverPhoto) => {
+        const r = await patchTrip({ cover_photo: coverPhoto });
+        if (r.ok) {
+          toast.success(t("trips.background_updated"));
+          router.refresh();
+        } else if (!r.conflict) {
+          toast.error(t("trips.background_update_failed"), { description: r.message });
+        }
+      },
+      onChangeBackgroundUpload: async ({ storage_key }) => {
+        const r = await patchTrip({
+          cover_upload_storage_key: storage_key,
+        });
+        if (r.ok) {
+          toast.success(t("trips.background_updated"));
+          router.refresh();
+        } else if (!r.conflict) {
+          toast.error(t("trips.background_update_failed"), { description: r.message });
+        }
+      },
+      onChangeBackgroundColor: async (color) => {
+        const r = await patchTrip({ color, cover_photo: undefined });
+        if (r.ok) {
+          toast.success(t("trips.color_updated"));
+          router.refresh();
+        } else if (!r.conflict) {
+          toast.error(t("trips.color_update_failed"), { description: r.message });
+        }
+      },
+    };
+  }, [
+    canEdit,
+    trip,
+    shareCode,
+    router,
+    t,
+    handleChangeDates,
+    patchTrip,
+  ]);
 
   const timeline: TripOverviewTimeline = useMemo(
     () => ({
@@ -518,8 +657,14 @@ export default function TripDetailPageClient({
           actions={actions}
           timeline={timeline}
           weather={weather}
+          canEdit={canEdit}
+          heroPresence={
+            tripMembers !== null && heroFacepileEntries.length > 0 ? (
+              <TripPresenceFacepile heroEntries={heroFacepileEntries} variant="hero" />
+            ) : null
+          }
           scheduleAttention={
-            scheduleRepair !== null || scheduleNeedsAttention === null
+            !canEdit || scheduleRepair !== null || scheduleNeedsAttention === null
               ? undefined
               : {
                   itemCount: scheduleNeedsAttention.itemCount,
@@ -539,6 +684,7 @@ export default function TripDetailPageClient({
         locations={itineraryLocations}
         activitiesByLocation={activitiesByLocation}
         onAfterReorder={() => router.refresh()}
+        canEdit={canEdit}
       />
 
       {scheduleRepair && trip.id ? (
@@ -563,6 +709,8 @@ export default function TripDetailPageClient({
           onOpenChange={setMembersDrawerOpen}
           tripId={trip.id}
           onInviteByEmail={() => setInviteOpen(true)}
+          canEdit={canEdit}
+          tripCreatorId={typeof trip.created_by === "string" ? trip.created_by : null}
         />
       ) : null}
 

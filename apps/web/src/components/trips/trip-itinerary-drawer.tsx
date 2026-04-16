@@ -98,6 +98,8 @@ export interface TripItineraryDrawerProps {
   locations: TripLocation[];
   activitiesByLocation: Record<string, Activity[]>;
   onAfterReorder?: () => void;
+  /** When false, hide reorder and other write affordances (viewer role). */
+  canEdit?: boolean;
 }
 
 export function TripItineraryDrawer({
@@ -108,6 +110,7 @@ export function TripItineraryDrawer({
   locations: locationsProp,
   activitiesByLocation,
   onAfterReorder,
+  canEdit = true,
 }: TripItineraryDrawerProps) {
   const { t } = useTranslation();
   const [reorderMode, setReorderMode] = useState(false);
@@ -130,6 +133,12 @@ export function TripItineraryDrawer({
       setReorderMode(false);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!canEdit) {
+      setReorderMode(false);
+    }
+  }, [canEdit]);
 
   const reorderSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -216,7 +225,7 @@ export function TripItineraryDrawer({
               </Button>
             </div>
 
-            {hasRoute && orderedLocations.length >= 2 ? (
+            {canEdit && hasRoute && orderedLocations.length >= 2 ? (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   {t("trip_overview.route_title")}
@@ -240,7 +249,7 @@ export function TripItineraryDrawer({
               </div>
             ) : null}
 
-            {reorderMode && orderedLocations.length >= 2 ? (
+            {canEdit && reorderMode && orderedLocations.length >= 2 ? (
               <p className="mt-2 text-[11px] text-muted-foreground">
                 {t("trip_overview.route_reorder_hint", {
                   defaultValue: "Drag a card by its edges to change the order of stops.",
@@ -272,7 +281,7 @@ export function TripItineraryDrawer({
                   <p className="text-xs text-muted-foreground">{t("trip_overview.route_empty")}</p>
                 </div>
               </div>
-            ) : reorderMode ? (
+            ) : canEdit && reorderMode ? (
               <Sortable.Root
                 sensors={reorderSensors}
                 value={orderedLocations}

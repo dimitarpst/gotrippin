@@ -28,6 +28,7 @@ import { CreateTripDto } from "./dto/create-trip.dto";
 import { UpdateTripDto } from "./dto/update-trip.dto";
 import { AddMemberDto } from "./dto/add-member.dto";
 import { InviteTripEmailDto } from "./dto/invite-trip-email.dto";
+import { PatchMemberRoleDto } from "./dto/patch-member-role.dto";
 import { AddTripGalleryImageBodySchema, CoverPhotoInputSchema } from "@gotrippin/core";
 
 @ApiTags("trips")
@@ -296,6 +297,24 @@ export class TripsController {
   ) {
     const userId = request.user.id;
     return this.tripsService.sendTripInviteEmail(id, userId, body.email);
+  }
+
+  @Patch(":id/members/:memberUserId")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Change a member's role (trip creator only)" })
+  @ApiParam({ name: "id", description: "Trip ID" })
+  @ApiParam({ name: "memberUserId", description: "Member user ID" })
+  @ApiBody({ type: PatchMemberRoleDto })
+  @ApiResponse({ status: 200, description: "Role updated" })
+  @ApiResponse({ status: 400, description: "Cannot demote last editor" })
+  @ApiResponse({ status: 403, description: "Access denied" })
+  async patchMemberRole(
+    @Param("id") id: string,
+    @Param("memberUserId") memberUserId: string,
+    @Body() body: PatchMemberRoleDto,
+    @Req() request: { user: { id: string } },
+  ) {
+    return this.tripsService.patchMemberRole(id, request.user.id, memberUserId, body.role);
   }
 
   @Delete(":id/members/:userId")

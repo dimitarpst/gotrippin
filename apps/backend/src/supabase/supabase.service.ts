@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { generateShareCode } from '@gotrippin/core';
@@ -18,6 +18,7 @@ export interface UserAiLimitStatus {
 
 @Injectable()
 export class SupabaseService {
+  private readonly logger = new Logger(SupabaseService.name);
   private supabase: SupabaseClient;
 
   constructor(private configService: ConfigService) {
@@ -288,6 +289,61 @@ export class SupabaseService {
     return result;
   }
 
+  /**
+   * Trips created before `created_by` was enforced may have a null creator.
+   * Treat the earliest `trip_members` row (by id) as the effective creator for permissions and UI.
+   */
+  async resolveTripCreatorUserId(tripId: string): Promise<string | null> {
+    try {
+      const { data: trip, error: tripErr } = await this.supabase
+        .from('trips')
+        .select('created_by')
+        .eq('id', tripId)
+        .maybeSingle();
+
+      if (tripErr) {
+        this.logger.warn(`resolveTripCreatorUserId: trips select failed (${tripId})`, tripErr);
+        return null;
+      }
+
+      if (!trip || typeof trip !== 'object') {
+        return null;
+      }
+
+      const existing =
+        'created_by' in trip &&
+        typeof trip.created_by === 'string' &&
+        trip.created_by.length > 0
+          ? trip.created_by
+          : null;
+      if (existing) {
+        return existing;
+      }
+
+      // Order by user_id — trip_members may not have a surrogate `id` column in all deployments.
+      const { data: rows, error: memErr } = await this.supabase
+        .from('trip_members')
+        .select('user_id')
+        .eq('trip_id', tripId)
+        .order('user_id', { ascending: true })
+        .limit(1);
+
+      if (memErr) {
+        this.logger.warn(`resolveTripCreatorUserId: trip_members select failed (${tripId})`, memErr);
+        return null;
+      }
+
+      const first = rows?.[0];
+      if (first && typeof first === 'object' && 'user_id' in first && typeof first.user_id === 'string') {
+        return first.user_id;
+      }
+      return null;
+    } catch (err) {
+      this.logger.warn(`resolveTripCreatorUserId: unexpected error (${tripId})`, err);
+      return null;
+    }
+  }
+
   // Helper method to get a single trip (if user is a member)
   async getTrip(tripId: string, userId: string) {
     const { data: membership } = await this.supabase
@@ -392,11 +448,63 @@ export class SupabaseService {
     return true;
   }
 
-  // Helper method to add a member to a trip
-  async addTripMember(tripId: string, userId: string) {
+  /** Role for a trip member; null if not a member. */
+  async getTripMemberRole(
+    tripId: string,
+    userId: string,
+  ): Promise<'editor' | 'viewer' | null> {
     const { data, error } = await this.supabase
       .from('trip_members')
-      .insert({ trip_id: tripId, user_id: userId })
+      .select('role')
+      .eq('trip_id', tripId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data || typeof data.role !== 'string') {
+      return null;
+    }
+    return data.role === 'viewer' ? 'viewer' : 'editor';
+  }
+
+  /** Throws 403 if the user is not an editor on this trip. */
+  async assertTripEditor(tripId: string, userId: string): Promise<void> {
+    const role = await this.getTripMemberRole(tripId, userId);
+    if (role !== 'editor') {
+      throw new ForbiddenException('Only editors can change this trip');
+    }
+  }
+
+  async countTripEditors(tripId: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('trip_members')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('trip_id', tripId)
+      .eq('role', 'editor');
+
+    if (error) throw error;
+    return count ?? 0;
+  }
+
+  async updateTripMemberRole(
+    tripId: string,
+    memberUserId: string,
+    role: 'editor' | 'viewer',
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .from('trip_members')
+      .update({ role })
+      .eq('trip_id', tripId)
+      .eq('user_id', memberUserId);
+
+    if (error) throw error;
+  }
+
+  // Helper method to add a member to a trip
+  async addTripMember(tripId: string, userId: string, role: 'editor' | 'viewer' = 'editor') {
+    const { data, error } = await this.supabase
+      .from('trip_members')
+      .insert({ trip_id: tripId, user_id: userId, role })
       .select()
       .single();
 
@@ -420,7 +528,7 @@ export class SupabaseService {
   async getTripMembers(tripId: string) {
     const { data, error } = await this.supabase
       .from('trip_members')
-      .select('user_id, joined_at, profiles(*)')
+      .select('user_id, joined_at, role, profiles(*)')
       .eq('trip_id', tripId)
       .order('joined_at', { ascending: true });
 

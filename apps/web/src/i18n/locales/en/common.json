@@ -411,7 +411,18 @@
     "pdf_departure": "Departure",
     "pdf_activities": "Activities",
     "pdf_unassigned": "Other activities",
-    "pdf_generated": "Generated"
+    "pdf_generated": "Generated",
+    "viewer_mode_banner": "View only — you can browse this trip but not change it.",
+    "viewer_cannot_edit": "Only editors can add activities or change the trip.",
+    "concurrent_edit": "Trip was updated elsewhere",
+    "concurrent_edit_hint": "We refreshed the page so you see the latest version.",
+    "presence_here_now": "Here now",
+    "presence_connecting": "Connecting…",
+    "member_role_editor": "Editor",
+    "member_role_viewer": "Viewer",
+    "member_role_select": "Role",
+    "member_role_updated": "Role updated",
+    "member_role_update_failed": "Could not update role"
   },
   "trip_overview": {
     "quick_add": "New activity",

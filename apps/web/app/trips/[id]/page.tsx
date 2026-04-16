@@ -115,6 +115,7 @@ export default async function TripDetailPage({
       weatherError={weatherError}
       shareCode={shareCode}
       initialItineraryOpen={initialItineraryOpen}
+      myRole={detail.my_role}
     />
   );
 }

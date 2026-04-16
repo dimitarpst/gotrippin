@@ -124,6 +124,36 @@ async function assertUserIsTripMember(
   return { ok: true };
 }
 
+/** Gallery and other trip mutations require editor role (see `trip_members.role`). */
+async function assertUserIsTripEditor(
+  tripId: string,
+  userId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const base = await assertUserIsTripMember(tripId, userId);
+  if (!base.ok) {
+    return base;
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("trip_members")
+    .select("role")
+    .eq("trip_id", tripId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return { ok: false, error: "Could not verify trip role" };
+  }
+
+  const role = typeof data.role === "string" ? data.role : "editor";
+  if (role !== "editor") {
+    return { ok: false, error: "Editors only" };
+  }
+
+  return { ok: true };
+}
+
 /**
  * Get a presigned URL for direct browser-to-R2 upload.
  * No outbound HTTPS from Node — avoids TLS issues on Windows.
@@ -273,9 +303,9 @@ export async function getPresignedTripGalleryUploadUrlAction(
     return { success: false, error: "Authentication required" };
   }
 
-  const member = await assertUserIsTripMember(tripId, userId);
-  if (!member.ok) {
-    return { success: false, error: member.error };
+  const editor = await assertUserIsTripEditor(tripId, userId);
+  if (!editor.ok) {
+    return { success: false, error: editor.error };
   }
 
   if (!ALLOWED_TYPES.includes(contentType)) {

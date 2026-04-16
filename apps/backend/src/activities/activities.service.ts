@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateActivityDto, UpdateActivityDto } from './dto';
 
@@ -14,6 +20,10 @@ export class ActivitiesService {
     if (!isMember) {
       throw new ForbiddenException('You must be a member of this trip to access activities');
     }
+  }
+
+  private async assertTripEditor(tripId: string, userId: string): Promise<void> {
+    await this.supabaseService.assertTripEditor(tripId, userId);
   }
 
   /**
@@ -86,6 +96,7 @@ export class ActivitiesService {
    */
   async createActivity(tripId: string, userId: string, dto: CreateActivityDto) {
     await this.validateTripMembership(tripId, userId);
+    await this.assertTripEditor(tripId, userId);
 
     // Validate location belongs to trip if provided
     if (dto.location_id) {
@@ -134,6 +145,16 @@ export class ActivitiesService {
     const activity = await this.getActivity(activityId, userId);
     const tripId = activity.trip_id;
 
+    await this.assertTripEditor(tripId, userId);
+
+    const expected = dto.expected_updated_at;
+    if (expected !== undefined && expected !== null && expected !== '') {
+      const current = (activity as { updated_at?: string }).updated_at;
+      if (typeof current === 'string' && Date.parse(expected) !== Date.parse(current)) {
+        throw new ConflictException('This activity was modified by someone else');
+      }
+    }
+
     // Validate location belongs to trip if being changed
     if (dto.location_id !== undefined && dto.location_id !== null) {
       await this.validateLocationBelongsToTrip(dto.location_id, tripId);
@@ -149,9 +170,11 @@ export class ActivitiesService {
       }
     }
 
-    // Filter out undefined values
+    // Filter out undefined values and optimistic-lock field
     const updateData = Object.fromEntries(
-      Object.entries(dto).filter(([_, value]) => value !== undefined)
+      Object.entries(dto).filter(
+        ([key, value]) => value !== undefined && key !== 'expected_updated_at',
+      ),
     );
 
     if (Object.keys(updateData).length === 0) {
@@ -177,7 +200,8 @@ export class ActivitiesService {
    */
   async deleteActivity(activityId: string, userId: string) {
     // First get the activity to validate membership
-    await this.getActivity(activityId, userId);
+    const activity = await this.getActivity(activityId, userId);
+    await this.assertTripEditor(activity.trip_id, userId);
 
     const { error } = await this.supabaseService.getClient()
       .from('activities')

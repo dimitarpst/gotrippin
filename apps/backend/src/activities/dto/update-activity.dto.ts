@@ -1,8 +1,23 @@
-import { IsString, IsUUID, IsOptional, IsBoolean, IsDateString, IsEnum, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsUUID,
+  IsOptional,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  MaxLength,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ActivityTypeEnum } from './create-activity.dto';
 
 export class UpdateActivityDto {
+  @ApiPropertyOptional({
+    description: 'If sent, update fails with 409 when this row changed since this timestamp',
+  })
+  @IsOptional()
+  @IsDateString()
+  expected_updated_at?: string;
+
   @ApiPropertyOptional({ description: 'Location ID this activity belongs to' })
   @IsOptional()
   @IsUUID()

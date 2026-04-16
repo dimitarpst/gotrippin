@@ -410,7 +410,18 @@
     "pdf_departure": "Заминаване",
     "pdf_activities": "Активности",
     "pdf_unassigned": "Други активности",
-    "pdf_generated": "Генерирано"
+    "pdf_generated": "Генерирано",
+    "viewer_mode_banner": "Само преглед — можеш да разгледаш пътуването, но не и да го променяш.",
+    "viewer_cannot_edit": "Само редакторите могат да добавят дейности или да променят пътуването.",
+    "concurrent_edit": "Пътуването е обновено на друго място",
+    "concurrent_edit_hint": "Обновихме страницата, за да видиш последната версия.",
+    "presence_here_now": "Тук сега",
+    "presence_connecting": "Свързване…",
+    "member_role_editor": "Редактор",
+    "member_role_viewer": "Наблюдател",
+    "member_role_select": "Роля",
+    "member_role_updated": "Ролята е обновена",
+    "member_role_update_failed": "Неуспешна промяна на роля"
   },
   "trip_overview": {
     "quick_add": "Нова активност",

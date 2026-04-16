@@ -1,4 +1,12 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  ServiceUnavailableException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ImagesService } from '../images/images.service';
@@ -57,6 +65,8 @@ function readFormerCoverForGalleryPromotion(
 
 export interface TripDetailDto {
   trip: Awaited<ReturnType<TripsService['getTripByShareCode']>>;
+  /** Current user's membership role for this trip (for viewer UI + Realtime). */
+  my_role: 'editor' | 'viewer';
   route_locations: unknown[] | null;
   route_locations_error?: string;
   grouped_activities: { locations: unknown[]; unassigned: unknown[] } | null;
@@ -205,9 +215,10 @@ export class TripsService {
         ...rest,
         ...(cover_photo_id ? { cover_photo_id } : {}),
         created_at: new Date().toISOString(),
+        created_by: userId,
       });
 
-      await this.supabaseService.addTripMember(newTrip.id, userId);
+      await this.supabaseService.addTripMember(newTrip.id, userId, 'editor');
       return newTrip;
     } catch (error) {
       throw new NotFoundException('Failed to create trip');
@@ -226,16 +237,25 @@ export class TripsService {
     notes: string | null;
     budget_amount_minor: number | null;
     budget_currency: string | null;
+    expected_updated_at?: string;
   }>) {
     try {
-      const existingTrip = await this.supabaseService.getTrips(userId);
-      const trip = existingTrip.find(t => t.id === tripId);
-
-      if (!trip) {
+      const tripBefore = await this.supabaseService.getTrip(tripId, userId);
+      if (!tripBefore) {
         throw new ForbiddenException('Trip not found or access denied');
       }
 
-      const { cover_photo, cover_upload_storage_key, ...rest } = updateData;
+      await this.supabaseService.assertTripEditor(tripId, userId);
+
+      const expected = updateData.expected_updated_at;
+      if (expected !== undefined && expected !== null && expected !== '') {
+        const current = (tripBefore as { updated_at?: string }).updated_at;
+        if (typeof current === 'string' && Date.parse(expected) !== Date.parse(current)) {
+          throw new ConflictException('Trip was modified by someone else');
+        }
+      }
+
+      const { cover_photo, cover_upload_storage_key, expected_updated_at: _exp, ...rest } = updateData;
 
       let cover_photo_id: string | undefined;
       if (cover_upload_storage_key) {
@@ -253,7 +273,7 @@ export class TripsService {
       );
 
       if (cover_photo_id) {
-        const former = readFormerCoverForGalleryPromotion(trip);
+        const former = readFormerCoverForGalleryPromotion(tripBefore);
         if (former) {
           await this.promoteFormerCoverIntoGalleryIfNeeded(
             tripId,
@@ -267,7 +287,7 @@ export class TripsService {
       const updatedTrip = await this.supabaseService.updateTrip(tripId, filteredData);
       return updatedTrip;
     } catch (error) {
-      if (error instanceof ForbiddenException) {
+      if (error instanceof ForbiddenException || error instanceof ConflictException) {
         throw error;
       }
       throw new NotFoundException('Failed to update trip');
@@ -276,13 +296,12 @@ export class TripsService {
 
   async deleteTrip(tripId: string, userId: string) {
     try {
-      // First check if the trip belongs to the user
-      const existingTrip = await this.supabaseService.getTrips(userId);
-      const trip = existingTrip.find(t => t.id === tripId);
-
+      const trip = await this.supabaseService.getTrip(tripId, userId);
       if (!trip) {
         throw new ForbiddenException('Trip not found or access denied');
       }
+
+      await this.supabaseService.assertTripEditor(tripId, userId);
 
       await this.supabaseService.deleteTrip(tripId);
       return { message: 'Trip deleted successfully' };
@@ -294,6 +313,22 @@ export class TripsService {
     }
   }
 
+  /**
+   * Fills `created_by` in the JSON payload when the DB row is legacy-null (first member = creator).
+   */
+  private async withResolvedTripCreator<T extends { id: string; created_by?: string | null }>(
+    trip: T,
+  ): Promise<T> {
+    if (trip.created_by != null && String(trip.created_by).length > 0) {
+      return trip;
+    }
+    const resolved = await this.supabaseService.resolveTripCreatorUserId(trip.id);
+    if (typeof resolved === 'string' && resolved.length > 0) {
+      return { ...trip, created_by: resolved };
+    }
+    return trip;
+  }
+
   async getTripById(tripId: string, userId: string) {
     try {
       const trip = await this.supabaseService.getTrip(tripId, userId);
@@ -302,7 +337,7 @@ export class TripsService {
         throw new ForbiddenException('Trip not found or access denied');
       }
 
-      return trip;
+      return await this.withResolvedTripCreator(trip as { id: string; created_by?: string | null });
     } catch (error) {
       if (error instanceof ForbiddenException) {
         throw error;
@@ -319,7 +354,7 @@ export class TripsService {
         throw new ForbiddenException('Trip not found or access denied');
       }
 
-      return trip;
+      return await this.withResolvedTripCreator(trip as { id: string; created_by?: string | null });
     } catch (error) {
       if (error instanceof ForbiddenException) {
         throw error;
@@ -353,8 +388,11 @@ export class TripsService {
       ),
     ]);
 
+    const myRole = await this.supabaseService.getTripMemberRole(tripId, userId);
+
     return {
       trip,
+      my_role: myRole === 'viewer' ? 'viewer' : 'editor',
       route_locations: 'data' in routeResult ? routeResult.data : null,
       route_locations_error: 'error' in routeResult ? routeResult.error : undefined,
       grouped_activities: 'data' in activitiesResult ? activitiesResult.data : null,
@@ -383,8 +421,11 @@ export class TripsService {
       ),
     ]);
 
+    const myRole = await this.supabaseService.getTripMemberRole(tripId, userId);
+
     return {
       trip,
+      my_role: myRole === 'viewer' ? 'viewer' : 'editor',
       route_locations: 'data' in routeResult ? routeResult.data : null,
       route_locations_error: 'error' in routeResult ? routeResult.error : undefined,
       grouped_activities: 'data' in activitiesResult ? activitiesResult.data : null,
@@ -400,6 +441,7 @@ export class TripsService {
     if (!trip) {
       throw new ForbiddenException('Trip not found or access denied');
     }
+    await this.supabaseService.assertTripEditor(tripId, userId);
     const photoId = (trip as { cover_photo?: { id: string } | null }).cover_photo?.id;
     if (!photoId) {
       throw new BadRequestException('Trip has no cover photo');
@@ -472,6 +514,8 @@ export class TripsService {
       throw new ForbiddenException('Trip not found or access denied');
     }
 
+    await this.supabaseService.assertTripEditor(tripId, inviterUserId);
+
     const shareCode =
       typeof trip.share_code === 'string' && trip.share_code.length > 0 ? trip.share_code : null;
     if (!shareCode) {
@@ -516,15 +560,9 @@ export class TripsService {
 
   async addMember(tripId: string, currentUserId: string, userIdToAdd: string) {
     try {
-      // Check if current user is a member of the trip
-      const isMember = await this.supabaseService.isTripMember(tripId, currentUserId);
+      await this.supabaseService.assertTripEditor(tripId, currentUserId);
 
-      if (!isMember) {
-        throw new ForbiddenException('You must be a member of this trip to add others');
-      }
-
-      // Add the new member
-      await this.supabaseService.addTripMember(tripId, userIdToAdd);
+      await this.supabaseService.addTripMember(tripId, userIdToAdd, 'editor');
       return { message: 'Member added successfully' };
     } catch (error) {
       if (error instanceof ForbiddenException) {
@@ -534,19 +572,97 @@ export class TripsService {
     }
   }
 
+  /**
+   * Only the trip creator may change another member's role (see product rules in plan).
+   */
+  async patchMemberRole(
+    tripId: string,
+    currentUserId: string,
+    memberUserId: string,
+    role: 'editor' | 'viewer',
+  ): Promise<{ ok: true }> {
+    const trip = await this.supabaseService.getTrip(tripId, currentUserId);
+    if (!trip) {
+      throw new ForbiddenException('Trip not found or access denied');
+    }
+
+    const creatorId = await this.supabaseService.resolveTripCreatorUserId(tripId);
+
+    if (!creatorId || creatorId !== currentUserId) {
+      throw new ForbiddenException('Only the trip creator can change member roles');
+    }
+
+    if (memberUserId === creatorId && role === 'viewer') {
+      throw new BadRequestException('The trip creator must remain an editor');
+    }
+
+    const targetRole = await this.supabaseService.getTripMemberRole(tripId, memberUserId);
+    if (!targetRole) {
+      throw new NotFoundException('Member not found');
+    }
+
+    if (role === 'viewer' && targetRole === 'editor') {
+      const editors = await this.supabaseService.countTripEditors(tripId);
+      if (editors <= 1) {
+        throw new BadRequestException('Cannot demote the last editor');
+      }
+    }
+
+    await this.supabaseService.updateTripMemberRole(tripId, memberUserId, role);
+    return { ok: true };
+  }
+
   async removeMember(tripId: string, currentUserId: string, userIdToRemove: string) {
     try {
-      // Users can remove themselves, or check if they're a member to remove others
       const isMember = await this.supabaseService.isTripMember(tripId, currentUserId);
-
       if (!isMember && currentUserId !== userIdToRemove) {
         throw new ForbiddenException('You must be a member of this trip');
+      }
+
+      const targetRole = await this.supabaseService.getTripMemberRole(tripId, userIdToRemove);
+      if (!targetRole) {
+        throw new NotFoundException('Member not found');
+      }
+
+      if (userIdToRemove === currentUserId) {
+        if (targetRole === 'editor') {
+          const editors = await this.supabaseService.countTripEditors(tripId);
+          if (editors <= 1) {
+            throw new BadRequestException('Add another editor or delete the trip before leaving');
+          }
+        }
+        await this.supabaseService.removeTripMember(tripId, userIdToRemove);
+        return { message: 'Member removed successfully' };
+      }
+
+      await this.supabaseService.assertTripEditor(tripId, currentUserId);
+
+      const tripRow = await this.supabaseService.getTrip(tripId, currentUserId);
+      if (!tripRow) {
+        throw new ForbiddenException('Trip not found or access denied');
+      }
+
+      const creatorId = await this.supabaseService.resolveTripCreatorUserId(tripId);
+
+      if (creatorId && userIdToRemove === creatorId) {
+        throw new ForbiddenException('Cannot remove the trip creator');
+      }
+
+      if (targetRole === 'editor') {
+        const editors = await this.supabaseService.countTripEditors(tripId);
+        if (editors <= 1) {
+          throw new BadRequestException('Cannot remove the last editor');
+        }
       }
 
       await this.supabaseService.removeTripMember(tripId, userIdToRemove);
       return { message: 'Member removed successfully' };
     } catch (error) {
-      if (error instanceof ForbiddenException) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new NotFoundException('Failed to remove member');
@@ -589,6 +705,7 @@ export class TripsService {
     if (!trip) {
       throw new ForbiddenException('Trip not found or access denied');
     }
+    await this.supabaseService.assertTripEditor(tripId, userId);
 
     const current = await this.supabaseService.countTripGalleryImages(tripId);
     if (current >= MAX_TRIP_GALLERY_IMAGES) {
@@ -620,6 +737,7 @@ export class TripsService {
     if (!trip) {
       throw new ForbiddenException('Trip not found or access denied');
     }
+    await this.supabaseService.assertTripEditor(tripId, userId);
 
     const row = await this.supabaseService.getTripGalleryImageById(galleryImageId);
     if (!row || row.trip_id !== tripId) {
@@ -641,6 +759,7 @@ export class TripsService {
     if (!trip) {
       throw new ForbiddenException('Trip not found or access denied');
     }
+    await this.supabaseService.assertTripEditor(tripId, userId);
 
     assertGalleryStorageKeyForTrip(tripId, body.storage_key);
 
@@ -667,6 +786,7 @@ export class TripsService {
     if (!trip) {
       throw new ForbiddenException('Trip not found or access denied');
     }
+    await this.supabaseService.assertTripEditor(tripId, userId);
 
     const row = await this.supabaseService.getTripGalleryImageById(imageId);
     if (!row || row.trip_id !== tripId) {

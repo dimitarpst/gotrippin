@@ -67,6 +67,7 @@ export default async function RoutePage({
       routeLocations={routeLocations}
       shareCode={shareCode}
       isWizard={isWizard}
+      canEdit={detail.my_role === "editor"}
     />
   );
 }

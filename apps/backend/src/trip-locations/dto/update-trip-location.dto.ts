@@ -2,6 +2,13 @@ import { IsString, IsNumber, IsOptional, Min, Max, IsInt, IsPositive, IsDateStri
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateTripLocationDto {
+  @ApiPropertyOptional({
+    description: 'If sent, update fails with 409 when this row changed since this timestamp',
+  })
+  @IsOptional()
+  @IsDateString()
+  expected_updated_at?: string;
+
   @ApiPropertyOptional({ description: 'Location name', example: 'Paris, France' })
   @IsOptional()
   @IsString()

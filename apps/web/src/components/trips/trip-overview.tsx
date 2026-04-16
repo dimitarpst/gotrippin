@@ -1,7 +1,15 @@
 "use client"
 
 import { AnimatePresence, motion } from "framer-motion"
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react"
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react"
 import {
   Plus,
   MoreHorizontal,
@@ -168,6 +176,8 @@ interface TripOverviewProps {
   actions: TripOverviewActions
   timeline?: TripOverviewTimeline
   weather?: TripOverviewWeather
+  /** When false, hide write affordances (viewer role). */
+  canEdit?: boolean
   /** When the trip window and some stops/activities disagree, show a card above the itinerary to reopen the repair flow. */
   scheduleAttention?: {
     itemCount: number
@@ -175,6 +185,8 @@ interface TripOverviewProps {
     activityCount: number
     onReview: () => void
   }
+  /** Optional “others viewing” facepile — hero only, centered under dates (no chrome). */
+  heroPresence?: ReactNode
 }
 
 export default function TripOverview({
@@ -182,7 +194,9 @@ export default function TripOverview({
   actions,
   timeline: timelineProp = {},
   weather: weatherProp = {},
+  canEdit = true,
   scheduleAttention,
+  heroPresence,
 }: TripOverviewProps) {
   const {
     onNavigate,
@@ -247,7 +261,7 @@ export default function TripOverview({
 
   const primaryTripLabel = tripDisplayTitle(trip) ?? t("trips.untitled_trip")
 
-  const hasCustomizeActions = Boolean(onEditName || onChangeDates || onChangeBackground)
+  const hasCustomizeActions = canEdit && Boolean(onEditName || onChangeDates || onChangeBackground)
 
   const derivedLocations = timelineLocations.length ? timelineLocations : routeLocations
 
@@ -730,10 +744,10 @@ export default function TripOverview({
           </motion.div>
 
           {/* Right: Close */}
-          <div className="flex gap-3">
+          <div className="flex min-w-0 shrink-0 items-center gap-2">
             <motion.button
               onClick={onBack}
-              className="w-12 h-12 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
+              className="w-12 h-12 shrink-0 rounded-full backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden"
               style={{ background: "rgba(0,0,0,0.3)" }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -754,60 +768,63 @@ export default function TripOverview({
         }}
         onScroll={handleScroll}
       >
-        <motion.div
-          className="relative z-10 px-6 pt-60 pb-2 text-center"
-          initial="hidden"
-          animate={showCollapsedHeaderChrome ? "hidden" : "visible"}
-          variants={{
-            hidden: {
-              opacity: 0,
-              y: -20,
-              transition: {
-                duration: 0.4,
-                ease: [0.4, 0.0, 0.2, 1],
-              }
-            },
-            visible: {
-              opacity: 1,
-              y: 0,
-              transition: {
-                staggerChildren: 0.1,
-                duration: 0.4,
-                ease: [0.4, 0.0, 0.2, 1],
+        {/* Title + dates fade on scroll; member facepile stays visible (never opacity:0). */}
+        <div className="relative z-10 px-6 pt-60 pb-0 text-center">
+          <motion.div
+            initial="hidden"
+            animate={showCollapsedHeaderChrome ? "hidden" : "visible"}
+            variants={{
+              hidden: {
+                opacity: 0,
+                y: -20,
+                transition: {
+                  duration: 0.4,
+                  ease: [0.4, 0.0, 0.2, 1],
+                },
               },
-            },
-          }}
-        >
-          <motion.h1
-            className="mb-2 w-full max-w-full px-3 text-3xl font-bold leading-tight text-white drop-shadow-lg [overflow-wrap:anywhere] break-words sm:px-4 sm:text-4xl md:text-5xl"
-            variants={{
-              hidden: { opacity: 0, y: 20 },
-              visible: { opacity: 1, y: 0 },
+              visible: {
+                opacity: 1,
+                y: 0,
+                transition: {
+                  staggerChildren: 0.1,
+                  duration: 0.4,
+                  ease: [0.4, 0.0, 0.2, 1],
+                },
+              },
             }}
           >
-            {primaryTripLabel}
-          </motion.h1>
-          <motion.p
-            className="text-white/90 text-base mb-0.5 drop-shadow-md"
-            variants={{
-              hidden: { opacity: 0, y: 20 },
-              visible: { opacity: 1, y: 0 },
-            }}
-          >
-            {daysUntil > 0 ? t('trips.starts_in', { count: daysUntil }) : t('trips.started')} • {duration > 0 ? t('trips.day_trip', { count: duration }) : t('trips.duration_tbd')}
-          </motion.p>
-          <motion.p
-            className="text-white/70 text-sm drop-shadow-md"
-            variants={{
-              hidden: { opacity: 0, y: 20 },
-              visible: { opacity: 1, y: 0 },
-            }}
-          >
-            {startDate} → {endDate}
-          </motion.p>
-        </motion.div>
-
-
+            <motion.h1
+              className="mb-2 w-full max-w-full px-3 text-3xl font-bold leading-tight text-white drop-shadow-lg [overflow-wrap:anywhere] break-words sm:px-4 sm:text-4xl md:text-5xl"
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0 },
+              }}
+            >
+              {primaryTripLabel}
+            </motion.h1>
+            <motion.p
+              className="text-white/90 text-base mb-0.5 drop-shadow-md"
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0 },
+              }}
+            >
+              {daysUntil > 0 ? t('trips.starts_in', { count: daysUntil }) : t('trips.started')} • {duration > 0 ? t('trips.day_trip', { count: duration }) : t('trips.duration_tbd')}
+            </motion.p>
+            <motion.p
+              className="text-white/70 text-sm drop-shadow-md"
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0 },
+              }}
+            >
+              {startDate} → {endDate}
+            </motion.p>
+          </motion.div>
+          {heroPresence ? (
+            <div className="mt-3 flex w-full justify-center px-0">{heroPresence}</div>
+          ) : null}
+        </div>
 
         <motion.div
           className="relative z-10 w-full pt-2 pb-4 px-6"
@@ -815,8 +832,13 @@ export default function TripOverview({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, type: "spring", stiffness: 320, damping: 28 }}
         >
+          {!canEdit ? (
+            <p className="text-center text-xs text-white/80 drop-shadow-md">
+              {t("trips.viewer_mode_banner")}
+            </p>
+          ) : null}
           <div
-            className="grid w-full grid-cols-4 gap-x-3 sm:gap-x-5"
+            className={`grid w-full grid-cols-4 gap-x-3 sm:gap-x-5 ${!canEdit ? "pointer-events-none opacity-40" : ""}`}
             role="group"
             aria-label={t("trip_overview.quick_actions_group_a11y")}
           >

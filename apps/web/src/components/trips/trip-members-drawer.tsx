@@ -21,45 +21,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { ApiError, fetchTripMembers, removeTripMember, type TripMemberWithProfile } from "@/lib/api/trips";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function displayNameFromProfiles(profiles: unknown): string {
-  if (profiles === null || profiles === undefined) {
-    return "";
-  }
-  if (Array.isArray(profiles)) {
-    const first = profiles[0];
-    if (isRecord(first) && typeof first.display_name === "string" && first.display_name.trim().length > 0) {
-      return first.display_name.trim();
-    }
-    return "";
-  }
-  if (isRecord(profiles) && typeof profiles.display_name === "string" && profiles.display_name.trim().length > 0) {
-    return profiles.display_name.trim();
-  }
-  return "";
-}
-
-function avatarUrlFromProfiles(profiles: unknown): string | null {
-  if (profiles === null || profiles === undefined) {
-    return null;
-  }
-  if (Array.isArray(profiles)) {
-    const first = profiles[0];
-    if (isRecord(first) && typeof first.avatar_url === "string" && first.avatar_url.trim().length > 0) {
-      return first.avatar_url.trim();
-    }
-    return null;
-  }
-  if (isRecord(profiles) && typeof profiles.avatar_url === "string" && profiles.avatar_url.trim().length > 0) {
-    return profiles.avatar_url.trim();
-  }
-  return null;
-}
+import {
+  ApiError,
+  fetchTripMembers,
+  patchTripMemberRole,
+  removeTripMember,
+  type TripMemberWithProfile,
+} from "@/lib/api/trips";
+import type { TripMemberRole } from "@gotrippin/core";
+import { avatarUrlFromProfiles, displayNameFromProfiles } from "@/lib/trip-member-profile";
 
 function MemberAvatar({
   label,
@@ -92,52 +62,33 @@ function MemberAvatar({
   );
 }
 
-const DRAWER_FACEPILE_MAX = 6;
-
-function DrawerFooterFacepile({
-  entries,
-}: {
-  entries: readonly { userId: string; imageUrl: string | null; label: string }[];
-}) {
-  if (entries.length === 0) {
-    return null;
-  }
-  const overflow = entries.length > DRAWER_FACEPILE_MAX ? entries.length - DRAWER_FACEPILE_MAX : 0;
-  const tail =
-    entries.length <= DRAWER_FACEPILE_MAX
-      ? entries
-      : entries.slice(entries.length - DRAWER_FACEPILE_MAX);
-
-  return (
-    <div className="flex w-full flex-wrap items-center justify-end gap-0 pb-2">
-      <div className="flex items-center -space-x-2">
-        {overflow > 0 ? (
-          <div
-            className="relative z-[1] flex h-8 min-w-[2rem] items-center justify-center rounded-full border-2 border-border/60 bg-muted px-1 text-[10px] font-semibold tabular-nums text-foreground dark:border-white/20 dark:bg-white/10"
-            title={`+${overflow}`}
-          >
-            +{overflow}
-          </div>
-        ) : null}
-        {tail.map((e, i) => (
-          <div key={e.userId} className="relative" style={{ zIndex: 2 + i }}>
-            <MemberAvatar label={e.label} imageUrl={e.imageUrl} size="sm" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export interface TripMembersDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tripId: string;
   /** Opens the existing invite-by-email dialog (parent owns dialog state). */
   onInviteByEmail: () => void;
+  /** When false, hide invite (viewer). */
+  canEdit?: boolean;
+  /** Trip creator — only they can change roles. */
+  tripCreatorId?: string | null;
 }
 
-export function TripMembersDrawer({ open, onOpenChange, tripId, onInviteByEmail }: TripMembersDrawerProps) {
+function roleLabel(role: TripMemberRole | undefined, t: (k: string) => string): string {
+  if (role === "viewer") {
+    return t("trips.member_role_viewer");
+  }
+  return t("trips.member_role_editor");
+}
+
+export function TripMembersDrawer({
+  open,
+  onOpenChange,
+  tripId,
+  onInviteByEmail,
+  canEdit = true,
+  tripCreatorId = null,
+}: TripMembersDrawerProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuth();
@@ -150,13 +101,16 @@ export function TripMembersDrawer({ open, onOpenChange, tripId, onInviteByEmail 
 
   const currentUserId = user?.id ?? null;
 
+  const [roleSaving, setRoleSaving] = useState<string | null>(null);
+
   const memberRows = useMemo(() => {
     return members.map((m) => {
       const name = displayNameFromProfiles(m.profiles);
       const label = name.length > 0 ? name : m.user_id;
       const isYou = currentUserId !== null && m.user_id === currentUserId;
       const imageUrl = avatarUrlFromProfiles(m.profiles);
-      return { userId: m.user_id, label, isYou, imageUrl };
+      const role: TripMemberRole = m.role === "viewer" ? "viewer" : "editor";
+      return { userId: m.user_id, label, isYou, imageUrl, role };
     });
   }, [members, currentUserId]);
 
@@ -174,6 +128,28 @@ export function TripMembersDrawer({ open, onOpenChange, tripId, onInviteByEmail 
       setLoading(false);
     }
   }, [tripId, t]);
+
+  const handleRoleChange = useCallback(
+    async (memberUserId: string, next: TripMemberRole) => {
+      if (!tripId || !currentUserId || tripCreatorId !== currentUserId) {
+        return;
+      }
+      setRoleSaving(memberUserId);
+      try {
+        await patchTripMemberRole(tripId, memberUserId, next);
+        toast.success(t("trips.member_role_updated"));
+        await loadMembers();
+        router.refresh();
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : t("trips.member_role_update_failed");
+        console.error("TripMembersDrawer: patchTripMemberRole failed", err);
+        toast.error(t("trips.member_role_update_failed"), { description: msg });
+      } finally {
+        setRoleSaving(null);
+      }
+    },
+    [tripId, currentUserId, tripCreatorId, loadMembers, router, t]
+  );
 
   useEffect(() => {
     if (!open || !tripId) {
@@ -237,13 +213,42 @@ export function TripMembersDrawer({ open, onOpenChange, tripId, onInviteByEmail 
                   key={row.userId}
                   className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/15 px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.04]"
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="truncate font-medium">{row.label}</span>
-                    {row.isYou ? (
-                      <span className="shrink-0 rounded-md bg-primary/15 px-1.5 py-0.5 text-xs text-primary">
-                        {t("trip_overview.members_you_badge")}
-                      </span>
-                    ) : null}
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate font-medium">{row.label}</span>
+                      {row.isYou ? (
+                        <span className="shrink-0 rounded-md bg-primary/15 px-1.5 py-0.5 text-xs text-primary">
+                          {t("trip_overview.members_you_badge")}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{roleLabel(row.role, t)}</span>
+                      {tripCreatorId !== null &&
+                      currentUserId === tripCreatorId &&
+                      row.userId !== tripCreatorId ? (
+                        <label className="sr-only" htmlFor={`member-role-${row.userId}`}>
+                          {t("trips.member_role_select")}
+                        </label>
+                      ) : null}
+                      {tripCreatorId !== null &&
+                      currentUserId === tripCreatorId &&
+                      row.userId !== tripCreatorId ? (
+                        <select
+                          id={`member-role-${row.userId}`}
+                          className="h-8 max-w-[9rem] rounded-md border border-border/60 bg-background px-2 text-xs"
+                          value={row.role}
+                          disabled={roleSaving === row.userId}
+                          onChange={(e) => {
+                            const v = e.target.value === "viewer" ? "viewer" : "editor";
+                            void handleRoleChange(row.userId, v);
+                          }}
+                        >
+                          <option value="editor">{t("trips.member_role_editor")}</option>
+                          <option value="viewer">{t("trips.member_role_viewer")}</option>
+                        </select>
+                      ) : null}
+                    </div>
                   </div>
                   <MemberAvatar label={row.label} imageUrl={row.imageUrl} />
                 </li>
@@ -252,10 +257,11 @@ export function TripMembersDrawer({ open, onOpenChange, tripId, onInviteByEmail 
           </div>
 
           <DrawerFooter className="border-t border-border/40 pt-2 dark:border-white/10">
-            <DrawerFooterFacepile entries={memberRows} />
-            <Button type="button" className="w-full" onClick={handleInvite}>
-              {t("trip_overview.menu_invite_email")}
-            </Button>
+            {canEdit ? (
+              <Button type="button" className="w-full" onClick={handleInvite}>
+                {t("trip_overview.menu_invite_email")}
+              </Button>
+            ) : null}
             {currentUserId ? (
               <Button type="button" variant="outline" className="w-full" onClick={() => setLeaveConfirmOpen(true)}>
                 {t("trip_overview.members_leave_trip")}

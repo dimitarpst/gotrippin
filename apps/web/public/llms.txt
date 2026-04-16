@@ -4,7 +4,7 @@
 
 ## Description
 
-gotrippin helps travelers create and share trip itineraries. Key features: interactive route maps with drag-to-reorder stops, AI trip assistant for local recommendations, and shareable trips so friends can view and edit the same itinerary.
+gotrippin helps travelers create and share trip itineraries. Key features: interactive route maps with drag-to-reorder stops; trip stops can carry **Google Places** metadata (e.g. place id, photos) when available; **Open-Meteo** supplies per-stop weather for trip dates (server-side); an **AI trip assistant** calls **validated server tools** (same rules as the REST API). Trips are **shared with authenticated members** (join link; optional **Brevo** transactional email when the API is configured). Primary writes go through **NestJS**; **Supabase** provides PostgreSQL (with **RLS**), Auth, Storage, and **Realtime** at the platform level—**peer edits are typically visible after navigation or refresh** unless a deployment wires Postgres change subscriptions into the UI.
 
 ## Links
 
@@ -20,4 +20,4 @@ gotrippin helps travelers create and share trip itineraries. Key features: inter
 
 - Product: Web app for travel planning and itinerary management
 - Target users: Travelers, groups planning trips together
-- Tech: Next.js, Supabase, Mapbox
+- Tech: Next.js, NestJS, Supabase, Mapbox, Open-Meteo, OpenRouter (AI), Unsplash (covers), optional Brevo (invites)

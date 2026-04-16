@@ -20,6 +20,7 @@ export {
   TripCreateDataSchema,
   AddTripMemberSchema,
   RemoveTripMemberSchema,
+  TripMemberRoleSchema,
   PhotoSchema,
   CoverPhotoInputSchema,
   TripGalleryImageSchema,
@@ -50,6 +51,7 @@ export type {
 export type {
   Trip,
   TripMember,
+  TripMemberRole,
   CreateTrip,
   UpdateTrip,
   TripUpdateData,

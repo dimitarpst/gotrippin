@@ -135,6 +135,8 @@ export const TripSchema = z.object({
     .max(12)
     .optional(),
   created_at: z.string().datetime({ message: 'Invalid creation date format' }),
+  /** Server-maintained; used for optimistic concurrency and Realtime. */
+  updated_at: z.string().datetime({ message: 'Invalid update date format' }).optional(),
 })
   .refine(
     (data) => {
@@ -150,6 +152,8 @@ export const TripSchema = z.object({
     }
   );
 
+export const TripMemberRoleSchema = z.enum(['editor', 'viewer']);
+
 /**
  * Zod schema for trip member (bridge table)
  * Matches the `public.trip_members` table in Supabase
@@ -158,6 +162,7 @@ export const TripMemberSchema = z.object({
   trip_id: z.string().uuid('Invalid trip ID format'),
   user_id: z.string().uuid('Invalid user ID format'),
   joined_at: z.string().datetime({ message: 'Invalid join date format' }),
+  role: TripMemberRoleSchema,
 });
 
 /**
@@ -193,6 +198,8 @@ export const TripUpdateDataSchema = TripSchema.omit({
     cover_photo: CoverPhotoInputSchema.optional(),
     /** R2 key from a prior browser upload (`trip-images/uploads/{userId}/…`). Mutually exclusive with `cover_photo`. */
     cover_upload_storage_key: z.string().min(1).optional(),
+    /** If sent, update fails with 409 when the trip row changed since this timestamp. */
+    expected_updated_at: z.string().datetime().optional(),
   })
   .refine(
     (data) => !(data.cover_photo && data.cover_upload_storage_key),
@@ -258,6 +265,7 @@ export const TripCreateDataSchema = TripSchema.omit({
  */
 export type Trip = z.infer<typeof TripSchema>;
 export type TripMember = z.infer<typeof TripMemberSchema>;
+export type TripMemberRole = z.infer<typeof TripMemberRoleSchema>;
 export type CreateTrip = z.infer<typeof CreateTripSchema>;
 export type UpdateTrip = z.infer<typeof UpdateTripSchema>;
 export type TripUpdateData = z.infer<typeof TripUpdateDataSchema>;
@@ -368,6 +376,8 @@ export const CreateTripLocationSchema = z.object({
  * Schema for updating an existing trip location
  */
 export const UpdateTripLocationSchema = z.object({
+  /** If sent, update fails with 409 when this location row changed since this timestamp. */
+  expected_updated_at: z.string().datetime().optional(),
   location_name: z
     .string()
     .min(1, 'Location name is required')
@@ -468,6 +478,8 @@ export const CreateActivitySchema = z.object({
  * Schema for updating an existing activity
  */
 export const UpdateActivitySchema = z.object({
+  /** If sent, update fails with 409 when this activity row changed since this timestamp. */
+  expected_updated_at: z.string().datetime().optional(),
   location_id: z.string().uuid('Invalid location ID format').nullable().optional(),
   type: ActivityTypeEnum.optional(),
   title: z
